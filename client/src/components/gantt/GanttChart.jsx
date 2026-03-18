@@ -24,11 +24,7 @@ const GanttChart = ({ projectId }) => {
   const endDate = addDays(today, 45);
   const days = eachDayOfInterval({ start: startDate, end: endDate });
 
-  useEffect(() => {
-    fetchData();
-  }, [projectId]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [cardsRes, depsRes] = await Promise.all([
@@ -47,7 +43,11 @@ const GanttChart = ({ projectId }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleMouseDown = (e, card, type) => {
     e.preventDefault();
@@ -87,10 +87,14 @@ const GanttChart = ({ projectId }) => {
     }));
   }, [dragging, dayWidth]);
 
-  const handleMouseUp = async () => {
+  const handleMouseUp = useCallback(async () => {
     if (!dragging) return;
-    
+
     const card = cards.find(c => c.id === dragging.cardId);
+    if (!card) {
+      setDragging(null);
+      return;
+    }
     setDragging(null);
 
     try {
@@ -108,7 +112,7 @@ const GanttChart = ({ projectId }) => {
       toast.error('Failed to save changes');
       fetchData(); // Rollback UI
     }
-  };
+  }, [cards, dragging, fetchData]);
 
   useEffect(() => {
     if (dragging) {
@@ -122,7 +126,7 @@ const GanttChart = ({ projectId }) => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [dragging, handleMouseMove]);
+  }, [dragging, handleMouseMove, handleMouseUp]);
 
   const getTaskStyle = (card) => {
     const start = new Date(card.start_date);

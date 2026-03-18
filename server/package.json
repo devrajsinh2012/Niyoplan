@@ -3,9 +3,13 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "check:node": "node -e \"const [major,minor]=process.versions.node.split('.').map(Number); if (major < 20 || (major === 20 && minor < 19)) { console.error('Node.js 20.19+ is required for this backend.'); process.exit(1); }\"",
+    "predev": "npm run check:node",
+    "prestart": "npm run check:node",
+    "pretest": "npm run check:node",
     "dev": "node index.js",
     "start": "node index.js",
-    "test": "echo \"No tests configured\""
+    "test": "jest --runInBand"
   },
   "engines": {
     "node": ">=20.19"
@@ -19,5 +23,9 @@
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "jest": "^30.3.0",
+    "supertest": "^7.2.2"
   }
 }

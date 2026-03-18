@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import './SprintManager.css';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
 export default function SprintManager({ projectId }) {
@@ -8,13 +8,7 @@ export default function SprintManager({ projectId }) {
   const [backlog, setBacklog] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (projectId) {
-      fetchSprintsAndBacklog();
-    }
-  }, [projectId]);
-
-  const fetchSprintsAndBacklog = async () => {
+  const fetchSprintsAndBacklog = useCallback(async () => {
     try {
       const [sprintsRes, cardsRes] = await Promise.all([
         supabase.from('sprints').select('*').eq('project_id', projectId).order('created_at', { ascending: false }),
@@ -32,7 +26,13 @@ export default function SprintManager({ projectId }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [projectId]);
+
+  useEffect(() => {
+    if (projectId) {
+      fetchSprintsAndBacklog();
+    }
+  }, [projectId, fetchSprintsAndBacklog]);
 
   const handleCreateSprint = async () => {
     const name = prompt('Sprint Name (e.g. Sprint 4):');

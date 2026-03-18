@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { apiFetch } from '../../lib/api';
 
@@ -12,11 +12,7 @@ export default function GoalsPanel({ projectId }) {
     key_results: [{ title: '', start_value: 0, target_value: 100, unit: 'points' }]
   });
 
-  useEffect(() => {
-    if (projectId) loadGoals();
-  }, [projectId]);
-
-  const loadGoals = async () => {
+  const loadGoals = useCallback(async () => {
     setLoading(true);
     try {
       const data = await apiFetch(`/api/projects/${projectId}/goals`);
@@ -27,7 +23,11 @@ export default function GoalsPanel({ projectId }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
+
+  useEffect(() => {
+    if (projectId) loadGoals();
+  }, [projectId, loadGoals]);
 
   const createGoal = async (event) => {
     event.preventDefault();

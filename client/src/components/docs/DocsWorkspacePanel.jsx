@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { apiFetch } from '../../lib/api';
 
@@ -12,11 +12,7 @@ export default function DocsWorkspacePanel({ projectId }) {
 
   const selectedDoc = useMemo(() => docs.find((doc) => doc.id === selectedDocId) || null, [docs, selectedDocId]);
 
-  useEffect(() => {
-    if (projectId) loadData();
-  }, [projectId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [docRows, hierarchy] = await Promise.all([
@@ -33,7 +29,11 @@ export default function DocsWorkspacePanel({ projectId }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId, selectedDocId]);
+
+  useEffect(() => {
+    if (projectId) loadData();
+  }, [projectId, loadData]);
 
   const createSpace = async () => {
     const name = prompt('Space name');

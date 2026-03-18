@@ -28,11 +28,6 @@ Create these files before running:
 - [server/.env](server/.env)
 - [client/.env](client/.env)
 
-Use templates:
-
-- [server/.env.example](server/.env.example)
-- [client/.env.example](client/.env.example)
-
 Important variables:
 
 - Server
@@ -41,6 +36,7 @@ Important variables:
   - GROQ_API_KEY
   - GROQ_MODEL
   - GROQ_API_BASE_URL
+	- CORS_ALLOWED_ORIGINS (comma-separated, for example http://localhost:5173,http://127.0.0.1:5173)
 
 - Client
   - VITE_API_BASE_URL
@@ -77,6 +73,11 @@ order by table_name;
 
 ## Local Development
 
+Node.js requirement:
+
+- Use Node.js 20.19+ (or newer).
+- The client and server scripts run a preflight check and fail fast if Node is older.
+
 Backend:
 
 ```powershell
@@ -98,6 +99,43 @@ Default URLs:
 - API: http://localhost:4000
 - App: http://localhost:5173
 
+## Docker Development (Recommended when local Node is mismatched)
+
+This repository includes a Docker Compose setup that runs both frontend and backend with Node 22 inside containers.
+
+Prerequisites:
+
+- Docker Desktop
+
+Steps:
+
+1. Ensure these files exist and are configured:
+	- server/.env
+	- client/.env
+2. From repository root, run:
+
+```powershell
+docker compose up --build
+```
+
+Access:
+
+- App: http://localhost:5173
+- API: http://localhost:4000
+
+Useful commands:
+
+```powershell
+docker compose down
+docker compose logs -f
+docker compose up --build -d
+```
+
+Notes:
+
+- Containers isolate Node runtime from your host, avoiding local Node version conflicts.
+- Source code is bind-mounted, so edits in VS Code reflect immediately in running containers.
+
 ## Vercel Deployment (Recommended: Two Projects)
 
 Deploy frontend and backend as separate Vercel projects.
@@ -113,6 +151,7 @@ Deploy frontend and backend as separate Vercel projects.
 	- GROQ_API_KEY
 	- GROQ_MODEL
 	- GROQ_API_BASE_URL
+	- CORS_ALLOWED_ORIGINS=<frontend_vercel_url>,http://localhost:5173
 4. Deploy and note backend URL, for example:
 	- https://niyoplan-api.vercel.app
 

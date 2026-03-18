@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
@@ -37,13 +37,7 @@ export default function DSMPanel({ projectId }) {
     mood_rating: 'good'
   });
 
-  useEffect(() => {
-    if (projectId) {
-      loadData();
-    }
-  }, [projectId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [entriesRes, latestRes] = await Promise.all([
@@ -65,7 +59,13 @@ export default function DSMPanel({ projectId }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
+
+  useEffect(() => {
+    if (projectId) {
+      loadData();
+    }
+  }, [projectId, loadData]);
 
   const filteredEntries = useMemo(() => {
     const normalized = query.trim().toLowerCase();

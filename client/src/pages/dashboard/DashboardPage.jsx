@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { LayoutDashboard, CheckCircle, Clock, AlertCircle } from 'lucide-react';
@@ -10,11 +10,7 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { profile } = useAuth();
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       // In a real app we would call our /api/dashboard/stats endpoint via fetch()
       // Since we already have the supabase client here, we can query directly for MVP speed
@@ -39,16 +35,20 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const StatCard = ({ title, value, icon: Icon, colorClass }) => (
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  const StatCard = ({ title, value, icon, colorClass }) => (
     <div className="glass-card rounded-2xl p-6 flex items-center justify-between hover:scale-[1.02] transition-transform cursor-default">
       <div>
         <h3 className="text-slate-400 font-medium mb-1">{title}</h3>
         <p className="text-4xl font-bold text-white">{value}</p>
       </div>
       <div className={`w-14 h-14 rounded-xl flex items-center justify-center shadow-lg ${colorClass}`}>
-        <Icon size={28} className="text-white" />
+        {React.createElement(icon, { size: 28, className: 'text-white' })}
       </div>
     </div>
   );

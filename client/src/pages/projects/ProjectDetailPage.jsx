@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
@@ -27,7 +27,7 @@ export default function ProjectDetailPage() {
   const searchInputRef = useRef(null);
   const canWrite = ['admin', 'pm', 'member'].includes(profile?.role);
 
-  const tabs = [
+  const tabs = useMemo(() => ([
     { id: 'list', name: 'List View', icon: ListIcon },
     { id: 'board', name: 'Kanban Board', icon: KanbanSquare },
     { id: 'backlog', name: 'Sprints & Backlog', icon: Network },
@@ -38,15 +38,41 @@ export default function ProjectDetailPage() {
     { id: 'docs', name: 'Docs', icon: LayoutGrid },
     { id: 'views', name: 'Views & Inbox', icon: ListIcon },
     { id: 'ai', name: 'AI Tools', icon: Sparkles },
-  ];
+  ]), []);
   
   // Filtering for List view
   const [statusFilter, setStatusFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
+  const fetchProjectAndCards = useCallback(async () => {
+    try {
+      const { data: projData, error: projError } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (projError) throw projError;
+      setProject(projData);
+
+      const { data: cardsData, error: cardsError } = await supabase
+        .from('cards')
+        .select(`*, assignee:profiles!cards_assignee_id_fkey(full_name, avatar_url)`)
+        .eq('project_id', id)
+        .order('created_at', { ascending: false });
+      if (cardsError) throw cardsError;
+      setCards(cardsData);
+
+    } catch (err) {
+      toast.error('Failed to load project details');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchProjectAndCards();
-  }, [id]);
+  }, [fetchProjectAndCards]);
 
   useEffect(() => {
     const onKeyDown = (event) => {
@@ -92,37 +118,11 @@ export default function ProjectDetailPage() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [tabs, canWrite]);
 
-  const fetchProjectAndCards = async () => {
-    try {
-      const { data: projData, error: projError } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', id)
-        .single();
-      if (projError) throw projError;
-      setProject(projData);
-
-      const { data: cardsData, error: cardsError } = await supabase
-        .from('cards')
-        .select(`*, assignee:profiles!cards_assignee_id_fkey(full_name, avatar_url)`)
-        .eq('project_id', id)
-        .order('created_at', { ascending: false });
-      if (cardsError) throw cardsError;
-      setCards(cardsData);
-
-    } catch (err) {
-      toast.error('Failed to load project details');
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCreated = (newCard) => {
+  const handleCreated = useCallback(() => {
     fetchProjectAndCards();
     // In a real app we'd dispatch an event to refresh Kanban/Sprint children if they're active
     // For MVP, we pass down props or force them to refetch.
-  };
+  }, [fetchProjectAndCards]);
 
   const getStatusColor = (status) => {
     const map = {

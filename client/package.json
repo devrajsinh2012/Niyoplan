@@ -7,6 +7,10 @@
     "node": ">=20.19"
   },
   "scripts": {
+    "check:node": "node -e \"const [major,minor]=process.versions.node.split('.').map(Number); if (major < 20 || (major === 20 && minor < 19)) { console.error('Node.js 20.19+ is required for this frontend.'); process.exit(1); }\"",
+    "predev": "npm run check:node",
+    "prebuild": "npm run check:node",
+    "prelint": "npm run check:node",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
@@ -26,6 +30,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@tailwindcss/postcss": "^4.2.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.0",

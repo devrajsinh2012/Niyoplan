@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext({});
@@ -7,6 +7,28 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const fetchProfile = useCallback(async (userId) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (!error && data) {
+        setProfile(data);
+      } else if (error && error.code === 'PGRST116') {
+        // Profile not found yet (maybe trigger hasn't fired yet). Retry after delay.
+        setTimeout(() => fetchProfile(userId), 1000);
+        return;
+      }
+    } catch (err) {
+      console.error('Error fetching profile:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     // Check active sessions and sets the user
@@ -28,29 +50,7 @@ export const AuthProvider = ({ children }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
-
-  const fetchProfile = async (userId) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-        
-      if (!error && data) {
-        setProfile(data);
-      } else if (error && error.code === 'PGRST116') {
-        // Profile not found yet (maybe trigger hasn't fired yet). Retry after delay.
-        setTimeout(() => fetchProfile(userId), 1000);
-        return;
-      }
-    } catch (err) {
-      console.error('Error fetching profile:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [fetchProfile]);
 
   const signUp = async (email, password, fullName) => {
     const { data, error } = await supabase.auth.signUp({
@@ -80,6 +80,7 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   return useContext(AuthContext);
 };

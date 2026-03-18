@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { DndContext, closestCorners, TouchSensor, MouseSensor, KeyboardSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import KanbanColumn from './KanbanColumn';
 import KanbanCard from './KanbanCard';
 import './KanbanBoard.css';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
 export default function KanbanBoard({ projectId }) {
@@ -13,14 +13,7 @@ export default function KanbanBoard({ projectId }) {
   const [activeCard, setActiveCard] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch lists and cards
-  useEffect(() => {
-    if (projectId) {
-      fetchBoardData();
-    }
-  }, [projectId]);
-
-  const fetchBoardData = async () => {
+  const fetchBoardData = useCallback(async () => {
     try {
       const [listsRes, cardsRes] = await Promise.all([
         supabase.from('lists').select('*').eq('project_id', projectId).order('rank', { ascending: true }),
@@ -45,7 +38,14 @@ export default function KanbanBoard({ projectId }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [projectId]);
+
+  // Fetch lists and cards
+  useEffect(() => {
+    if (projectId) {
+      fetchBoardData();
+    }
+  }, [projectId, fetchBoardData]);
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),

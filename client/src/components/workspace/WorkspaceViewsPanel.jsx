@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { apiFetch } from '../../lib/api';
 
@@ -6,11 +6,7 @@ export default function WorkspaceViewsPanel({ projectId }) {
   const [viewData, setViewData] = useState({ list: [], calendar: [], myWork: [], workload: [], notifications: [] });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (projectId) loadViews();
-  }, [projectId]);
-
-  const loadViews = async () => {
+  const loadViews = useCallback(async () => {
     setLoading(true);
     try {
       const [list, calendar, myWork, workload, notifications] = await Promise.all([
@@ -28,7 +24,11 @@ export default function WorkspaceViewsPanel({ projectId }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
+
+  useEffect(() => {
+    if (projectId) loadViews();
+  }, [projectId, loadViews]);
 
   const markRead = async (id) => {
     try {

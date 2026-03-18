@@ -7,8 +7,25 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const wildcardCors = allowedOrigins.includes('*');
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (wildcardCors || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Authorization', 'Content-Type'],
+  credentials: true
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Basic health check route
@@ -48,6 +65,9 @@ app.use('/api/ai', aiRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({ error: 'CORS origin denied' });
+  }
   console.error(err.stack);
   res.status(500).json({ error: 'Something went wrong!', details: err.message });
 });

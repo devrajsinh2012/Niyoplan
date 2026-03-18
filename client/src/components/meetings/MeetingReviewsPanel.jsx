@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { apiFetch } from '../../lib/api';
 
@@ -22,11 +22,7 @@ export default function MeetingReviewsPanel({ projectId }) {
     action_plan: ''
   });
 
-  useEffect(() => {
-    if (projectId) loadData();
-  }, [projectId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [pm, hr, cal] = await Promise.all([
@@ -43,7 +39,11 @@ export default function MeetingReviewsPanel({ projectId }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
+
+  useEffect(() => {
+    if (projectId) loadData();
+  }, [projectId, loadData]);
 
   const submitPmReview = async (event) => {
     event.preventDefault();

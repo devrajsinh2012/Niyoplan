@@ -6,20 +6,16 @@ import { LayoutDashboard, FolderKanban, Settings, LogOut, Loader2, Sun, Moon } f
 export default function AppShell() {
   const { profile, signOut, loading } = useAuth();
   const navigate = useNavigate();
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState(() => localStorage.getItem('niyoplan-theme') || 'dark');
 
   useEffect(() => {
-    const stored = localStorage.getItem('niyoplan-theme');
-    const nextTheme = stored || 'dark';
-    setTheme(nextTheme);
-    document.documentElement.setAttribute('data-theme', nextTheme);
-  }, []);
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('niyoplan-theme', theme);
+  }, [theme]);
 
   const toggleTheme = () => {
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(nextTheme);
-    document.documentElement.setAttribute('data-theme', nextTheme);
-    localStorage.setItem('niyoplan-theme', nextTheme);
   };
 
   const handleLogout = async () => {

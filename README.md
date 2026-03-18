@@ -19,7 +19,6 @@ Maintainer:
 - client: React frontend
 - server: Express backend APIs
 - database: PostgreSQL schema SQL
-- task.md: feature phase checklist
 
 ## Environment Setup
 
@@ -174,6 +173,7 @@ Deploy frontend and backend as separate Vercel projects.
 
 ## Current Feature Coverage
 
-- Phase 1 to 10 implemented in [task.md](task.md).
+- Core modules (ticketing, kanban, sprints, gantt, DSM, meetings, docs, goals, AI) are implemented.
 - Includes keyboard shortcuts, responsive polish, and stricter RBAC.
+
 

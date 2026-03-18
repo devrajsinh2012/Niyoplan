@@ -1,0 +1,252 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
+import { ChevronLeft, Plus, Settings2, Search, List as ListIcon, KanbanSquare, Network } from 'lucide-react';
+import toast from 'react-hot-toast';
+import CreateTicketModal from '../tickets/CreateTicketModal';
+import KanbanBoard from '../../components/kanban/KanbanBoard';
+import SprintManager from '../../components/sprints/SprintManager';
+
+export default function ProjectDetailPage() {
+  const { id } = useParams();
+  const [project, setProject] = useState(null);
+  const [cards, setCards] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('list'); // 'list', 'board', 'backlog'
+  const { profile } = useAuth();
+  
+  // Filtering for List view
+  const [statusFilter, setStatusFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    fetchProjectAndCards();
+  }, [id]);
+
+  const fetchProjectAndCards = async () => {
+    try {
+      const { data: projData, error: projError } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (projError) throw projError;
+      setProject(projData);
+
+      const { data: cardsData, error: cardsError } = await supabase
+        .from('cards')
+        .select(`*, assignee:profiles!cards_assignee_id_fkey(full_name, avatar_url)`)
+        .eq('project_id', id)
+        .order('created_at', { ascending: false });
+      if (cardsError) throw cardsError;
+      setCards(cardsData);
+
+    } catch (err) {
+      toast.error('Failed to load project details');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreated = (newCard) => {
+    fetchProjectAndCards();
+    // In a real app we'd dispatch an event to refresh Kanban/Sprint children if they're active
+    // For MVP, we pass down props or force them to refetch.
+  };
+
+  const getStatusColor = (status) => {
+    const map = {
+      backlog: 'bg-slate-500/20 text-slate-400 border border-slate-500/30',
+      todo: 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30',
+      in_progress: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+      in_review: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
+      done: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+    };
+    return map[status] || map.backlog;
+  };
+
+  const getPriorityColor = (priority) => {
+    const map = {
+      urgent: 'text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded text-xs border border-rose-500/30',
+      high: 'text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded text-xs border border-orange-500/30',
+      medium: 'text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded text-xs border border-blue-500/30',
+      low: 'text-slate-400 bg-slate-500/10 px-2 py-0.5 rounded text-xs border border-slate-500/30'
+    };
+    return map[priority] || map.medium;
+  };
+
+  const filteredCards = cards.filter(card => {
+    const matchesStatus = statusFilter ? card.status === statusFilter : true;
+    const matchesSearch = card.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          card.custom_id.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
+
+  if (isLoading) return <div className="flex justify-center py-40"><div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-blue-500"></div></div>;
+
+  if (!project) return <div className="text-center py-20"><h2 className="text-2xl font-bold text-white mb-4">Project Not Found</h2><Link to="/projects" className="text-blue-400 hover:text-blue-300">Return to Projects</Link></div>;
+
+  const tabs = [
+    { id: 'list', name: 'List View', icon: ListIcon },
+    { id: 'board', name: 'Kanban Board', icon: KanbanSquare },
+    { id: 'backlog', name: 'Sprints & Backlog', icon: Network },
+  ];
+
+  return (
+    <div className="max-w-screen-2xl mx-auto w-full animate-fade-in pb-10 flex flex-col h-full h-fit min-h-full">
+      
+      <header className="mb-6 flex-shrink-0">
+        <Link to="/projects" className="text-slate-500 hover:text-white flex items-center gap-1 w-fit mb-4 transition-colors text-sm font-medium">
+          <ChevronLeft size={16} /> Back to Projects
+        </Link>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="px-2 py-1 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 text-xs font-bold font-mono">
+                {project.prefix}
+              </div>
+              <h1 className="text-3xl font-bold text-white">{project.name}</h1>
+            </div>
+            <p className="text-slate-400 max-w-2xl text-sm">{project.description}</p>
+          </div>
+          
+          <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
+            <Plus size={20} />
+            Create Issue
+          </button>
+        </div>
+      </header>
+
+      {/* Navigation Tabs */}
+      <div className="flex border-b border-slate-800 mb-6 flex-shrink-0">
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-2 px-6 py-3 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === tab.id 
+                ? 'border-blue-500 text-blue-400 bg-blue-500/5' 
+                : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <tab.icon size={18} />
+            {tab.name}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Contents */}
+      <div className="flex-1 min-h-0 flex flex-col">
+        {activeTab === 'list' && (
+          <div className="flex flex-col flex-1 animate-fade-in">
+            <div className="glass-panel rounded-t-2xl p-4 flex flex-col sm:flex-row gap-4 justify-between items-center border-b-0">
+              <div className="relative w-full sm:max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                <input 
+                  type="text" 
+                  placeholder="Search by ID or title..." 
+                  className="input-dark pl-10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-4 w-full sm:w-auto">
+                <div className="flex items-center gap-2">
+                  <Settings2 className="text-slate-500" size={18} />
+                  <select 
+                    className="input-dark py-2 border-transparent hover:border-slate-700 bg-slate-800"
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                  >
+                    <option value="">All Statuses</option>
+                    <option value="backlog">Backlog</option>
+                    <option value="todo">To Do</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="in_review">In Review</option>
+                    <option value="done">Done</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="glass-card rounded-b-2xl rounded-tr-2xl sm:rounded-tl-none overflow-hidden border-t-0 flex-1">
+              <div className="overflow-x-auto w-full h-full">
+                <table className="w-full text-left border-collapse min-w-[800px]">
+                  <thead>
+                    <tr className="bg-slate-800/50 text-slate-400 text-xs uppercase tracking-wider sticky top-0">
+                      <th className="p-4 font-medium border-b border-slate-700 w-24">Key</th>
+                      <th className="p-4 font-medium border-b border-slate-700">Summary</th>
+                      <th className="p-4 font-medium border-b border-slate-700 w-28">Type</th>
+                      <th className="p-4 font-medium border-b border-slate-700 w-28">Priority</th>
+                      <th className="p-4 font-medium border-b border-slate-700 w-32">Status</th>
+                      <th className="p-4 font-medium border-b border-slate-700 w-36">Assignee</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800 text-slate-300 text-sm">
+                    {filteredCards.map(card => (
+                      <tr key={card.id} className="hover:bg-slate-800/30 transition-colors group cursor-pointer">
+                        <td className="p-4 font-mono font-medium text-blue-400">{card.custom_id}</td>
+                        <td className="p-4 font-medium text-white pr-8">{card.title}</td>
+                        <td className="p-4 uppercase text-xs font-semibold tracking-wide text-slate-400">{card.issue_type}</td>
+                        <td className="p-4 uppercase text-xs font-bold tracking-wider">
+                          <span className={getPriorityColor(card.priority)}>{card.priority}</span>
+                        </td>
+                        <td className="p-4">
+                          <span className={`px-2.5 py-1 rounded text-xs font-semibold uppercase tracking-wider ${getStatusColor(card.status)}`}>
+                            {card.status.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                             <div className="w-6 h-6 rounded-full bg-slate-700 overflow-hidden flex items-center justify-center border border-slate-600">
+                              {card.assignee?.avatar_url ? (
+                                <img src={card.assignee.avatar_url} alt="Assignee" className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-[10px] font-bold text-slate-300">{card.assignee?.full_name?.charAt(0) || 'U'}</span>
+                              )}
+                            </div>
+                            <span className="text-slate-400 max-w-[100px] truncate" title={card.assignee?.full_name}>
+                              {card.assignee?.full_name?.split(' ')[0] || 'Unassigned'}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredCards.length === 0 && (
+                      <tr>
+                        <td colSpan="6" className="p-12 text-center text-slate-500">
+                          <Search size={40} className="mb-4 mx-auto opacity-50" />
+                          <p className="text-lg">No tickets found.</p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'board' && (
+          <div className="flex-1 animate-fade-in flex flex-col min-h-[600px] h-full">
+            <KanbanBoard projectId={id} />
+          </div>
+        )}
+
+        {activeTab === 'backlog' && (
+          <div className="flex-1 animate-fade-in flex flex-col">
+            <SprintManager projectId={id} />
+          </div>
+        )}
+      </div>
+
+      {showModal && (
+        <CreateTicketModal projectId={id} onClose={() => setShowModal(false)} onCreated={handleCreated} />
+      )}
+      
+    </div>
+  );
+}

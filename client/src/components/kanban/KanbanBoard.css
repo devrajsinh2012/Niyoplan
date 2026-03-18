@@ -1,0 +1,228 @@
+@import '../styles/theme.css';
+
+.kanban-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 1.5rem 2rem;
+  box-sizing: border-box;
+  background-color: var(--bg-app);
+}
+
+.kanban-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.kanban-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.kanban-board {
+  display: flex;
+  gap: 1.2rem;
+  overflow-x: auto;
+  flex: 1;
+  padding-bottom: 1rem;
+  align-items: flex-start;
+}
+
+.kanban-column {
+  min-width: 300px;
+  width: 300px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  box-shadow: var(--shadow-sm);
+  transition: border var(--transition-smooth);
+}
+
+.kanban-column.dragging {
+  opacity: 0.5;
+  background: var(--bg-panel-hover);
+  border: 1px dashed var(--accent-primary);
+}
+
+.kanban-column-header {
+  padding: 1rem 1.2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: grab;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.kanban-column-header:active {
+  cursor: grabbing;
+}
+
+.kanban-column-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.card-count {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  padding: 0.1rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.column-menu-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+}
+
+.column-menu-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface);
+}
+
+.kanban-column-body {
+  padding: 0.8rem;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.kanban-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 0.8rem 1rem;
+  cursor: grab;
+  position: relative;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+
+.kanban-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.kanban-card:active {
+  cursor: grabbing;
+}
+
+.kanban-card.overlay {
+  transform: scale(1.02) rotate(1deg);
+  box-shadow: var(--shadow-lg);
+  cursor: grabbing;
+  z-index: 1000;
+  border-color: var(--accent-primary);
+}
+
+.kanban-card.dragging-placeholder {
+  opacity: 0;
+}
+
+.kanban-card-labels {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.kanban-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #111;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
+.kanban-card-title {
+  font-size: 0.85rem;
+  margin: 0 0 0.8rem 0;
+  line-height: 1.5;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.kanban-card-footer {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.kanban-card-prefix {
+  font-size: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color: var(--text-tertiary);
+}
+
+.add-quick-card-btn {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+  text-align: left;
+  padding: 0.5rem 0.8rem;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: var(--transition-fast);
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-top: 0.4rem;
+}
+
+.add-quick-card-btn:hover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border-color: var(--border-subtle);
+}
+
+.kanban-add-list-container {
+  min-width: 300px;
+}
+
+.add-list-btn {
+  width: 100%;
+  background: transparent;
+  border: 1px dashed var(--border-strong);
+  color: var(--text-secondary);
+  padding: 0.8rem;
+  text-align: left;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: var(--transition-fast);
+}
+
+.add-list-btn:hover {
+  background: var(--bg-panel);
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}

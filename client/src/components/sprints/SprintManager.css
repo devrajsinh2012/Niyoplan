@@ -1,0 +1,230 @@
+@import '../styles/theme.css';
+
+.sprint-manager-wrapper {
+  padding: 2rem;
+  max-width: 1000px;
+  margin: 0 auto;
+  background-color: var(--bg-app);
+  min-height: 100vh;
+}
+
+.sprint-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2.5rem;
+}
+
+.sprint-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.sprint-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 4rem;
+}
+
+.sprint-container {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: border var(--transition-smooth), box-shadow var(--transition-smooth);
+  box-shadow: var(--shadow-sm);
+}
+
+.sprint-container.active {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 1px var(--accent-primary), var(--shadow-md);
+}
+
+.sprint-container-header {
+  padding: 1rem 1.5rem;
+  background: var(--bg-surface);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.sprint-info {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+.sprint-info h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sprint-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+}
+
+.sprint-badge.active {
+  background: var(--bg-warning);
+  color: var(--status-warning);
+  border: 1px solid rgba(210, 153, 34, 0.4);
+}
+
+.sprint-badge.planning {
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-strong);
+}
+
+.sprint-badge.completed {
+  background: var(--bg-success);
+  color: var(--status-success);
+  border: 1px solid rgba(46, 160, 67, 0.4);
+}
+
+.sprint-dates {
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  font-family: ui-monospace, monospace;
+}
+
+.sprint-actions {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.btn-success {
+  background: var(--status-success);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-success:hover {
+  background: #3fb950;
+  box-shadow: var(--shadow-md);
+}
+
+.btn-icon {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.2rem;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  transition: var(--transition-fast);
+}
+
+.btn-icon:hover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.sprint-dropzone {
+  padding: 3rem 2rem;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.1);
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-sprint-text {
+  color: var(--text-tertiary);
+  font-size: 0.85rem;
+  margin: 0;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 1.5rem 3rem;
+}
+
+/* Backlog Styles */
+.backlog-container {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.backlog-header {
+  background: transparent;
+  padding-left: 0;
+  padding-right: 0;
+  border-bottom: 2px solid var(--border-subtle);
+  margin-bottom: 1rem;
+}
+
+.issue-count {
+  font-size: 0.85rem;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.backlog-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.backlog-row {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1.2rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  cursor: grab;
+  transition: var(--transition-fast);
+}
+
+.backlog-row:hover {
+  background: var(--bg-panel-hover);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.backlog-prefix {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  width: 80px;
+  font-family: ui-monospace, monospace;
+}
+
+.backlog-title {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.story-points {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+  border-radius: 12px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: ui-monospace, monospace;
+}

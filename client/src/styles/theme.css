@@ -51,11 +51,27 @@
   --transition-smooth: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+[data-theme='light'] {
+  --bg-app: #F1F5F9;
+  --bg-panel: #FFFFFF;
+  --bg-panel-hover: #F8FAFC;
+  --bg-surface: #E2E8F0;
+
+  --border-subtle: rgba(15, 23, 42, 0.1);
+  --border-strong: rgba(15, 23, 42, 0.2);
+  --border-focus: rgba(59, 130, 246, 0.4);
+
+  --text-primary: #0F172A;
+  --text-secondary: #334155;
+  --text-tertiary: #64748B;
+}
+
 body {
   margin: 0;
   font-family: var(--font-family);
   background-color: var(--bg-app);
   color: var(--text-primary);
+  transition: background-color var(--transition-smooth), color var(--transition-smooth);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

@@ -63,7 +63,7 @@ router.post('/:projectId/lists', requireAuth, requireRole('admin', 'pm'), async 
 
 // PUT /api/projects/:projectId/lists/:id
 // Update a list (rename, reorder)
-router.put('/:projectId/lists/:id', requireAuth, async (req, res) => {
+router.put('/:projectId/lists/:id', requireAuth, requireRole('admin', 'pm'), async (req, res) => {
   try {
     const { name, rank } = req.body;
     

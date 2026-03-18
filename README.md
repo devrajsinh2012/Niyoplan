@@ -1,66 +1,140 @@
-# Niyoplan - Agile Project Management
+# Niyoplan
 
-Niyoplan is a modern, Jira-style project management tool built from the ground up to support Agile development. Designed with a stunning, glassmorphism dark theme UI, it delivers a suite of essential PM features such as custom ticket generation, interactive Kanban boards, sprint management, and global workspace metrics.
+Niyoplan is a full-stack project management platform inspired by Jira and ClickUp.
+It includes Kanban, Sprint, Gantt, DSM, Meeting Reviews, Goals/OKRs, Docs, Views, Notifications, and AI productivity tools.
 
-**Developed by:** [devrajsinh2012](https://github.com/devrajsinh2012)
-**Contact:** djgohil2012@gmail.com
+Maintainer:
+- GitHub: https://github.com/devrajsinh2012
+- Email: djgohil2012@gmail.com
 
----
+## Core Stack
 
-## 🌟 Key Features
+- Frontend: React 19, Vite, React Router, Tailwind, dnd-kit
+- Backend: Node.js, Express
+- Database/Auth: Supabase PostgreSQL + Supabase Auth
+- AI: Groq API via backend proxy routes
 
-### 1. Unified Workspace & Dashboard
-- **Global Dashboard:** Track projects, open tickets, story points, and recent activity across your entire workspace.
-- **Role-Based Access Control (RBAC):** Admin, PM, Member, and Viewer roles automatically enforced on the backend.
-- **Secure Authentication:** JWT-powered authentication backed by Supabase.
+## Project Structure
 
-### 2. Core Ticketing System
-- **Custom Project Prefixes:** Issue tracking identical to Jira (e.g., `NIYO-123`).
-- **Comprehensive Ticket Data:** Assignees, reporters, priority levels (Urgent to Low), story points, and issue types (Epic, Bug, Task, Story).
-- **Advanced Filtering & Search:** Rapidly slice project views.
+- client: React frontend
+- server: Express backend APIs
+- database: PostgreSQL schema SQL
+- task.md: feature phase checklist
 
-### 3. Agile Execution (Sprints & Kanban)
-- **Interactive Kanban Board:** Full drag-and-drop feature powered by `@dnd-kit`. Create custom lists, reorganize cards, and seamlessly transition issues through stages.
-- **Sprint Management:** Group backlog cards into time-boxed Sprints. Track Sprint statuses (`planning`, `active`, `completed`).
+## Environment Setup
 
----
+Create these files before running:
 
-## 🛠️ Tech Stack & Architecture
+- [server/.env](server/.env)
+- [client/.env](client/.env)
 
-Niyoplan is structured as a decoupled full-stack application.
+Use templates:
 
-*   **Frontend (`client/`):** React, Vite, React Router, Tailwind CSS, Lucide Icons, `@dnd-kit` (Drag and Drop).
-*   **Backend (`server/`):** Node.js, Express, strict custom RBAC middlewares.
-*   **Database (`database/`):** Supabase (PostgreSQL), with advanced Triggers for auto-incrementing Ticket IDs and Profile generation.
+- [server/.env.example](server/.env.example)
+- [client/.env.example](client/.env.example)
 
----
+Important variables:
 
-## 🚀 Local Setup Instructions
+- Server
+  - SUPABASE_URL
+  - SUPABASE_SERVICE_KEY
+  - GROQ_API_KEY
+  - GROQ_MODEL
+  - GROQ_API_BASE_URL
 
-### Prerequisites
-- Node.js (v18+)
-- Supabase Project Database
+- Client
+  - VITE_API_BASE_URL
+  - VITE_SUPABASE_URL
+  - VITE_SUPABASE_PUBLISHABLE_KEY
+  - VITE_SUPABASE_ANON_KEY
 
-### 1. Database Setup
-1. Go to your Supabase project's **SQL Editor**.
-2. Copy the entire contents of `database/schema.sql` and run it to provision all tables, enums, triggers, and functions.
+## Database Provisioning
 
-### 2. Backend Setup
-```bash
+Use one of these methods.
+
+Method A: Supabase SQL Editor
+1. Open Supabase SQL Editor for your project.
+2. Paste full contents of [database/schema.sql](database/schema.sql).
+3. Run script.
+
+Method B: psql (direct)
+1. Ensure psql is installed.
+2. Run:
+
+```powershell
+$env:PGPASSWORD = "<db_password>"
+psql "host=<pooler_host> port=5432 dbname=postgres user=<db_user> sslmode=require" -v ON_ERROR_STOP=1 -f "database/schema.sql"
+```
+
+Verification query:
+
+```sql
+select table_name
+from information_schema.tables
+where table_schema = 'public'
+order by table_name;
+```
+
+## Local Development
+
+Backend:
+
+```powershell
 cd server
 npm install
 npm run dev
 ```
-*(Runs on `http://localhost:4000`)*
 
-### 3. Frontend Setup
-```bash
+Frontend:
+
+```powershell
 cd client
 npm install
 npm run dev
 ```
-*(Runs on `http://localhost:5173`)*
 
----
+Default URLs:
 
-*Note: The first user to register via the UI is automatically granted the `Admin` role.*
+- API: http://localhost:4000
+- App: http://localhost:5173
+
+## Vercel Deployment (Recommended: Two Projects)
+
+Deploy frontend and backend as separate Vercel projects.
+
+### Backend deployment
+
+1. In Vercel, import repository and set Root Directory to server.
+2. Keep generated settings from [server/vercel.json](server/vercel.json).
+3. Add environment variables in Vercel Project Settings:
+	- PORT=4000
+	- SUPABASE_URL
+	- SUPABASE_SERVICE_KEY
+	- GROQ_API_KEY
+	- GROQ_MODEL
+	- GROQ_API_BASE_URL
+4. Deploy and note backend URL, for example:
+	- https://niyoplan-api.vercel.app
+
+### Frontend deployment
+
+1. In Vercel, import repository and set Root Directory to client.
+2. Keep generated settings from [client/vercel.json](client/vercel.json).
+3. Add environment variables:
+	- VITE_API_BASE_URL=<backend_vercel_url>
+	- VITE_SUPABASE_URL
+	- VITE_SUPABASE_PUBLISHABLE_KEY
+	- VITE_SUPABASE_ANON_KEY
+4. Deploy frontend.
+
+## Security Notes
+
+- Do not commit real secrets into git.
+- Keep only placeholders in .env.example files.
+- Rotate any password/API key if it was ever exposed.
+
+## Current Feature Coverage
+
+- Phase 1 to 10 implemented in [task.md](task.md).
+- Includes keyboard shortcuts, responsive polish, and stricter RBAC.
+

@@ -1,12 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
-import { ChevronLeft, Plus, Settings2, Search, List as ListIcon, KanbanSquare, Network } from 'lucide-react';
+import { ChevronLeft, Plus, Settings2, Search, List as ListIcon, KanbanSquare, Network, Calendar, Target, FileText, Sparkles, LayoutGrid } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CreateTicketModal from '../tickets/CreateTicketModal';
 import KanbanBoard from '../../components/kanban/KanbanBoard';
 import SprintManager from '../../components/sprints/SprintManager';
+import GanttChart from '../../components/gantt/GanttChart';
+import DSMPanel from '../../components/dsm/DSMPanel';
+import MeetingReviewsPanel from '../../components/meetings/MeetingReviewsPanel';
+import GoalsPanel from '../../components/goals/GoalsPanel';
+import DocsWorkspacePanel from '../../components/docs/DocsWorkspacePanel';
+import WorkspaceViewsPanel from '../../components/workspace/WorkspaceViewsPanel';
+import AIToolsPanel from '../../components/ai/AIToolsPanel';
 
 export default function ProjectDetailPage() {
   const { id } = useParams();
@@ -14,8 +21,24 @@ export default function ProjectDetailPage() {
   const [cards, setCards] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [activeTab, setActiveTab] = useState('list'); // 'list', 'board', 'backlog'
   const { profile } = useAuth();
+  const searchInputRef = useRef(null);
+  const canWrite = ['admin', 'pm', 'member'].includes(profile?.role);
+
+  const tabs = [
+    { id: 'list', name: 'List View', icon: ListIcon },
+    { id: 'board', name: 'Kanban Board', icon: KanbanSquare },
+    { id: 'backlog', name: 'Sprints & Backlog', icon: Network },
+    { id: 'gantt', name: 'Gantt Timeline', icon: Calendar },
+    { id: 'dsm', name: 'DSM Module', icon: Settings2 },
+    { id: 'meetings', name: 'Meetings', icon: FileText },
+    { id: 'goals', name: 'Goals & OKRs', icon: Target },
+    { id: 'docs', name: 'Docs', icon: LayoutGrid },
+    { id: 'views', name: 'Views & Inbox', icon: ListIcon },
+    { id: 'ai', name: 'AI Tools', icon: Sparkles },
+  ];
   
   // Filtering for List view
   const [statusFilter, setStatusFilter] = useState('');
@@ -24,6 +47,50 @@ export default function ProjectDetailPage() {
   useEffect(() => {
     fetchProjectAndCards();
   }, [id]);
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      const tag = event.target?.tagName?.toLowerCase();
+      const isTypingTarget = tag === 'input' || tag === 'textarea' || event.target?.isContentEditable;
+
+      if (event.key === 'Escape') {
+        setShowShortcuts(false);
+        return;
+      }
+
+      if (isTypingTarget) return;
+
+      if (event.key === '?') {
+        event.preventDefault();
+        setShowShortcuts((prev) => !prev);
+        return;
+      }
+
+      if (event.key === '/') {
+        event.preventDefault();
+        setActiveTab('list');
+        requestAnimationFrame(() => searchInputRef.current?.focus());
+        return;
+      }
+
+      if (event.key.toLowerCase() === 'c' && canWrite) {
+        event.preventDefault();
+        setShowModal(true);
+        return;
+      }
+
+      if (/^[0-9]$/.test(event.key)) {
+        event.preventDefault();
+        const index = event.key === '0' ? 9 : Number(event.key) - 1;
+        if (tabs[index]) {
+          setActiveTab(tabs[index].id);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [tabs, canWrite]);
 
   const fetchProjectAndCards = async () => {
     try {
@@ -89,12 +156,6 @@ export default function ProjectDetailPage() {
 
   if (!project) return <div className="text-center py-20"><h2 className="text-2xl font-bold text-white mb-4">Project Not Found</h2><Link to="/projects" className="text-blue-400 hover:text-blue-300">Return to Projects</Link></div>;
 
-  const tabs = [
-    { id: 'list', name: 'List View', icon: ListIcon },
-    { id: 'board', name: 'Kanban Board', icon: KanbanSquare },
-    { id: 'backlog', name: 'Sprints & Backlog', icon: Network },
-  ];
-
   return (
     <div className="max-w-screen-2xl mx-auto w-full animate-fade-in pb-10 flex flex-col h-full h-fit min-h-full">
       
@@ -113,20 +174,25 @@ export default function ProjectDetailPage() {
             <p className="text-slate-400 max-w-2xl text-sm">{project.description}</p>
           </div>
           
-          <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
-            <Plus size={20} />
-            Create Issue
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowShortcuts(true)} className="btn-secondary text-sm">Shortcuts (?)</button>
+            {canWrite && (
+              <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
+                <Plus size={20} />
+                Create Issue (C)
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
       {/* Navigation Tabs */}
-      <div className="flex border-b border-slate-800 mb-6 flex-shrink-0">
+      <div className="flex border-b border-slate-800 mb-6 flex-shrink-0 overflow-x-auto">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-6 py-3 border-b-2 font-medium text-sm transition-colors ${
+            className={`flex items-center gap-2 px-3 sm:px-6 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
               activeTab === tab.id 
                 ? 'border-blue-500 text-blue-400 bg-blue-500/5' 
                 : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
@@ -146,6 +212,7 @@ export default function ProjectDetailPage() {
               <div className="relative w-full sm:max-w-xs">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                 <input 
+                  ref={searchInputRef}
                   type="text" 
                   placeholder="Search by ID or title..." 
                   className="input-dark pl-10"
@@ -241,10 +308,70 @@ export default function ProjectDetailPage() {
             <SprintManager projectId={id} />
           </div>
         )}
+
+        {activeTab === 'gantt' && (
+          <div className="flex-1 animate-fade-in flex flex-col">
+            <GanttChart projectId={id} />
+          </div>
+        )}
+
+        {activeTab === 'dsm' && (
+          <div className="flex-1 animate-fade-in flex flex-col">
+            <DSMPanel projectId={id} />
+          </div>
+        )}
+
+        {activeTab === 'meetings' && (
+          <div className="flex-1 animate-fade-in flex flex-col">
+            <MeetingReviewsPanel projectId={id} />
+          </div>
+        )}
+
+        {activeTab === 'goals' && (
+          <div className="flex-1 animate-fade-in flex flex-col">
+            <GoalsPanel projectId={id} />
+          </div>
+        )}
+
+        {activeTab === 'docs' && (
+          <div className="flex-1 animate-fade-in flex flex-col">
+            <DocsWorkspacePanel projectId={id} />
+          </div>
+        )}
+
+        {activeTab === 'views' && (
+          <div className="flex-1 animate-fade-in flex flex-col">
+            <WorkspaceViewsPanel projectId={id} />
+          </div>
+        )}
+
+        {activeTab === 'ai' && (
+          <div className="flex-1 animate-fade-in flex flex-col">
+            <AIToolsPanel />
+          </div>
+        )}
       </div>
 
       {showModal && (
         <CreateTicketModal projectId={id} onClose={() => setShowModal(false)} onCreated={handleCreated} />
+      )}
+
+      {showShortcuts && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setShowShortcuts(false)}>
+          <div className="glass-panel rounded-2xl w-full max-w-xl p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white text-xl font-semibold">Keyboard Shortcuts</h3>
+              <button className="btn-secondary" onClick={() => setShowShortcuts(false)}>Close</button>
+            </div>
+            <div className="space-y-2 text-sm text-slate-200">
+              <div><span className="text-blue-300">1-0</span> Switch tabs</div>
+              <div><span className="text-blue-300">/</span> Focus list search</div>
+              <div><span className="text-blue-300">C</span> Open create issue</div>
+              <div><span className="text-blue-300">?</span> Show shortcuts</div>
+              <div><span className="text-blue-300">Esc</span> Close shortcuts</div>
+            </div>
+          </div>
+        </div>
       )}
       
     </div>

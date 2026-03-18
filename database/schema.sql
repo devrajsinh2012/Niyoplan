@@ -2,11 +2,40 @@
 -- Foundation, Auth, Projects, Cards (Tickets), Sprints & Kanban
 
 -- Setup custom types
-CREATE TYPE IF NOT EXISTS user_role AS ENUM ('admin', 'pm', 'member', 'viewer');
-CREATE TYPE IF NOT EXISTS card_type AS ENUM ('epic', 'story', 'bug', 'task');
-CREATE TYPE IF NOT EXISTS card_priority AS ENUM ('urgent', 'high', 'medium', 'low');
-CREATE TYPE IF NOT EXISTS card_status AS ENUM ('backlog', 'todo', 'in_progress', 'in_review', 'done');
-CREATE TYPE IF NOT EXISTS sprint_status AS ENUM ('planning', 'active', 'completed');
+DO $$
+BEGIN
+  CREATE TYPE user_role AS ENUM ('admin', 'pm', 'member', 'viewer');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  CREATE TYPE card_type AS ENUM ('epic', 'story', 'bug', 'task');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  CREATE TYPE card_priority AS ENUM ('urgent', 'high', 'medium', 'low');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  CREATE TYPE card_status AS ENUM ('backlog', 'todo', 'in_progress', 'in_review', 'done');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  CREATE TYPE sprint_status AS ENUM ('planning', 'active', 'completed');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -118,6 +147,138 @@ CREATE TABLE IF NOT EXISTS public.activity_log (
   action VARCHAR(255) NOT NULL,
   details JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 11. DSM Entries
+CREATE TABLE IF NOT EXISTS public.dsm_entries (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  yesterday_text TEXT NOT NULL,
+  today_text TEXT NOT NULL,
+  blockers_text TEXT,
+  mood_rating VARCHAR(50),
+  submitted_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 12. Card Dependencies (Gantt Chart)
+CREATE TABLE IF NOT EXISTS public.card_dependencies (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  predecessor_id UUID NOT NULL REFERENCES public.cards(id) ON DELETE CASCADE,
+  successor_id UUID NOT NULL REFERENCES public.cards(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(predecessor_id, successor_id)
+);
+
+-- 13. PM Meeting Reviews
+CREATE TABLE IF NOT EXISTS public.pm_meeting_reviews (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  reviewer_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  meeting_date DATE NOT NULL,
+  rag_status VARCHAR(10) NOT NULL DEFAULT 'amber',
+  summary TEXT,
+  decisions TEXT,
+  risks TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 14. Meeting Action Items
+CREATE TABLE IF NOT EXISTS public.meeting_action_items (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  meeting_id UUID NOT NULL REFERENCES public.pm_meeting_reviews(id) ON DELETE CASCADE,
+  project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  owner_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  due_date DATE,
+  status VARCHAR(20) DEFAULT 'open',
+  linked_card_id UUID REFERENCES public.cards(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 15. HR Reviews
+CREATE TABLE IF NOT EXISTS public.hr_reviews (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  reviewer_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  review_date DATE NOT NULL,
+  employee_notes TEXT,
+  manager_notes TEXT,
+  action_plan TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 16. Spaces and Folders hierarchy
+CREATE TABLE IF NOT EXISTS public.spaces (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name VARCHAR(120) NOT NULL,
+  description TEXT,
+  created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.folders (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  space_id UUID NOT NULL REFERENCES public.spaces(id) ON DELETE CASCADE,
+  project_id UUID REFERENCES public.projects(id) ON DELETE CASCADE,
+  name VARCHAR(120) NOT NULL,
+  created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 17. Docs
+CREATE TABLE IF NOT EXISTS public.docs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  space_id UUID REFERENCES public.spaces(id) ON DELETE SET NULL,
+  folder_id UUID REFERENCES public.folders(id) ON DELETE SET NULL,
+  title VARCHAR(255) NOT NULL,
+  content TEXT DEFAULT '',
+  created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  updated_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 18. Goals and Key Results
+CREATE TABLE IF NOT EXISTS public.goals (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  owner_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  target_date DATE,
+  status VARCHAR(20) DEFAULT 'active',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.goal_key_results (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  goal_id UUID NOT NULL REFERENCES public.goals(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  start_value NUMERIC DEFAULT 0,
+  current_value NUMERIC DEFAULT 0,
+  target_value NUMERIC DEFAULT 100,
+  unit VARCHAR(30) DEFAULT 'points',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 19. Inbox Notifications
+CREATE TABLE IF NOT EXISTS public.notifications (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  project_id UUID REFERENCES public.projects(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  type VARCHAR(50) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  message TEXT,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  is_read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 

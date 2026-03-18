@@ -6,11 +6,20 @@
 @tailwind utilities;
 
 :root {
-  --bg-color: #0F172A;
-  --panel-bg: #1E293B;
-  --text-main: #F8FAFC;
-  --text-muted: #94A3B8;
-  --border-color: #334155;
+  --bg-color: var(--bg-app);
+  --panel-bg: var(--bg-panel);
+  --text-main: var(--text-primary);
+  --text-muted: var(--text-secondary);
+  --border-color: var(--border-strong);
+  --input-bg: #0F172A;
+  --input-border: #334155;
+  --input-text: #E2E8F0;
+}
+
+[data-theme='light'] {
+  --input-bg: #FFFFFF;
+  --input-border: #CBD5E1;
+  --input-text: #0F172A;
 }
 
 body, html, #root {
@@ -60,7 +69,10 @@ body, html, #root {
 
 /* Inputs */
 .input-dark {
-  @apply w-full bg-[#0F172A] border border-slate-700 rounded-lg px-4 py-2.5 text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all;
+  @apply w-full rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--input-text);
 }
 
 .label-dark {

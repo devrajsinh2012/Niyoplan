@@ -19,20 +19,32 @@ app.get('/health', (req, res) => {
 // Import routes
 const authRoutes = require('./routes/auth.routes');
 const projectRoutes = require('./routes/project.routes');
-const cardRoutes = require('./routes/card.routes');
 const adminRoutes = require('./routes/admin.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
-const listRoutes = require('./routes/list.routes');
-const sprintRoutes = require('./routes/sprint.routes');
+const ticketRoutes = require('./routes/card.routes.js');
+const listRoutes = require('./routes/list.routes.js');
+const sprintRoutes = require('./routes/sprint.routes.js');
+const dependencyRoutes = require('./routes/dependency.routes.js');
+const dsmRoutes = require('./routes/dsm.routes.js');
+const meetingRoutes = require('./routes/meeting.routes.js');
+const goalsRoutes = require('./routes/goals.routes.js');
+const workspaceRoutes = require('./routes/workspace.routes.js');
+const aiRoutes = require('./routes/ai.routes.js');
 
 // Mount routes
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
-app.use('/api/projects', cardRoutes); // Card routes are nested within project routes
-app.use('/api/projects', listRoutes); // Nested list routes
-app.use('/api/projects', sprintRoutes); // Nested sprint routes
+app.use('/api/projects', ticketRoutes);
+app.use('/api/projects', listRoutes);
+app.use('/api/projects', sprintRoutes);
+app.use('/api/projects', dependencyRoutes);
+app.use('/api/projects', dsmRoutes);
+app.use('/api/projects', meetingRoutes);
+app.use('/api/projects', goalsRoutes);
+app.use('/api/projects', workspaceRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -41,6 +53,10 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+module.exports = app;

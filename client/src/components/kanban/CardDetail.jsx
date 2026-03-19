@@ -1,8 +1,35 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './CardDetail.css';
 
-export default function CardDetail({ card, onClose }) {
+const toDateInput = (value) => {
+  if (!value) return '';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toISOString().slice(0, 10);
+};
+
+export default function CardDetail({ card, onClose, onSave, isSaving = false }) {
+  const [form, setForm] = useState({
+    title: card?.title || '',
+    description: card?.description || '',
+    status: card?.status || 'backlog',
+    priority: card?.priority || 'medium',
+    story_points: card?.story_points ?? '',
+    start_date: toDateInput(card?.start_date),
+    due_date: toDateInput(card?.due_date)
+  });
+
   if (!card) return null;
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    await onSave?.({
+      ...form,
+      story_points: form.story_points === '' ? null : Number(form.story_points),
+      start_date: form.start_date || null,
+      due_date: form.due_date || null
+    });
+  };
 
   return (
     <div className="card-detail-overlay" onClick={onClose}>
@@ -15,68 +42,101 @@ export default function CardDetail({ card, onClose }) {
           </div>
         </header>
         
-        <div className="card-detail-body">
-          <input 
-            type="text" 
-            className="card-detail-title-input" 
-            defaultValue={card.title} 
-            placeholder="Card Title" 
+        <form className="card-detail-body" onSubmit={handleSubmit}>
+          <input
+            type="text"
+            className="card-detail-title-input"
+            value={form.title}
+            onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+            placeholder="Card Title"
+            required
           />
           
           <div className="card-layout">
             <div className="card-main-col">
               <section className="card-section">
                 <h3>Description</h3>
-                <div className="ai-generate-bar">
-                  <button className="btn-magic">✨ Generate with Groq AI</button>
-                </div>
                 <textarea 
                   className="card-detail-textarea" 
                   placeholder="Add a more detailed description..."
                   rows={8}
-                  defaultValue="This task involves setting up the primary feature set..."
+                  value={form.description}
+                  onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
                 />
               </section>
               
               <section className="card-section">
-                <h3>Checklist</h3>
-                <div className="checklist-progress-bar">
-                  <div className="checklist-progress-fill" style={{ width: '33%' }}></div>
+                <h3>Details</h3>
+                <div className="card-field-grid">
+                  <label className="card-field-label" htmlFor="story-points">Story Points</label>
+                  <input
+                    id="story-points"
+                    type="number"
+                    min="0"
+                    className="date-input"
+                    value={form.story_points}
+                    onChange={(event) => setForm((prev) => ({ ...prev, story_points: event.target.value }))}
+                  />
                 </div>
-                <ul className="checklist-items">
-                  <li><input type="checkbox" checked readOnly/> Sub-task 1 completed</li>
-                  <li><input type="checkbox" /> Sub-task 2 pending</li>
-                  <li><input type="checkbox" /> Sub-task 3 pending</li>
-                </ul>
-                <button className="btn-outline btn-sm">Add Item</button>
               </section>
             </div>
             
             <div className="card-side-col">
               <div className="card-meta-block">
                 <h4>Status</h4>
-                <div className="status-selector">To Do ▾</div>
+                <select
+                  className="status-selector"
+                  value={form.status}
+                  onChange={(event) => setForm((prev) => ({ ...prev, status: event.target.value }))}
+                >
+                  <option value="backlog">Backlog</option>
+                  <option value="todo">To Do</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="in_review">In Review</option>
+                  <option value="done">Done</option>
+                </select>
               </div>
               
               <div className="card-meta-block">
-                <h4>Assignees</h4>
-                <div className="member-avatar">D</div>
-                <button className="btn-add-member">+</button>
+                <h4>Priority</h4>
+                <select
+                  className="status-selector"
+                  value={form.priority}
+                  onChange={(event) => setForm((prev) => ({ ...prev, priority: event.target.value }))}
+                >
+                  <option value="urgent">Urgent</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
               </div>
               
               <div className="card-meta-block">
-                <h4>Labels</h4>
-                <div className="label-chip bg-red">Bug</div>
-                <button className="btn-add-label">+</button>
+                <h4>Start Date</h4>
+                <input
+                  type="date"
+                  className="date-input"
+                  value={form.start_date}
+                  onChange={(event) => setForm((prev) => ({ ...prev, start_date: event.target.value }))}
+                />
               </div>
               
               <div className="card-meta-block">
-                <h4>Dates</h4>
-                <input type="date" className="date-input" defaultValue="2026-03-20" />
+                <h4>Due Date</h4>
+                <input
+                  type="date"
+                  className="date-input"
+                  value={form.due_date}
+                  onChange={(event) => setForm((prev) => ({ ...prev, due_date: event.target.value }))}
+                />
               </div>
+
+              <button type="submit" className="btn-primary card-detail-save" disabled={isSaving}>
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </button>
             </div>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );

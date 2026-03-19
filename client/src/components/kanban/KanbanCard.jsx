@@ -2,11 +2,12 @@ import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-export default function KanbanCard({ card, isOverlay }) {
+export default function KanbanCard({ card, isOverlay, onOpen }) {
   const {
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
@@ -38,9 +39,31 @@ export default function KanbanCard({ card, isOverlay }) {
       className={`kanban-card ${isOverlay ? 'overlay' : ''}`}
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
+      role="button"
+      tabIndex={0}
+      onClick={() => {
+        if (!isOverlay && !isDragging && onOpen) onOpen(card);
+      }}
+      onKeyDown={(event) => {
+        if ((event.key === 'Enter' || event.key === ' ') && !isOverlay && onOpen) {
+          event.preventDefault();
+          onOpen(card);
+        }
+      }}
     >
+      {!isOverlay && (
+        <button
+          className="kanban-card-drag-handle"
+          ref={setActivatorNodeRef}
+          {...attributes}
+          {...listeners}
+          onClick={(event) => event.stopPropagation()}
+          aria-label="Drag card"
+          title="Drag card"
+        >
+          ::
+        </button>
+      )}
       {card.labels && card.labels.length > 0 && (
         <div className="kanban-card-labels">
           {card.labels.map((label, idx) => (

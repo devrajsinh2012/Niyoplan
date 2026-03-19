@@ -4,7 +4,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { SortableContext } from '@dnd-kit/sortable';
 import KanbanCard from './KanbanCard';
 
-export default function KanbanColumn({ list, cards }) {
+export default function KanbanColumn({ list, cards, onCardOpen, onQuickAddCard }) {
   const {
     attributes,
     listeners,
@@ -58,10 +58,10 @@ export default function KanbanColumn({ list, cards }) {
       <div className="kanban-column-body">
         <SortableContext items={cardIds}>
           {cards.map(card => (
-            <KanbanCard key={card.id} card={card} />
+            <KanbanCard key={card.id} card={card} onOpen={onCardOpen} />
           ))}
         </SortableContext>
-        <button className="add-quick-card-btn">+ Add a card</button>
+        <button className="add-quick-card-btn" onClick={() => onQuickAddCard?.(list.id)}>+ Add a card</button>
       </div>
     </div>
   );

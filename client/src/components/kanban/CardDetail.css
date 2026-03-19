@@ -105,6 +105,16 @@
   gap: 3rem;
 }
 
+.card-field-grid {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.card-field-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
 .card-section h3 {
   font-size: 0.95rem;
   font-weight: 600;
@@ -242,6 +252,7 @@
   display: inline-flex;
   transition: var(--transition-fast);
   box-shadow: var(--shadow-sm);
+  width: 100%;
 }
 
 .status-selector:hover {
@@ -312,4 +323,8 @@
 .date-input:focus {
   outline: none;
   border-color: var(--accent-primary);
+}
+
+.card-detail-save {
+  width: 100%;
 }

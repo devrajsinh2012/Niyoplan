@@ -119,7 +119,7 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   padding: 0.8rem 1rem;
-  cursor: grab;
+  cursor: pointer;
   position: relative;
   transition: all var(--transition-fast);
   box-shadow: var(--shadow-sm);
@@ -147,6 +147,30 @@
   opacity: 0;
 }
 
+.kanban-card-drag-handle {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-panel);
+  color: var(--text-tertiary);
+  width: 26px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  cursor: grab;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  line-height: 1;
+}
+
+.kanban-card-drag-handle:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.kanban-card-drag-handle:active {
+  cursor: grabbing;
+}
+
 .kanban-card-labels {
   display: flex;
   gap: 0.4rem;
@@ -165,7 +189,7 @@
 
 .kanban-card-title {
   font-size: 0.85rem;
-  margin: 0 0 0.8rem 0;
+  margin: 0 1.8rem 0.8rem 0;
   line-height: 1.5;
   color: var(--text-primary);
   font-weight: 500;

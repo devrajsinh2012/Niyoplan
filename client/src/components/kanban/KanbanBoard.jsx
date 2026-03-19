@@ -3,6 +3,7 @@ import { DndContext, closestCorners, TouchSensor, MouseSensor, KeyboardSensor, u
 import { SortableContext, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import KanbanColumn from './KanbanColumn';
 import KanbanCard from './KanbanCard';
+import CardDetail from './CardDetail';
 import './KanbanBoard.css';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
@@ -19,7 +20,32 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
   const [lists, setLists] = useState([]);
   const [cards, setCards] = useState([]);
   const [activeCard, setActiveCard] = useState(null);
+  const [selectedCard, setSelectedCard] = useState(null);
+  const [isSavingCard, setIsSavingCard] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const getStatusFromList = useCallback((listId) => {
+    const list = lists.find((item) => item.id === listId);
+    const normalized = (list?.name || '').trim().toLowerCase();
+    if (normalized === 'done') return 'done';
+    if (normalized === 'in review') return 'in_review';
+    if (normalized === 'in progress') return 'in_progress';
+    if (normalized === 'to do' || normalized === 'todo') return 'todo';
+    return 'backlog';
+  }, [lists]);
+
+  const getListIdFromStatus = useCallback((status) => {
+    const normalizedStatus = (status || '').trim().toLowerCase();
+    const match = lists.find((item) => {
+      const name = (item.name || '').trim().toLowerCase();
+      if (normalizedStatus === 'done') return name === 'done';
+      if (normalizedStatus === 'in_review') return name === 'in review';
+      if (normalizedStatus === 'in_progress') return name === 'in progress';
+      if (normalizedStatus === 'todo') return name === 'to do' || name === 'todo';
+      return name === 'backlog';
+    });
+    return match?.id;
+  }, [lists]);
 
   const fetchBoardData = useCallback(async () => {
     try {
@@ -126,10 +152,12 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
       setCards((prev) => {
         const activeIndex = prev.findIndex(c => c.id === activeId);
         const overIndex = prev.findIndex(c => c.id === overId);
+        if (activeIndex < 0 || overIndex < 0) return prev;
         
         if (prev[activeIndex].listId !== prev[overIndex].listId) {
           const newCards = [...prev];
           newCards[activeIndex].listId = prev[overIndex].listId;
+          newCards[activeIndex].status = prev[overIndex].status;
           return arrayMove(newCards, activeIndex, overIndex);
         }
         return arrayMove(prev, activeIndex, overIndex);
@@ -140,8 +168,10 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
     if (isActiveACard && isOverAList) {
       setCards((prev) => {
         const activeIndex = prev.findIndex(c => c.id === activeId);
+        if (activeIndex < 0) return prev;
         const newCards = [...prev];
         newCards[activeIndex].listId = overId;
+        newCards[activeIndex].status = getStatusFromList(overId);
         return arrayMove(newCards, activeIndex, activeIndex);
       });
     }
@@ -188,42 +218,122 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
     }
 
     if (isActiveACard) {
-       // Find the card's new position in the cards array to calculate rank
-       const cardIndex = cards.findIndex(c => c.id === activeId);
-       const card = cards[cardIndex];
-       
-       // Get all cards in the same list sorted by their current index
-       const listCards = cards.filter(c => c.listId === card.listId);
-       const targetIndex = listCards.findIndex(c => c.id === activeId);
-       
+       const card = cards.find((item) => item.id === activeId);
+       if (!card) return;
+
+       const listCards = cards
+         .filter((item) => item.listId === card.listId)
+         .sort((a, b) => (a.rank || 0) - (b.rank || 0));
+       const targetIndex = listCards.findIndex((item) => item.id === activeId);
+
        const prevCard = listCards[targetIndex - 1];
        const nextCard = listCards[targetIndex + 1];
-       
+
        let newRank;
        if (!prevCard && !nextCard) {
-         newRank = 1000; // First card in empty list
+         newRank = 1000;
        } else if (!prevCard) {
-         newRank = nextCard.rank / 2;
+         newRank = (nextCard.rank || 1000) / 2;
        } else if (!nextCard) {
-         newRank = prevCard.rank + 1000;
+         newRank = (prevCard.rank || 1000) + 1000;
        } else {
-         newRank = (prevCard.rank + nextCard.rank) / 2;
+         newRank = ((prevCard.rank || 1000) + (nextCard.rank || 1000)) / 2;
        }
 
-       // Update state
-       setCards(prev => {
-         const newCards = [...prev];
-         newCards[cardIndex].rank = newRank;
-         return newCards;
-       });
+       setCards((prev) => prev.map((item) => {
+         if (item.id !== activeId) return item;
+         return {
+           ...item,
+           rank: newRank,
+           status: getStatusFromList(card.listId)
+         };
+       }));
 
-       // Persist to DB
        const { error } = await supabase.from('cards')
-         .update({ list_id: card.listId, rank: newRank })
+         .update({ list_id: card.listId, rank: newRank, status: getStatusFromList(card.listId) })
          .eq('id', activeId);
-         
-       if (error) toast.error('Failed to save card position');
+
+       if (error) {
+         toast.error('Failed to save card position');
+         await fetchBoardData();
+       }
     }
+  };
+
+  const handleQuickAddCard = async (listId) => {
+    const title = prompt('Card title:');
+    if (!title || !title.trim()) return;
+
+    const listCards = cards.filter((item) => item.listId === listId);
+    const maxRank = listCards.length ? Math.max(...listCards.map((item) => item.rank || 0)) : 0;
+    const startDate = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('cards')
+      .insert({
+        project_id: projectId,
+        title: title.trim(),
+        issue_type: 'task',
+        priority: 'medium',
+        status: getStatusFromList(listId),
+        list_id: listId,
+        rank: maxRank + 1000,
+        start_date: startDate,
+        due_date: startDate
+      })
+      .select('*')
+      .single();
+
+    if (error) {
+      toast.error('Failed to add card');
+      return;
+    }
+
+    setCards((prev) => [...prev, { ...data, prefix: data.custom_id, listId: data.list_id }]);
+    toast.success('Card added');
+  };
+
+  const handleSaveCard = async (updates) => {
+    if (!selectedCard?.id) return;
+
+    setIsSavingCard(true);
+    const mappedListId = getListIdFromStatus(updates.status);
+    const payload = {
+      title: updates.title,
+      description: updates.description,
+      priority: updates.priority,
+      status: updates.status,
+      story_points: updates.story_points,
+      start_date: updates.start_date || null,
+      due_date: updates.due_date || null,
+      list_id: mappedListId || undefined
+    };
+
+    const { data, error } = await supabase
+      .from('cards')
+      .update(payload)
+      .eq('id', selectedCard.id)
+      .select('*')
+      .single();
+
+    setIsSavingCard(false);
+
+    if (error) {
+      toast.error('Failed to save card');
+      return;
+    }
+
+    setCards((prev) => prev.map((item) => {
+      if (item.id !== data.id) return item;
+      return {
+        ...item,
+        ...data,
+        prefix: data.custom_id,
+        listId: data.list_id || item.listId
+      };
+    }));
+    setSelectedCard((prev) => (prev && prev.id === data.id ? { ...prev, ...data } : prev));
+    toast.success('Card updated');
   };
 
   const handleCreateList = async () => {
@@ -275,6 +385,8 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
                 key={list.id} 
                 list={list} 
                 cards={cards.filter(c => c.listId === list.id).sort((a,b) => a.rank - b.rank)} 
+                onCardOpen={(card) => setSelectedCard(card)}
+                onQuickAddCard={handleQuickAddCard}
               />
             ))}
           </SortableContext>
@@ -287,6 +399,16 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
           {activeCard ? <KanbanCard card={activeCard} isOverlay /> : null}
         </DragOverlay>
       </DndContext>
+
+      {selectedCard && (
+        <CardDetail
+          key={selectedCard.id}
+          card={selectedCard}
+          onClose={() => setSelectedCard(null)}
+          onSave={handleSaveCard}
+          isSaving={isSavingCard}
+        />
+      )}
     </div>
   );
 }

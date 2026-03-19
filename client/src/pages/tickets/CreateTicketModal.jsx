@@ -4,6 +4,14 @@ import { useAuth } from '../../context/AuthContext';
 import { X, Save, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+const DEFAULT_LISTS = [
+  { name: 'Backlog', rank: 1000 },
+  { name: 'To Do', rank: 2000 },
+  { name: 'In Progress', rank: 3000 },
+  { name: 'In Review', rank: 4000 },
+  { name: 'Done', rank: 5000 }
+];
+
 export default function CreateTicketModal({ projectId, onClose, onCreated }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [users, setUsers] = useState([]);
@@ -31,11 +39,48 @@ export default function CreateTicketModal({ projectId, onClose, onCreated }) {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const getOrCreateBacklogListId = async () => {
+    const { data: existingLists, error: listFetchError } = await supabase
+      .from('lists')
+      .select('id, name, rank')
+      .eq('project_id', projectId)
+      .order('rank', { ascending: true });
+
+    if (listFetchError) throw listFetchError;
+
+    let lists = existingLists || [];
+
+    if (lists.length === 0) {
+      const { data: createdLists, error: createListsError } = await supabase
+        .from('lists')
+        .insert(DEFAULT_LISTS.map((list) => ({
+          project_id: projectId,
+          name: list.name,
+          rank: list.rank
+        })))
+        .select('id, name, rank')
+        .order('rank', { ascending: true });
+
+      if (createListsError) throw createListsError;
+      lists = createdLists || [];
+    }
+
+    const backlogList = lists.find((list) => {
+      const normalized = (list.name || '').trim().toLowerCase();
+      return normalized === 'backlog' || normalized === 'to do' || normalized === 'todo';
+    });
+
+    return (backlogList || lists[0])?.id || null;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
+      const backlogListId = await getOrCreateBacklogListId();
+      const now = new Date();
+
       const { data, error } = await supabase
         .from('cards')
         .insert({
@@ -46,8 +91,12 @@ export default function CreateTicketModal({ projectId, onClose, onCreated }) {
           priority: formData.priority,
           assignee_id: formData.assignee_id || null,
           reporter_id: profile.id,
-          story_points: formData.story_points ? parseInt(formData.story_points) : null,
-          status: 'backlog'
+          story_points: formData.story_points ? parseInt(formData.story_points, 10) : null,
+          status: 'backlog',
+          list_id: backlogListId,
+          rank: now.getTime(),
+          start_date: now.toISOString(),
+          due_date: now.toISOString()
         })
         .select()
         .single();

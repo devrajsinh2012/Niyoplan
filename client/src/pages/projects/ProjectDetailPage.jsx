@@ -22,6 +22,7 @@ export default function ProjectDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [refreshNonce, setRefreshNonce] = useState(0);
   const [activeTab, setActiveTab] = useState('list'); // 'list', 'board', 'backlog'
   const { profile } = useAuth();
   const searchInputRef = useRef(null);
@@ -120,8 +121,7 @@ export default function ProjectDetailPage() {
 
   const handleCreated = useCallback(() => {
     fetchProjectAndCards();
-    // In a real app we'd dispatch an event to refresh Kanban/Sprint children if they're active
-    // For MVP, we pass down props or force them to refetch.
+    setRefreshNonce((prev) => prev + 1);
   }, [fetchProjectAndCards]);
 
   const getStatusColor = (status) => {
@@ -299,19 +299,19 @@ export default function ProjectDetailPage() {
 
         {activeTab === 'board' && (
           <div className="flex-1 animate-fade-in flex flex-col min-h-[600px] h-full">
-            <KanbanBoard projectId={id} />
+            <KanbanBoard projectId={id} refreshNonce={refreshNonce} />
           </div>
         )}
 
         {activeTab === 'backlog' && (
           <div className="flex-1 animate-fade-in flex flex-col">
-            <SprintManager projectId={id} />
+            <SprintManager projectId={id} refreshNonce={refreshNonce} />
           </div>
         )}
 
         {activeTab === 'gantt' && (
           <div className="flex-1 animate-fade-in flex flex-col">
-            <GanttChart projectId={id} />
+            <GanttChart projectId={id} refreshNonce={refreshNonce} />
           </div>
         )}
 

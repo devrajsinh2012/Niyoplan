@@ -7,7 +7,15 @@ import './KanbanBoard.css';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
-export default function KanbanBoard({ projectId }) {
+const DEFAULT_LISTS = [
+  { name: 'Backlog', rank: 1000 },
+  { name: 'To Do', rank: 2000 },
+  { name: 'In Progress', rank: 3000 },
+  { name: 'In Review', rank: 4000 },
+  { name: 'Done', rank: 5000 }
+];
+
+export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
   const [lists, setLists] = useState([]);
   const [cards, setCards] = useState([]);
   const [activeCard, setActiveCard] = useState(null);
@@ -23,14 +31,52 @@ export default function KanbanBoard({ projectId }) {
       if (listsRes.error) throw listsRes.error;
       if (cardsRes.error) throw cardsRes.error;
 
+      let boardLists = listsRes.data || [];
+
+      if (boardLists.length === 0) {
+        const { data: createdLists, error: createdListsError } = await supabase
+          .from('lists')
+          .insert(DEFAULT_LISTS.map((list) => ({
+            project_id: projectId,
+            name: list.name,
+            rank: list.rank
+          })))
+          .select('*')
+          .order('rank', { ascending: true });
+
+        if (createdListsError) throw createdListsError;
+        boardLists = createdLists || [];
+      }
+
+      const backlogList = boardLists.find((list) => {
+        const normalized = (list.name || '').trim().toLowerCase();
+        return normalized === 'backlog' || normalized === 'to do' || normalized === 'todo';
+      });
+      const fallbackListId = (backlogList || boardLists[0])?.id;
+
       // Ensure cards have prefix property matching Phase 2 mock expectations (using custom_id)
       const formattedCards = cardsRes.data.map(c => ({
         ...c,
         prefix: c.custom_id, 
-        listId: c.list_id // Map DB column to component prop
+        listId: c.list_id || fallbackListId // Map DB column to component prop
       }));
 
-      setLists(listsRes.data);
+      const orphanCardIds = cardsRes.data
+        .filter((card) => !card.list_id && fallbackListId)
+        .map((card) => card.id);
+
+      if (orphanCardIds.length > 0) {
+        const { error: reassignError } = await supabase
+          .from('cards')
+          .update({ list_id: fallbackListId })
+          .in('id', orphanCardIds);
+
+        if (reassignError) {
+          console.error(reassignError);
+        }
+      }
+
+      setLists(boardLists);
       setCards(formattedCards);
     } catch (err) {
       toast.error('Failed to load board data');
@@ -45,7 +91,7 @@ export default function KanbanBoard({ projectId }) {
     if (projectId) {
       fetchBoardData();
     }
-  }, [projectId, fetchBoardData]);
+  }, [projectId, refreshNonce, fetchBoardData]);
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),

@@ -5,6 +5,14 @@ import { useAuth } from '../../context/AuthContext';
 import { FolderKanban, Plus, MoreVertical } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+const DEFAULT_LISTS = [
+  { name: 'Backlog', rank: 1000 },
+  { name: 'To Do', rank: 2000 },
+  { name: 'In Progress', rank: 3000 },
+  { name: 'In Review', rank: 4000 },
+  { name: 'Done', rank: 5000 }
+];
+
 export default function ProjectsPage() {
   const [projects, setProjects] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,7 +54,7 @@ export default function ProjectsPage() {
     setIsCreating(true);
 
     try {
-      const { error } = await supabase
+      const { data: project, error } = await supabase
         .from('projects')
         .insert({
           name,
@@ -60,6 +68,19 @@ export default function ProjectsPage() {
       if (error) {
         if (error.code === '23505') throw new Error('Project prefix must be unique');
         throw error;
+      }
+
+      const { error: listsError } = await supabase
+        .from('lists')
+        .insert(DEFAULT_LISTS.map((list) => ({
+          project_id: project.id,
+          name: list.name,
+          rank: list.rank
+        })));
+
+      if (listsError) {
+        console.error(listsError);
+        toast.error('Project created, but default board columns could not be created');
       }
 
       toast.success('Project created!');

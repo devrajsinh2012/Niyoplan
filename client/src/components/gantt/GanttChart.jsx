@@ -10,7 +10,7 @@ const ZOOM_LEVELS = {
   spacious: 64
 };
 
-const GanttChart = ({ projectId }) => {
+const GanttChart = ({ projectId, refreshNonce = 0 }) => {
   const [cards, setCards] = useState([]);
   const [dependencies, setDependencies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,14 +28,23 @@ const GanttChart = ({ projectId }) => {
     setLoading(true);
     try {
       const [cardsRes, depsRes] = await Promise.all([
-        supabase.from('cards').select('*').eq('project_id', projectId).not('start_date', 'is', null).order('start_date', { ascending: true }),
+        supabase.from('cards').select('*').eq('project_id', projectId).order('created_at', { ascending: true }),
         supabase.from('card_dependencies').select('*').eq('project_id', projectId)
       ]);
 
       if (cardsRes.error) throw cardsRes.error;
       if (depsRes.error) throw depsRes.error;
 
-      setCards(cardsRes.data);
+      const normalizedCards = (cardsRes.data || []).map((card) => {
+        const fallbackStart = card.start_date || card.created_at || new Date().toISOString();
+        return {
+          ...card,
+          start_date: fallbackStart,
+          due_date: card.due_date || fallbackStart
+        };
+      });
+
+      setCards(normalizedCards);
       setDependencies(depsRes.data);
     } catch (err) {
       console.error('Error fetching Gantt data:', err);
@@ -47,7 +56,7 @@ const GanttChart = ({ projectId }) => {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, refreshNonce]);
 
   const handleMouseDown = (e, card, type) => {
     e.preventDefault();

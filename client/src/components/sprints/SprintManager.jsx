@@ -3,7 +3,7 @@ import './SprintManager.css';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
-export default function SprintManager({ projectId }) {
+export default function SprintManager({ projectId, refreshNonce = 0 }) {
   const [sprints, setSprints] = useState([]);
   const [backlog, setBacklog] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,7 +32,7 @@ export default function SprintManager({ projectId }) {
     if (projectId) {
       fetchSprintsAndBacklog();
     }
-  }, [projectId, fetchSprintsAndBacklog]);
+  }, [projectId, refreshNonce, fetchSprintsAndBacklog]);
 
   const handleCreateSprint = async () => {
     const name = prompt('Sprint Name (e.g. Sprint 4):');

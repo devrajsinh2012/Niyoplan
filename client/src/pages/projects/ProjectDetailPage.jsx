@@ -347,7 +347,7 @@ export default function ProjectDetailPage() {
 
         {activeTab === 'ai' && (
           <div className="flex-1 animate-fade-in flex flex-col">
-            <AIToolsPanel />
+            <AIToolsPanel projectId={id} />
           </div>
         )}
       </div>

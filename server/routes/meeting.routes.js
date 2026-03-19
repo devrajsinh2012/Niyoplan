@@ -206,6 +206,21 @@ router.post('/:projectId/meetings/action-items/:actionItemId/convert-to-card', r
       return res.status(400).json({ error: 'Action item is already linked to a card' });
     }
 
+    const { data: lists, error: listErr } = await supabase
+      .from('lists')
+      .select('id, name, rank')
+      .eq('project_id', projectId)
+      .order('rank', { ascending: true });
+
+    if (listErr) throw listErr;
+
+    const fallbackList = (lists || []).find((list) => {
+      const normalized = (list.name || '').trim().toLowerCase();
+      return normalized === 'to do' || normalized === 'todo' || normalized === 'backlog';
+    }) || (lists || [])[0] || null;
+
+    const nowIso = new Date().toISOString();
+
     const { data: card, error: cardErr } = await supabase
       .from('cards')
       .insert({
@@ -217,7 +232,10 @@ router.post('/:projectId/meetings/action-items/:actionItemId/convert-to-card', r
         status: 'todo',
         assignee_id: item.owner_id || null,
         reporter_id: req.user.id,
-        due_date: item.due_date || null
+        due_date: item.due_date || null,
+        start_date: nowIso,
+        list_id: fallbackList?.id || null,
+        rank: Date.now()
       })
       .select()
       .single();

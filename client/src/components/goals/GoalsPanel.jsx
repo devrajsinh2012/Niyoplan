@@ -4,6 +4,7 @@ import { apiFetch } from '../../lib/api';
 
 export default function GoalsPanel({ projectId }) {
   const [goals, setGoals] = useState([]);
+  const [narrative, setNarrative] = useState('');
   const [loading, setLoading] = useState(true);
   const [goalForm, setGoalForm] = useState({
     title: '',
@@ -75,8 +76,8 @@ export default function GoalsPanel({ projectId }) {
         method: 'POST',
         body: JSON.stringify({ goal, keyResults: goal.key_results || [] })
       });
+      setNarrative(response.narrative || 'No narrative returned');
       toast.success('Narrative generated');
-      alert(response.narrative || 'No narrative returned');
     } catch (error) {
       console.error(error);
       toast.error(error.message || 'Failed to generate narrative');
@@ -130,6 +131,13 @@ export default function GoalsPanel({ projectId }) {
           </article>
         ))}
         {!goals.length && <div className="text-slate-500 text-sm">No goals created yet.</div>}
+      </section>
+
+      <section className="glass-panel rounded-2xl p-5">
+        <h4 className="text-white font-semibold mb-2">Goal Narrative Output</h4>
+        <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 min-h-40 text-sm text-slate-200 whitespace-pre-wrap">
+          {narrative || 'Generate a narrative from any goal card to see stakeholder-ready text here.'}
+        </div>
       </section>
     </div>
   );

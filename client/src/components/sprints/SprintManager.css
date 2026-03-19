@@ -148,6 +148,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+  border: 1px dashed transparent;
+}
+
+.sprint-dropzone.dropzone-over {
+  border-color: var(--accent-primary);
+  background: rgba(69, 133, 255, 0.08);
 }
 
 .empty-sprint-text {
@@ -202,6 +209,10 @@
   border-color: rgba(255, 255, 255, 0.2);
   transform: translateY(-1px);
   box-shadow: var(--shadow-sm);
+}
+
+.backlog-row.dragging {
+  cursor: grabbing;
 }
 
 .backlog-prefix {

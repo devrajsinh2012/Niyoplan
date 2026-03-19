@@ -154,6 +154,13 @@ Deploy frontend and backend as separate Vercel projects.
 4. Deploy and note backend URL, for example:
 	- https://niyoplan-api.vercel.app
 
+5. Run deployment smoke check from local:
+
+```powershell
+cd server
+node scripts/deploy_smoke.js https://your-backend-url.vercel.app
+```
+
 ### Frontend deployment
 
 1. In Vercel, import repository and set Root Directory to client.
@@ -170,6 +177,21 @@ Deploy frontend and backend as separate Vercel projects.
 - Do not commit real secrets into git.
 - Keep only placeholders in .env.example files.
 - Rotate any password/API key if it was ever exposed.
+
+## Backend Deployment Troubleshooting
+
+Use these checks when backend errors appear on Vercel.
+
+1. Verify backend responds:
+	- GET /health
+2. Verify env and database connectivity:
+	- GET /health/deps
+	- Expected: status=ok, env flags true, database.ok=true
+3. If /health works but /health/deps fails:
+	- Missing/incorrect Vercel env var values are the primary cause
+4. Ensure Vercel backend project root is server and Node.js version is 22.x
+5. In frontend project, ensure VITE_API_BASE_URL points to backend Vercel URL (not localhost)
+6. After any env change in Vercel, trigger Redeploy
 
 ## Current Feature Coverage
 

@@ -1,8 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const supabase = require('./lib/supabase');
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -31,6 +32,51 @@ app.use(express.json());
 // Basic health check route
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date() });
+});
+
+// Root route for platform probes and manual checks.
+app.get('/', (req, res) => {
+  res.json({
+    service: 'niyoplan-api',
+    status: 'ok',
+    endpoints: ['/health', '/health/deps']
+  });
+});
+
+// Deployment diagnostics endpoint (safe: no secrets are returned)
+app.get('/health/deps', async (req, res) => {
+  const envStatus = {
+    SUPABASE_URL: Boolean(process.env.SUPABASE_URL),
+    SUPABASE_SERVICE_KEY: Boolean(process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY),
+    GROQ_API_KEY: Boolean(process.env.GROQ_API_KEY)
+  };
+
+  try {
+    const { error } = await supabase
+      .from('projects')
+      .select('*', { head: true, count: 'exact' })
+      .limit(1);
+
+    if (error) {
+      return res.status(500).json({
+        status: 'error',
+        env: envStatus,
+        database: { ok: false, code: error.code || null, message: error.message }
+      });
+    }
+
+    return res.json({
+      status: 'ok',
+      env: envStatus,
+      database: { ok: true }
+    });
+  } catch (err) {
+    return res.status(500).json({
+      status: 'error',
+      env: envStatus,
+      database: { ok: false, message: err.message }
+    });
+  }
 });
 
 // Import routes

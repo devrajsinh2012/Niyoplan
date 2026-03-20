@@ -103,154 +103,130 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 120 }}>
-        <div className="animate-spin" style={{
-          width: 28, height: 28, borderRadius: '50%',
-          border: '2.5px solid var(--border-strong)',
-          borderTopColor: 'var(--accent-primary)',
-        }} />
+      <div className="flex justify-center pt-32">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--border-strong)] border-t-[var(--accent-primary)]" />
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%' }} className="animate-fade-in">
+    <div className="mx-auto w-full max-w-7xl animate-fade-in p-6">
       {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>
-          Projects &rsaquo; Niyoplan Alpha
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-heading)', margin: 0 }}>
-            Project Overview
-          </h1>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn-outline" style={{ fontSize: 13 }}>
+      <div className="mb-8">
+        <nav className="mb-1 flex items-center gap-2 text-xs font-medium text-[var(--text-muted)]">
+          <span>Projects</span>
+          <span>/</span>
+          <span className="text-[var(--text-secondary)]">Niyoplan Alpha</span>
+        </nav>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h1 className="text-2xl font-bold text-[var(--text-heading)]">Project Overview</h1>
+          <div className="flex gap-2">
+            <button className="flex items-center gap-2 rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)]">
               <ExternalLink size={14} /> Share
             </button>
-            <button className="btn-outline" style={{ fontSize: 13 }}>Export</button>
+            <button className="flex items-center gap-2 rounded-[3px] bg-[#0052CC] px-4 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-[#00388D]">
+              Export
+            </button>
           </div>
         </div>
       </div>
 
       {/* Two-column layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20, alignItems: 'start' }}>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
 
         {/* ── LEFT COLUMN ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div className="flex flex-col gap-6">
 
           {/* Active Sprint Card */}
-          <div className="card" style={{ padding: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div className="rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm">
+            <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-heading)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                <div className="mb-1 flex items-center gap-3">
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">
                     Active Sprint: {activeSprint?.name || 'Alpha Release V1.2'}
                   </h2>
                 </div>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
+                <p className="text-xs text-[var(--text-muted)]">
                   {activeSprint
                     ? `Ends ${activeSprint.end_date ? new Date(activeSprint.end_date).toLocaleDateString() : 'TBD'}`
                     : 'Ends in 6 days (Nov 24, 2025)'}
                 </p>
               </div>
-              <span style={{
-                background: 'var(--accent-primary)',
-                color: '#fff', fontSize: 11, fontWeight: 600,
-                padding: '3px 10px', borderRadius: 'var(--radius-full)',
-                textTransform: 'uppercase',
-              }}>Active</span>
+              <span className="rounded-full bg-[#E3FCEF] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#006644]">
+                Active
+              </span>
             </div>
 
             {/* Stats row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
+            <div className="mb-8 grid grid-cols-2 sm:grid-cols-4 gap-6">
               {[
-                { label: 'Resolved', value: stats.resolved, color: 'var(--status-done)' },
-                { label: 'Open Issues', value: stats.open, color: 'var(--status-inprogress)' },
-                { label: 'Story Points', value: stats.storyPoints, color: 'var(--priority-medium)' },
-                { label: 'Velocity', value: `${stats.velocity}%`, color: 'var(--accent-primary)' },
+                { label: 'Resolved', value: stats.resolved, iconBg: 'bg-[#E3FCEF]', textColor: 'text-[#006644]' },
+                { label: 'Open Issues', value: stats.open, iconBg: 'bg-[#DEEBFF]', textColor: 'text-[#0052CC]' },
+                { label: 'Story Points', value: stats.storyPoints, iconBg: 'bg-[#F4F5F7]', textColor: 'text-[#42526E]' },
+                { label: 'Velocity', value: `${stats.velocity}%`, iconBg: 'bg-[#E9F2FF]', textColor: 'text-[#0052CC]' },
               ].map(s => (
-                <div key={s.label} style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-heading)' }}>{s.value}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{s.label}</div>
+                <div key={s.label} className="text-center sm:text-left">
+                  <div className={`text-2xl font-bold text-[var(--text-heading)] mb-1`}>{s.value}</div>
+                  <div className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">{s.label}</div>
                 </div>
               ))}
             </div>
 
             {/* Progress bar */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                <span>Sprint Progress</span>
-                <span>{stats.velocity}% Complete</span>
+              <div className="mb-2 flex justify-between text-xs font-medium">
+                <span className="text-[var(--text-secondary)]">Sprint Progress</span>
+                <span className="text-[var(--accent-primary)] font-bold">{stats.velocity}% Complete</span>
               </div>
-              <div style={{
-                height: 8, borderRadius: 'var(--radius-full)',
-                background: 'var(--bg-panel-hover)', overflow: 'hidden',
-              }}>
-                <div style={{
-                  height: '100%', borderRadius: 'var(--radius-full)',
-                  background: 'linear-gradient(90deg, var(--accent-primary), #6366F1)',
-                  width: `${Math.min(stats.velocity, 100)}%`,
-                  transition: 'width 1s ease-out',
-                }} />
+              <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--bg-panel-hover)]">
+                <div 
+                  className="h-full bg-gradient-to-r from-[#0052CC] to-[#0065FF] transition-all duration-1000 ease-out rounded-full"
+                  style={{ width: `${Math.min(stats.velocity, 100)}%` }}
+                />
               </div>
             </div>
           </div>
 
           {/* Team Activity */}
-          <div className="card" style={{ overflow: 'hidden' }}>
-            <div style={{
-              padding: '14px 20px',
-              borderBottom: '1px solid var(--border-subtle)',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-heading)', margin: 0 }}>
+          <div className="overflow-hidden rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-sm">
+            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] px-6 py-4">
+              <h3 className="text-sm font-bold text-[var(--text-heading)] uppercase tracking-wider">
                 Team Activity
               </h3>
-              <button className="btn-ghost" style={{ fontSize: 12 }}>View All Activity</button>
+              <button className="text-xs font-semibold text-[var(--accent-primary)] hover:underline">
+                View All
+              </button>
             </div>
-            <div>
+            <div className="divide-y divide-[var(--border-subtle)]">
               {activities.length === 0 ? (
-                <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                <div className="py-12 text-center text-sm text-[var(--text-muted)]">
                   No activity recorded yet
                 </div>
               ) : (
                 activities.map((log) => (
                   <div
                     key={log.id}
-                    style={{
-                      display: 'flex', gap: 12, padding: '12px 20px',
-                      borderBottom: '1px solid var(--border-subtle)',
-                      transition: 'background var(--transition-fast)',
-                      cursor: 'default',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-panel-hover)'}
-                    onMouseLeave={e => e.currentTarget.style.background = ''}
+                    className="flex gap-4 px-6 py-4 transition-colors hover:bg-[var(--bg-panel-hover)]"
                   >
-                    <div style={{
-                      width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-                      background: 'linear-gradient(135deg, var(--accent-primary), #6554C0)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: '#fff', fontSize: 12, fontWeight: 600, overflow: 'hidden',
-                    }}>
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#0C66E4] to-[#6554C0] text-xs font-bold text-white shadow-sm overflow-hidden">
                       {log.user?.avatar_url
-                        ? <img src={log.user.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ? <img src={log.user.avatar_url} alt="" className="h-full w-full object-cover" />
                         : (log.user?.full_name?.charAt(0) || '?')}
                     </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 13, margin: 0, color: 'var(--text-primary)', lineHeight: 1.5 }}>
-                        <span style={{ fontWeight: 600, color: 'var(--text-heading)' }}>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-[var(--text-primary)] leading-relaxed">
+                        <span className="font-bold text-[var(--text-heading)]">
                           {log.user?.full_name || 'Unknown'}
                         </span>
                         {' '}{log.action === 'created' ? 'created' : 'moved'}{' '}
-                        <span style={{ color: 'var(--accent-text)', fontWeight: 500 }}>
+                        <span className="font-mono text-xs font-bold text-[var(--accent-primary)] bg-[var(--accent-subtle)] px-1.5 py-0.5 rounded">
                           {log.card?.custom_id}
                         </span>
                         {log.action !== 'created' && log.details?.to && (
-                          <> to <span style={{ fontWeight: 600, textTransform: 'uppercase', fontSize: 11 }}>{log.details.to}</span></>
+                          <> to <span className="font-bold uppercase text-[10px] text-[var(--text-muted)] bg-[var(--bg-panel-hover)] px-1.5 py-0.5 rounded">{log.details.to.replace('_', ' ')}</span></>
                         )}
                       </p>
-                      <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '2px 0 0' }}>
+                      <p className="mt-1 text-[11px] font-medium text-[var(--text-muted)]">
                         {relativeTime(log.created_at)}
                       </p>
                     </div>
@@ -262,144 +238,123 @@ export default function DashboardPage() {
         </div>
 
         {/* ── RIGHT COLUMN ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div className="flex flex-col gap-6">
 
           {/* Recent Issues */}
-          <div className="card" style={{ overflow: 'hidden' }}>
-            <div style={{
-              padding: '14px 16px',
-              borderBottom: '1px solid var(--border-subtle)',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-heading)', margin: 0 }}>
+          <div className="overflow-hidden rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-sm">
+            <div className="border-b border-[var(--border-subtle)] px-5 py-4">
+              <h3 className="text-sm font-bold text-[var(--text-heading)] uppercase tracking-wider">
                 Recent Issues
               </h3>
             </div>
-            <div>
+            <div className="divide-y divide-[var(--border-subtle)]">
               {recentIssues.length === 0 ? (
-                <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                <div className="py-8 text-center text-sm text-[var(--text-muted)]">
                   No issues yet
                 </div>
               ) : (
                 recentIssues.map(issue => (
                   <div
                     key={issue.id}
-                    style={{
-                      display: 'flex', gap: 10, padding: '10px 16px',
-                      borderBottom: '1px solid var(--border-subtle)',
-                      cursor: 'pointer',
-                      transition: 'background var(--transition-fast)',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-panel-hover)'}
-                    onMouseLeave={e => e.currentTarget.style.background = ''}
+                    className="flex gap-3 px-5 py-3 transition-colors hover:bg-[var(--bg-panel-hover)] cursor-pointer"
                   >
-                    <div style={{
-                      width: 8, height: 8, borderRadius: '50%', marginTop: 6, flexShrink: 0,
-                      background: priorityColor(issue.priority),
-                    }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: 13, fontWeight: 500, color: 'var(--text-heading)',
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                      }}>
+                    <div 
+                      className="mt-1.5 h-2 w-2 shrink-0 rounded-full" 
+                      style={{ background: priorityColor(issue.priority) }} 
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="truncate text-sm font-medium text-[var(--text-heading)]">
                         {issue.title}
                       </div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                        {issue.custom_id} · {relativeTime(issue.created_at)}
+                      <div className="mt-1 flex items-center gap-2 text-[11px] font-medium text-[var(--text-muted)]">
+                        <span className="text-[var(--accent-primary)]">{issue.custom_id}</span>
+                        <span>·</span>
+                        <span>{relativeTime(issue.created_at)}</span>
                       </div>
                     </div>
                   </div>
                 ))
               )}
               <button
-                className="btn-ghost"
-                style={{ width: '100%', justifyContent: 'center', padding: '10px', fontSize: 12 }}
+                className="w-full py-3 text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest transition-colors hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)]"
               >
-                Show More
+                Show All
               </button>
             </div>
           </div>
 
           {/* Workload Balance */}
-          <div className="card" style={{ overflow: 'hidden' }}>
-            <div style={{
-              padding: '14px 16px',
-              borderBottom: '1px solid var(--border-subtle)',
-            }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-heading)', margin: 0 }}>
+          <div className="overflow-hidden rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-sm">
+            <div className="border-b border-[var(--border-subtle)] px-5 py-4">
+              <h3 className="text-sm font-bold text-[var(--text-heading)] uppercase tracking-wider">
                 Workload Balance
               </h3>
             </div>
-            <div style={{ padding: '12px 16px' }}>
+            <div className="p-5">
               {workload.length === 0 ? (
-                <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                <div className="py-4 text-center text-sm text-[var(--text-muted)]">
                   No assignments yet
                 </div>
               ) : (
                 workload.map((w, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                    <div style={{
-                      width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                      background: 'linear-gradient(135deg, var(--accent-primary), #6554C0)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: '#fff', fontSize: 11, fontWeight: 600, overflow: 'hidden',
-                    }}>
-                      {w.avatar
-                        ? <img src={w.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        : w.name.charAt(0)}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-heading)', marginBottom: 4 }}>
-                        {w.name}
+                  <div key={i} className="mb-5 last:mb-0">
+                    <div className="mb-2 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#0C66E4] to-[#6554C0] text-[10px] font-bold text-white overflow-hidden shadow-sm">
+                          {w.avatar
+                            ? <img src={w.avatar} alt="" className="h-full w-full object-cover" />
+                            : w.name.charAt(0)}
+                        </div>
+                        <span className="truncate text-xs font-bold text-[var(--text-heading)]">
+                          {w.name}
+                        </span>
                       </div>
-                      <div style={{ display: 'flex', gap: 4, height: 5, borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
-                        <div style={{ flex: w.totalCards, background: 'var(--accent-primary)', borderRadius: 'var(--radius-full)' }} />
-                        <div style={{ flex: Math.max(10 - w.totalCards, 1), background: 'var(--bg-panel-hover)', borderRadius: 'var(--radius-full)' }} />
-                      </div>
+                      <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase">
+                        {w.totalCards} Issues
+                      </span>
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                      {w.totalCards} Issues
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-panel-hover)]">
+                      <div 
+                        className="h-full bg-[#0052CC] rounded-full" 
+                        style={{ width: `${Math.min((w.totalCards / 10) * 100, 100)}%` }} 
+                      />
                     </div>
                   </div>
                 ))
               )}
-              <div style={{ marginTop: 8, display: 'flex', gap: 16, fontSize: 11, color: 'var(--text-muted)' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--status-done)' }} /> Done
+              <div className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-[#006644]" /> Done
                 </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--status-inprogress)' }} /> In Progress
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-[#0052CC]" /> In Progress
                 </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--status-todo)' }} /> To Do
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-[#42526E]" /> To Do
                 </span>
               </div>
             </div>
           </div>
 
           {/* Project Resources */}
-          <div className="card" style={{ overflow: 'hidden' }}>
-            <div style={{
-              padding: '14px 16px',
-              borderBottom: '1px solid var(--border-subtle)',
-            }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-heading)', margin: 0 }}>
-                Project Resources
+          <div className="overflow-hidden rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-sm">
+            <div className="border-b border-[var(--border-subtle)] px-5 py-4">
+              <h3 className="text-sm font-bold text-[var(--text-heading)] uppercase tracking-wider">
+                Resources
               </h3>
             </div>
-            <div style={{ padding: '8px 12px' }}>
+            <div className="p-2">
               {[
-                { icon: FileText, label: 'Product Requirements', color: 'var(--accent-text)' },
-                { icon: Palette, label: 'Design Prototype (Figma)', color: '#F24E1E' },
-                { icon: BookOpen, label: 'API Documentation', color: 'var(--status-done)' },
+                { icon: FileText, label: 'Product Requirements', color: '#0052CC' },
+                { icon: Palette, label: 'Design Prototype', color: '#F24E1E' },
+                { icon: BookOpen, label: 'API Documentation', color: '#006644' },
               ].map((r, i) => (
                 <button
                   key={i}
-                  className="btn-ghost"
-                  style={{ width: '100%', justifyContent: 'flex-start', gap: 10, padding: '8px 8px', fontSize: 13 }}
+                  className="flex w-full items-center gap-3 rounded-[3px] p-2.5 text-left text-xs font-bold text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)]"
                 >
-                  <r.icon size={15} style={{ color: r.color }} />
-                  {r.label}
+                  <r.icon size={14} style={{ color: r.color }} />
+                  {r.label.toUpperCase()}
                 </button>
               ))}
             </div>

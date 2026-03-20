@@ -126,21 +126,21 @@ export default function ProjectDetailPage() {
 
   const getStatusColor = (status) => {
     const map = {
-      backlog: 'bg-slate-500/20 text-slate-400 border border-slate-500/30',
-      todo: 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30',
-      in_progress: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
-      in_review: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
-      done: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+      backlog: 'bg-[#F4F5F7] text-[#42526E]',
+      todo: 'bg-[#F4F5F7] text-[#42526E]',
+      in_progress: 'bg-[#E9F2FF] text-[#0052CC]',
+      in_review: 'bg-[#FFF0B3] text-[#172B4D]',
+      done: 'bg-[#E3FCEF] text-[#006644]'
     };
     return map[status] || map.backlog;
   };
 
   const getPriorityColor = (priority) => {
     const map = {
-      urgent: 'text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded text-xs border border-rose-500/30',
-      high: 'text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded text-xs border border-orange-500/30',
-      medium: 'text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded text-xs border border-blue-500/30',
-      low: 'text-slate-400 bg-slate-500/10 px-2 py-0.5 rounded text-xs border border-slate-500/30'
+      urgent: 'text-rose-600 bg-rose-50 px-2 py-0.5 rounded text-[10px] font-bold border border-rose-100 uppercase tracking-wider',
+      high: 'text-orange-600 bg-orange-50 px-2 py-0.5 rounded text-[10px] font-bold border border-orange-100 uppercase tracking-wider',
+      medium: 'text-blue-600 bg-blue-50 px-2 py-0.5 rounded text-[10px] font-bold border border-blue-100 uppercase tracking-wider',
+      low: 'text-slate-500 bg-slate-50 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-100 uppercase tracking-wider'
     };
     return map[priority] || map.medium;
   };
@@ -152,79 +152,87 @@ export default function ProjectDetailPage() {
     return matchesStatus && matchesSearch;
   });
 
-  if (isLoading) return <div className="flex justify-center py-40"><div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-blue-500"></div></div>;
+  if (isLoading) return <div className="flex justify-center py-40"><div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-[var(--accent-primary)]"></div></div>;
 
-  if (!project) return <div className="text-center py-20"><h2 className="text-2xl font-bold text-white mb-4">Project Not Found</h2><Link to="/projects" className="text-blue-400 hover:text-blue-300">Return to Projects</Link></div>;
+  if (!project) return <div className="text-center py-20"><h2 className="text-2xl font-bold text-[var(--text-heading)] mb-4" >Project Not Found</h2><Link to="/projects" className="text-[var(--accent-primary)] hover:underline">Return to Projects</Link></div>;
 
   return (
-    <div className="max-w-screen-2xl mx-auto w-full animate-fade-in pb-10 flex flex-col h-full h-fit min-h-full">
+    <div className="max-w-screen-2xl mx-auto w-full animate-fade-in pb-10 flex flex-col min-h-full">
       
-      <header className="mb-6 flex-shrink-0">
-        <Link to="/projects" className="text-slate-500 hover:text-white flex items-center gap-1 w-fit mb-4 transition-colors text-sm font-medium">
+      <header className="mb-6 shrink-0">
+        <Link to="/projects" className="text-[var(--text-secondary)] hover:text-[var(--accent-primary)] flex items-center gap-1 w-fit mb-4 transition-colors text-sm font-medium">
           <ChevronLeft size={16} /> Back to Projects
         </Link>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
           <div>
+            <nav className="flex items-center gap-2 mb-2 text-xs text-[var(--text-muted)] font-medium">
+              <span>Projects</span>
+              <span>/</span>
+              <span className="text-[var(--text-secondary)]">{project.name}</span>
+            </nav>
             <div className="flex items-center gap-3 mb-2">
-              <div className="px-2 py-1 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 text-xs font-bold font-mono">
+              <div className="px-2 py-1 rounded bg-[var(--accent-subtle)] text-[var(--accent-primary)] border border-[var(--accent-primary)]/20 text-[10px] font-bold font-mono">
                 {project.prefix}
               </div>
-              <h1 className="text-3xl font-bold text-white">{project.name}</h1>
+              <h1 className="text-2xl font-bold text-[var(--text-heading)]">{project.name}</h1>
             </div>
-            <p className="text-slate-400 max-w-2xl text-sm">{project.description}</p>
+            <p className="text-[var(--text-secondary)] max-w-2xl text-sm leading-relaxed">{project.description}</p>
           </div>
           
           <div className="flex items-center gap-2">
-            <button onClick={() => setShowShortcuts(true)} className="btn-secondary text-sm">Shortcuts (?)</button>
+            <button onClick={() => setShowShortcuts(true)} className="btn-outline text-sm">Shortcuts (?)</button>
             {canWrite && (
-              <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
-                <Plus size={20} />
-                Create Issue (C)
+              <button 
+                onClick={() => setShowModal(true)} 
+                className="flex items-center gap-2 rounded-[3px] bg-[#0052CC] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#0065FF]"
+              >
+                <Plus size={18} strokeWidth={2.5} />
+                Create Issue
               </button>
             )}
           </div>
         </div>
       </header>
 
-      {/* Navigation Tabs */}
-      <div className="flex border-b border-slate-800 mb-6 flex-shrink-0 overflow-x-auto">
+      {/* Navigation Tabs (Modern Jira style) */}
+      <div className="flex border-b border-[var(--border-subtle)] mb-6 shrink-0 overflow-x-auto">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-3 sm:px-6 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm transition-all whitespace-nowrap ${
               activeTab === tab.id 
-                ? 'border-blue-500 text-blue-400 bg-blue-500/5' 
-                : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]' 
+                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-panel-hover)]'
             }`}
           >
-            <tab.icon size={18} />
+            <tab.icon size={16} />
             {tab.name}
           </button>
         ))}
       </div>
 
       {/* Tab Contents */}
-      <div className="flex-1 min-h-0 flex flex-col">
+      <div className="flex-1 shrink-0 flex flex-col">
         {activeTab === 'list' && (
           <div className="flex flex-col flex-1 animate-fade-in">
-            <div className="glass-panel rounded-t-2xl p-4 flex flex-col sm:flex-row gap-4 justify-between items-center border-b-0">
+            <div className="flex flex-col sm:flex-row gap-4 justify-between items-center mb-4">
               <div className="relative w-full sm:max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} />
                 <input 
                   ref={searchInputRef}
                   type="text" 
                   placeholder="Search by ID or title..." 
-                  className="input-dark pl-10"
+                  className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] py-2 pl-10 pr-4 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent-primary)] focus:bg-[var(--bg-app)]"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
               <div className="flex gap-4 w-full sm:w-auto">
                 <div className="flex items-center gap-2">
-                  <Settings2 className="text-slate-500" size={18} />
+                  <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Status:</span>
                   <select 
-                    className="input-dark py-2 border-transparent hover:border-slate-700 bg-slate-800"
+                    className="rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] py-1.5 px-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent-primary)]"
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
                   >
@@ -239,43 +247,43 @@ export default function ProjectDetailPage() {
               </div>
             </div>
 
-            <div className="glass-card rounded-b-2xl rounded-tr-2xl sm:rounded-tl-none overflow-hidden border-t-0 flex-1">
+            <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[4px] shadow-sm overflow-hidden flex-1">
               <div className="overflow-x-auto w-full h-full">
                 <table className="w-full text-left border-collapse min-w-[800px]">
                   <thead>
-                    <tr className="bg-slate-800/50 text-slate-400 text-xs uppercase tracking-wider sticky top-0">
-                      <th className="p-4 font-medium border-b border-slate-700 w-24">Key</th>
-                      <th className="p-4 font-medium border-b border-slate-700">Summary</th>
-                      <th className="p-4 font-medium border-b border-slate-700 w-28">Type</th>
-                      <th className="p-4 font-medium border-b border-slate-700 w-28">Priority</th>
-                      <th className="p-4 font-medium border-b border-slate-700 w-32">Status</th>
-                      <th className="p-4 font-medium border-b border-slate-700 w-36">Assignee</th>
+                    <tr className="bg-[var(--bg-panel)] text-[var(--text-muted)] text-[11px] font-bold uppercase tracking-wider border-b border-[var(--border-subtle)]">
+                      <th className="p-4 w-24">Key</th>
+                      <th className="p-4">Summary</th>
+                      <th className="p-4 w-28">Type</th>
+                      <th className="p-4 w-32">Priority</th>
+                      <th className="p-4 w-32">Status</th>
+                      <th className="p-4 w-36">Assignee</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800 text-slate-300 text-sm">
+                  <tbody className="divide-y divide-[var(--border-subtle)] text-[var(--text-primary)] text-sm">
                     {filteredCards.map(card => (
-                      <tr key={card.id} className="hover:bg-slate-800/30 transition-colors group cursor-pointer">
-                        <td className="p-4 font-mono font-medium text-blue-400">{card.custom_id}</td>
-                        <td className="p-4 font-medium text-white pr-8">{card.title}</td>
-                        <td className="p-4 uppercase text-xs font-semibold tracking-wide text-slate-400">{card.issue_type}</td>
-                        <td className="p-4 uppercase text-xs font-bold tracking-wider">
+                      <tr key={card.id} className="hover:bg-[var(--bg-panel-hover)] transition-colors group cursor-pointer">
+                        <td className="p-4 font-mono font-medium text-[var(--accent-primary)] hover:underline">{card.custom_id}</td>
+                        <td className="p-4 font-medium text-[var(--text-heading)] pr-8">{card.title}</td>
+                        <td className="p-4 uppercase text-[10px] font-bold tracking-wide text-[var(--text-muted)]">{card.issue_type}</td>
+                        <td className="p-4">
                           <span className={getPriorityColor(card.priority)}>{card.priority}</span>
                         </td>
                         <td className="p-4">
-                          <span className={`px-2.5 py-1 rounded text-xs font-semibold uppercase tracking-wider ${getStatusColor(card.status)}`}>
+                          <span className={`px-2 py-0.5 rounded-[3px] text-[10px] font-bold uppercase tracking-wider ${getStatusColor(card.status)}`}>
                             {card.status.replace('_', ' ')}
                           </span>
                         </td>
                         <td className="p-4">
                           <div className="flex items-center gap-2">
-                             <div className="w-6 h-6 rounded-full bg-slate-700 overflow-hidden flex items-center justify-center border border-slate-600">
+                             <div className="w-6 h-6 rounded-full bg-[var(--bg-panel-hover)] overflow-hidden flex items-center justify-center border border-[var(--border-subtle)]">
                               {card.assignee?.avatar_url ? (
                                 <img src={card.assignee.avatar_url} alt="Assignee" className="w-full h-full object-cover" />
                               ) : (
-                                <span className="text-[10px] font-bold text-slate-300">{card.assignee?.full_name?.charAt(0) || 'U'}</span>
+                                <span className="text-[10px] font-bold text-[var(--text-muted)]">{card.assignee?.full_name?.charAt(0) || 'U'}</span>
                               )}
                             </div>
-                            <span className="text-slate-400 max-w-[100px] truncate" title={card.assignee?.full_name}>
+                            <span className="text-[var(--text-secondary)] text-xs font-medium truncate max-w-[100px]" title={card.assignee?.full_name}>
                               {card.assignee?.full_name?.split(' ')[0] || 'Unassigned'}
                             </span>
                           </div>
@@ -284,9 +292,10 @@ export default function ProjectDetailPage() {
                     ))}
                     {filteredCards.length === 0 && (
                       <tr>
-                        <td colSpan="6" className="p-12 text-center text-slate-500">
-                          <Search size={40} className="mb-4 mx-auto opacity-50" />
-                          <p className="text-lg">No tickets found.</p>
+                        <td colSpan="6" className="p-16 text-center text-[var(--text-muted)]">
+                          <Search size={40} className="mb-4 mx-auto opacity-20" />
+                          <p className="text-lg font-medium">No tickets found.</p>
+                          <p className="text-sm">Try adjusting your filters or search query.</p>
                         </td>
                       </tr>
                     )}
@@ -357,18 +366,34 @@ export default function ProjectDetailPage() {
       )}
 
       {showShortcuts && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setShowShortcuts(false)}>
-          <div className="glass-panel rounded-2xl w-full max-w-xl p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white text-xl font-semibold">Keyboard Shortcuts</h3>
-              <button className="btn-secondary" onClick={() => setShowShortcuts(false)}>Close</button>
+        <div className="fixed inset-0 z-[1000] bg-[var(--bg-app)]/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowShortcuts(false)}>
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[4px] shadow-2xl w-full max-w-xl p-8" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-[var(--text-heading)] text-xl font-bold">Keyboard Shortcuts</h3>
+              <button 
+                className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                onClick={() => setShowShortcuts(false)}
+              >
+                Close (Esc)
+              </button>
             </div>
-            <div className="space-y-2 text-sm text-slate-200">
-              <div><span className="text-blue-300">1-0</span> Switch tabs</div>
-              <div><span className="text-blue-300">/</span> Focus list search</div>
-              <div><span className="text-blue-300">C</span> Open create issue</div>
-              <div><span className="text-blue-300">?</span> Show shortcuts</div>
-              <div><span className="text-blue-300">Esc</span> Close shortcuts</div>
+            <div className="grid grid-cols-2 gap-x-12 gap-y-4 text-sm">
+              <div className="flex justify-between border-b border-[var(--border-subtle)] pb-2">
+                <span className="text-[var(--text-secondary)]">Switch tabs</span>
+                <kbd className="bg-[var(--bg-panel)] px-2 py-0.5 rounded border border-[var(--border-strong)] font-mono font-bold">1-0</kbd>
+              </div>
+              <div className="flex justify-between border-b border-[var(--border-subtle)] pb-2">
+                <span className="text-[var(--text-secondary)]">Focus list search</span>
+                <kbd className="bg-[var(--bg-panel)] px-2 py-0.5 rounded border border-[var(--border-strong)] font-mono font-bold">/</kbd>
+              </div>
+              <div className="flex justify-between border-b border-[var(--border-subtle)] pb-2">
+                <span className="text-[var(--text-secondary)]">Create issue</span>
+                <kbd className="bg-[var(--bg-panel)] px-2 py-0.5 rounded border border-[var(--border-strong)] font-mono font-bold">C</kbd>
+              </div>
+              <div className="flex justify-between border-b border-[var(--border-subtle)] pb-2">
+                <span className="text-[var(--text-secondary)]">Show shortcuts</span>
+                <kbd className="bg-[var(--bg-panel)] px-2 py-0.5 rounded border border-[var(--border-strong)] font-mono font-bold">?</kbd>
+              </div>
             </div>
           </div>
         </div>

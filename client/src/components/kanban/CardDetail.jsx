@@ -55,29 +55,41 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
     ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     : 'ME';
 
+  const getStatusStyle = (status) => {
+    switch(status) {
+      case 'todo': return 'bg-[#F4F5F7] text-[#42526E] border-[#DFE1E6] hover:bg-[#EBECF0]';
+      case 'in_progress': return 'bg-[#EAE6FF] text-[#403294] border-[#C0B6F2] hover:bg-[#DED9FB]';
+      case 'in_review': return 'bg-[#DEEBFF] text-[#0052CC] border-[#B3D4FF] hover:bg-[#CCE0FF]';
+      case 'done': return 'bg-[#E3FCEF] text-[#006644] border-[#ABF5D1] hover:bg-[#D3F9E9]';
+      default: return 'bg-[#F4F5F7] text-[#42526E] border-[#DFE1E6]';
+    }
+  };
+
   return (
-    <div className="card-detail-overlay" onClick={onClose}>
-      <div className="card-detail-panel animate-fade-in" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[2000] flex items-start justify-center overflow-y-auto bg-[#091E42]/60 p-4 md:p-10 backdrop-blur-[2px]" onClick={onClose}>
+      <div className="relative mb-10 min-h-[500px] w-full max-w-6xl animate-fade-in rounded-lg bg-white shadow-2xl ring-1 ring-black/5 flex flex-col" onClick={(e) => e.stopPropagation()}>
         
         {/* Header - Breadcrumb & Actions */}
-        <header className="detail-header">
-          <div className="detail-breadcrumb">
-            <span>Projects</span> <span className="separator">/</span>
-            <span>Alpha Project</span> <span className="separator">/</span>
-            <span className="current">{card.prefix || card.custom_id}</span>
+        <header className="flex items-center justify-between border-b border-[var(--border-subtle)] px-6 py-4 bg-[#fdfdfd] rounded-t-lg">
+          <div className="flex items-center gap-2 text-[13px] font-medium text-[var(--text-muted)]">
+            <span className="hover:text-[#0052CC] cursor-pointer">Projects</span>
+            <span className="opacity-40">/</span>
+            <span className="hover:text-[#0052CC] cursor-pointer">Workspace</span>
+            <span className="opacity-40">/</span>
+            <span className="font-mono text-[var(--text-primary)] font-bold tracking-tight">{card.prefix || card.custom_id}</span>
           </div>
-          <div className="detail-actions">
-            <button className="btn-icon" title="Watch"><Eye size={16} /></button>
-            <button className="btn-icon"><MoreHorizontal size={16} /></button>
-            <button className="btn-icon" onClick={onClose}><X size={16} /></button>
+          <div className="flex items-center gap-1.5">
+            <button className="flex items-center justify-center p-2 rounded-[3px] text-[var(--text-secondary)] hover:bg-[#F4F5F7] transition-colors" title="Watch"><Eye size={16} /></button>
+            <button className="flex items-center justify-center p-2 rounded-[3px] text-[var(--text-secondary)] hover:bg-[#F4F5F7] transition-colors"><MoreHorizontal size={16} /></button>
+            <button className="ml-2 flex items-center justify-center p-2 rounded-[3px] text-[var(--text-secondary)] hover:bg-[#F4F5F7] transition-colors" onClick={onClose}><X size={18} /></button>
           </div>
         </header>
         
-        <div className="detail-content">
-          {/* Main Column */}
-          <div className="detail-main">
+        <div className="flex flex-1 flex-col lg:flex-row h-full">
+          {/* Main Column (Scrollable ideally, but here flex) */}
+          <div className="flex-[7] min-w-0 p-6 md:p-8">
             <textarea
-              className="detail-title-input"
+              className="w-full resize-none overflow-hidden rounded-[3px] border-2 border-transparent bg-transparent px-2 py-1 text-2xl font-bold text-[var(--text-heading)] transition-all hover:bg-[#F4F5F7] focus:border-[#0052CC] focus:bg-white focus:outline-none"
               value={form.title}
               onChange={(e) => {
                 setForm(p => ({ ...p, title: e.target.value }));
@@ -88,142 +100,188 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
               rows={1}
             />
 
-            <div className="detail-toolbar">
-              <button className="btn-toolbar"><Paperclip size={14} /> Attach</button>
-              <button className="btn-toolbar"><CheckSquare size={14} /> Create subtask</button>
-              <button className="btn-toolbar"><Link size={14} /> Link issue</button>
-              <button className="btn-toolbar">Release <ChevronDown size={14} /></button>
+            <div className="mt-6 mb-10 flex flex-wrap gap-2">
+              <button className="flex items-center gap-2 rounded-[3px] bg-[#091E42]/[0.04] px-3 py-1.5 text-sm font-semibold text-[#42526E] transition-colors hover:bg-[#091E42]/[0.08] active:bg-[#091E42]/[0.12]">
+                <Paperclip size={14} /> Attach
+              </button>
+              <button className="flex items-center gap-2 rounded-[3px] bg-[#091E42]/[0.04] px-3 py-1.5 text-sm font-semibold text-[#42526E] transition-colors hover:bg-[#091E42]/[0.08]">
+                <CheckSquare size={14} /> Add subtask
+              </button>
+              <button className="flex items-center gap-2 rounded-[3px] bg-[#091E42]/[0.04] px-3 py-1.5 text-sm font-semibold text-[#42526E] transition-colors hover:bg-[#091E42]/[0.08]">
+                <Link size={14} /> Link issue
+              </button>
+              <button className="flex items-center gap-2 rounded-[3px] bg-[#091E42]/[0.04] px-3 py-1.5 text-sm font-semibold text-[#42526E] transition-colors hover:bg-[#091E42]/[0.08]">
+                <span>More</span> <ChevronDown size={14} />
+              </button>
             </div>
 
-            <section className="detail-section">
-              <div className="section-header">
-                <h3><AlignLeft size={16} /> Description</h3>
-                {!isEditingDesc && (
-                  <button className="btn-ghost-sm" onClick={() => setIsEditingDesc(true)}>Edit</button>
-                )}
+            {/* Description Section */}
+            <section className="mb-10">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="flex items-center gap-2 text-sm font-bold text-[var(--text-heading)]">
+                  <AlignLeft size={16} className="text-[#42526E]" /> Description
+                </h3>
               </div>
               
               {isEditingDesc ? (
-                <div className="desc-editor-wrapper">
+                <div className="rounded-[4px] border-2 border-[#0052CC] bg-white p-2 shadow-sm">
                   <textarea 
-                    className="detail-desc-input" 
+                    className="w-full min-h-[160px] resize-y border-none bg-transparent p-2 text-[14px] leading-relaxed text-[var(--text-primary)] focus:outline-none" 
                     placeholder="Add a more detailed description..."
-                    rows={6}
                     value={form.description}
                     onChange={(e) => setForm(p => ({ ...p, description: e.target.value }))}
                     autoFocus
                   />
-                  <div className="desc-editor-actions">
-                    <button className="btn-primary" onClick={handleDescSave} disabled={isSaving}>Save</button>
-                    <button className="btn-ghost" onClick={() => setIsEditingDesc(false)}>Cancel</button>
+                  <div className="flex gap-2 p-2">
+                    <button className="rounded-[3px] bg-[#0052CC] px-4 py-1.5 text-sm font-bold text-white shadow-sm hover:bg-[#00388D]" onClick={handleDescSave} disabled={isSaving}>Save</button>
+                    <button className="rounded-[3px] px-4 py-1.5 text-sm font-bold text-[var(--text-secondary)] hover:bg-[#F4F5F7]" onClick={() => setIsEditingDesc(false)}>Cancel</button>
                   </div>
                 </div>
               ) : (
                 <div 
-                  className={`desc-viewer ${!form.description ? 'empty' : ''}`}
+                  className={`group relative min-h-[60px] cursor-pointer rounded-[4px] p-3 transition-colors hover:bg-[#F4F5F7] ${!form.description ? 'text-[var(--text-muted)] italic font-medium' : 'text-[var(--text-primary)] leading-relaxed'}`}
                   onClick={() => setIsEditingDesc(true)}
                 >
                   {form.description ? (
-                    <p>{form.description}</p>
+                    <p className="whitespace-pre-wrap text-[14px]">{form.description}</p>
                   ) : (
                     'Add a description...'
                   )}
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button className="p-1 rounded bg-white shadow-sm ring-1 ring-black/5 text-[#42526E]">
+                      <span className="text-[10px] font-bold px-1 uppercase">Edit</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </section>
 
-            <section className="detail-section">
-              <div className="section-header">
-                <h3><Activity size={16} /> Activity</h3>
+            {/* Activity Section */}
+            <section>
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="flex items-center gap-2 text-sm font-bold text-[var(--text-heading)]">
+                  <Activity size={16} className="text-[#42526E]" /> Activity
+                </h3>
+                <div className="flex items-center gap-2">
+                   <span className="text-[12px] font-medium text-[var(--text-muted)]">Show:</span>
+                   <button className="text-[12px] font-bold bg-[#F4F5F7] px-2 py-0.5 rounded-[3px] text-[#42526E]">All</button>
+                </div>
               </div>
-              <div className="activity-tabs">
-                <button className={`tab ${activeTab === 'comments' ? 'active' : ''}`} onClick={() => setActiveTab('comments')}>Comments</button>
-                <button className={`tab ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>History</button>
-                <button className={`tab ${activeTab === 'worklog' ? 'active' : ''}`} onClick={() => setActiveTab('worklog')}>Work log</button>
+              
+              <div className="mb-6 flex gap-6 border-b border-[var(--border-subtle)]">
+                {['comments', 'history', 'worklog'].map(tab => (
+                  <button 
+                    key={tab}
+                    className={`pb-2 text-sm font-bold capitalize transition-all border-b-2 ${activeTab === tab ? 'border-[#0052CC] text-[#0052CC]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`} 
+                    onClick={() => setActiveTab(tab)}
+                  >
+                    {tab === 'worklog' ? 'Work log' : tab}
+                  </button>
+                ))}
               </div>
 
               {activeTab === 'comments' && (
-                <div className="comments-section">
-                  <div className="comment-input-area">
-                    <div className="comment-avatar">
-                      {profile?.avatar_url ? <img src={profile.avatar_url} alt="" /> : myInitials}
+                <div className="space-y-6">
+                  <div className="flex gap-4">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#0C66E4] to-[#6554C0] text-[11px] font-bold text-white">
+                      {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="h-full w-full rounded-full object-cover" /> : myInitials}
                     </div>
-                    <div className="comment-input-wrapper">
-                      <input 
-                        type="text" 
-                        placeholder="Add a comment..."
-                        value={newComment}
-                        onChange={e => setNewComment(e.target.value)}
-                        className="comment-input"
-                      />
-                      {newComment && (
-                        <div className="desc-editor-actions" style={{ marginTop: 8 }}>
-                          <button className="btn-primary">Save</button>
-                          <button className="btn-ghost" onClick={() => setNewComment('')}>Cancel</button>
-                        </div>
-                      )}
+                    <div className="flex-1">
+                      <div className={`relative rounded-[4px] border-2 transition-all p-0.5 ${newComment ? 'border-[#0052CC] bg-white ring-4 ring-[#0052CC]/10' : 'border-[#DFE1E6] bg-[#fdfdfd] hover:border-[#4C9AFF]'}`}>
+                        <input 
+                          type="text" 
+                          placeholder="Add a comment..."
+                          value={newComment}
+                          onChange={e => setNewComment(e.target.value)}
+                          className="w-full bg-transparent px-3 py-2 text-[14px] text-[var(--text-primary)] focus:outline-none"
+                        />
+                        {newComment && (
+                          <div className="flex gap-2 p-2 pt-0">
+                            <button className="rounded-[3px] bg-[#0052CC] px-4 py-1 text-xs font-bold text-white">Save</button>
+                            <button className="rounded-[3px] px-4 py-1 text-xs font-bold text-[var(--text-secondary)] hover:bg-[#F4F5F7]" onClick={() => setNewComment('')}>Cancel</button>
+                          </div>
+                        )}
+                      </div>
+                      <p className="mt-2 text-[10px] text-[var(--text-muted)] font-medium">
+                        <span className="font-bold">Pro tip:</span> press <kbd className="rounded border bg-gray-50 px-1 font-sans font-bold">M</kbd> to comment
+                      </p>
                     </div>
                   </div>
-                  <div className="empty-state">No comments yet.</div>
+                  
+                  {/* Empty State */}
+                  <div className="flex flex-col items-center justify-center py-10 text-[var(--text-muted)]">
+                     <div className="mb-3 rounded-full bg-[#f4f5f7] p-4">
+                        <List size={24} className="opacity-40" />
+                     </div>
+                     <p className="text-sm font-medium">No comments yet.</p>
+                  </div>
                 </div>
               )}
-              {activeTab === 'history' && <div className="empty-state">History is empty.</div>}
-              {activeTab === 'worklog' && <div className="empty-state">No work logged yet.</div>}
+              {activeTab !== 'comments' && (
+                <div className="py-20 text-center text-sm font-medium text-[var(--text-muted)] italic">
+                   Section coming soon...
+                </div>
+              )}
             </section>
           </div>
 
           {/* Sidebar Column */}
-          <div className="detail-sidebar">
-            <div className="sidebar-block">
-              <select
-                className={`status-dropdown dropdown-${form.status.replace('_', '')}`}
-                value={form.status}
-                onChange={(e) => {
-                  setForm(p => ({ ...p, status: e.target.value }));
-                  handleSubmit();
-                }}
-              >
-                <option value="todo">TO DO</option>
-                <option value="in_progress">IN PROGRESS</option>
-                <option value="in_review">IN REVIEW</option>
-                <option value="done">DONE</option>
-              </select>
+          <div className="flex-[3] lg:min-w-[340px] border-l border-[var(--border-subtle)] bg-[#FAFBFC] p-6 rounded-br-lg flex flex-col">
+            <div className="mb-8">
+              <label className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-[#6B778C]">Status</label>
+              <div className="relative group/status">
+                <select
+                  className={`w-full cursor-pointer appearance-none rounded-[3px] border-2 px-3 py-2 text-[12px] font-bold uppercase transition-all focus:outline-none focus:ring-4 focus:ring-[#0052CC]/10 ${getStatusStyle(form.status)}`}
+                  value={form.status}
+                  onChange={(e) => {
+                    setForm(p => ({ ...p, status: e.target.value }));
+                    handleSubmit();
+                  }}
+                >
+                  <option value="todo">TO DO</option>
+                  <option value="in_progress">IN PROGRESS</option>
+                  <option value="in_review">IN REVIEW</option>
+                  <option value="done">DONE</option>
+                </select>
+                <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-current opacity-70" />
+              </div>
             </div>
 
-            <div className="sidebar-block border-top">
-              <div className="sidebar-block-header">
-                <h4>Details</h4>
-                <button className="btn-icon"><ChevronDown size={14} /></button>
+            <div className="mb-8 flex flex-col gap-1 rounded-lg border border-[var(--border-subtle)] bg-white p-2">
+              <div className="flex items-center justify-between p-3">
+                <h4 className="text-[13px] font-bold text-[var(--text-heading)]">Details</h4>
+                <button className="text-[11px] font-bold text-[#0052CC] hover:underline">Toggle icons</button>
               </div>
-              <div className="details-grid">
-                
-                <div className="detail-row">
-                  <div className="detail-label">Assignee</div>
-                  <div className="detail-value">
-                    <div className="assignee-value">
-                      <div className="avatar-sm">
-                        {card.assignee?.avatar_url ? <img src={card.assignee.avatar_url} alt="" /> : initials}
-                      </div>
-                      <span>{card.assignee?.full_name || 'Unassigned'}</span>
+              
+              <div className="space-y-1">
+                {/* Assignee Row */}
+                <div className="group flex items-center rounded px-3 py-1.5 transition-colors hover:bg-[#F4F5F7]">
+                  <div className="w-28 shrink-0 text-[13px] font-bold text-[#6B778C]">Assignee</div>
+                  <div className="flex flex-1 items-center gap-3 min-w-0">
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0052CC] text-[10px] font-bold text-white">
+                      {card.assignee?.avatar_url ? <img src={card.assignee.avatar_url} alt="" className="h-full w-full rounded-full object-cover" /> : initials}
                     </div>
+                    <span className="truncate text-[13px] font-medium text-[var(--text-primary)] hover:underline cursor-pointer">{card.assignee?.full_name || 'Unassigned'}</span>
                   </div>
                 </div>
 
-                <div className="detail-row">
-                  <div className="detail-label">Reporter</div>
-                  <div className="detail-value">
-                    <div className="assignee-value">
-                      <div className="avatar-sm">{myInitials}</div>
-                      <span>{profile?.full_name || 'Me'}</span>
+                {/* Reporter Row */}
+                <div className="group flex items-center rounded px-3 py-1.5 transition-colors hover:bg-[#F4F5F7]">
+                  <div className="w-28 shrink-0 text-[13px] font-bold text-[#6B778C]">Reporter</div>
+                  <div className="flex flex-1 items-center gap-3 min-w-0">
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#EBECF0] text-[10px] font-bold text-[#42526E]">
+                      {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="h-full w-full rounded-full object-cover" /> : myInitials}
                     </div>
+                    <span className="truncate text-[13px] font-medium text-[var(--text-primary)]">{profile?.full_name || 'Me'}</span>
                   </div>
                 </div>
 
-                <div className="detail-row">
-                  <div className="detail-label">Priority</div>
-                  <div className="detail-value">
+                {/* Priority Row */}
+                <div className="group flex items-center rounded px-3 py-1.5 transition-colors hover:bg-[#F4F5F7]">
+                  <div className="w-28 shrink-0 text-[13px] font-bold text-[#6B778C]">Priority</div>
+                  <div className="flex-1">
                     <select
-                      className="inline-select"
+                      className="w-full cursor-pointer bg-transparent py-0.5 text-[13px] font-medium text-[var(--text-primary)] transition-all focus:outline-none"
                       value={form.priority}
                       onChange={(e) => {
                         setForm(p => ({ ...p, priority: e.target.value }));
@@ -239,17 +297,13 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
                   </div>
                 </div>
 
-                <div className="detail-row">
-                  <div className="detail-label">Labels</div>
-                  <div className="detail-value text-muted">None</div>
-                </div>
-
-                <div className="detail-row">
-                  <div className="detail-label">Story Points</div>
-                  <div className="detail-value">
+                {/* Story Points Row */}
+                <div className="group flex items-center rounded px-3 py-1.5 transition-colors hover:bg-[#F4F5F7]">
+                  <div className="w-28 shrink-0 text-[13px] font-bold text-[#6B778C]">Story Points</div>
+                  <div className="flex-1">
                     <input
-                      type="number"
-                      className="inline-input"
+                      type="text"
+                      className="w-full bg-transparent py-0.5 text-[13px] font-medium text-[var(--text-primary)] placeholder:text-[#A5ADBA] focus:outline-none"
                       value={form.story_points}
                       placeholder="None"
                       onChange={(e) => setForm(p => ({ ...p, story_points: e.target.value }))}
@@ -258,17 +312,27 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
                   </div>
                 </div>
 
-                <div className="detail-row">
-                  <div className="detail-label">Sprint</div>
-                  <div className="detail-value text-link">Active Sprint (Alpha)</div>
+                {/* Sprint Row */}
+                <div className="group flex items-center rounded px-3 py-1.5 transition-colors hover:bg-[#F4F5F7]">
+                  <div className="w-28 shrink-0 text-[13px] font-bold text-[#6B778C]">Sprint</div>
+                  <div className="flex-1 overflow-hidden">
+                    <span className="truncate text-[13px] font-bold text-[#0052CC] hover:underline cursor-pointer">Active Sprint (Alpha)</span>
+                  </div>
                 </div>
-
               </div>
             </div>
 
-            <div className="sidebar-meta">
-              <div className="meta-text">Created {card.created_at ? new Date(card.created_at).toLocaleDateString() : 'Unknown'}</div>
-              <div className="meta-text">Updated {card.updated_at ? new Date(card.updated_at).toLocaleDateString() : 'Unknown'}</div>
+            <div className="mt-auto pt-6 border-t border-[var(--border-subtle)]">
+               <div className="space-y-2">
+                 <div className="flex justify-between text-[11px] font-medium text-[var(--text-muted)]">
+                   <span>Created</span>
+                   <span className="text-[var(--text-secondary)]">{card.created_at ? new Date(card.created_at).toLocaleDateString() : 'Unknown'}</span>
+                 </div>
+                 <div className="flex justify-between text-[11px] font-medium text-[var(--text-muted)]">
+                   <span>Updated</span>
+                   <span className="text-[var(--text-secondary)]">{card.updated_at ? new Date(card.updated_at).toLocaleDateString() : 'Unknown'}</span>
+                 </div>
+               </div>
             </div>
             
           </div>

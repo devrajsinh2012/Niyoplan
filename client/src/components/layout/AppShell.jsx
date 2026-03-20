@@ -10,7 +10,7 @@ export default function AppShell() {
   const { loading } = useAuth();
   const { id } = useParams();
 
-  const [theme, setTheme] = useState(() => localStorage.getItem('niyoplan-theme') || 'dark');
+  const [theme, setTheme] = useState(() => localStorage.getItem('niyoplan-theme') || 'light');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [currentProject, setCurrentProject] = useState(null);
   const [, setShowCreateModal] = useState(false);
@@ -36,22 +36,14 @@ export default function AppShell() {
 
   if (loading) {
     return (
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        height: '100vh', background: 'var(--bg-app)',
-      }}>
-        <Loader2 style={{ width: 28, height: 28, color: 'var(--accent-primary)' }} className="animate-spin" />
+      <div className="flex h-screen w-full items-center justify-center bg-[var(--bg-app)]">
+        <Loader2 className="h-7 w-7 animate-spin text-[var(--accent-primary)]" />
       </div>
     );
   }
 
   return (
-    <div style={{
-      display: 'flex', flexDirection: 'column',
-      height: '100dvh', width: '100%',
-      background: 'var(--bg-app)',
-      overflow: 'hidden',
-    }}>
+    <div className="flex h-screen w-full flex-col overflow-hidden bg-[var(--bg-app)]">
       {/* ─── Top Navigation Bar ─── */}
       <TopNav
         onCreateClick={() => setShowCreateModal(true)}
@@ -60,27 +52,17 @@ export default function AppShell() {
       />
 
       {/* ─── Body: Sidebar + Content ─── */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
+      <div className="relative flex flex-1 overflow-hidden">
 
-        {/* Sidebar toggle button */}
+        {/* Sidebar toggle button (ADS style: floating on edge) */}
         <button
           id="sidebar-toggle"
           onClick={() => setSidebarCollapsed(c => !c)}
           title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="absolute z-20 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-[var(--border-strong)] bg-[var(--bg-surface)] text-[var(--text-secondary)] shadow-sm transition-all duration-300"
           style={{
-            position: 'absolute',
             top: 12,
             left: sidebarCollapsed ? 8 : 'calc(var(--sidebar-width) - 12px)',
-            zIndex: 20,
-            width: 24, height: 24,
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-strong)',
-            borderRadius: '50%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer',
-            color: 'var(--text-secondary)',
-            boxShadow: 'var(--shadow-sm)',
-            transition: 'left var(--transition-smooth)',
           }}
         >
           {sidebarCollapsed
@@ -96,37 +78,19 @@ export default function AppShell() {
         />
 
         {/* ─── Main Content Area ─── */}
-        <main style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          position: 'relative',
-        }}>
-          {/* Subtle gradient overlay at top */}
-          <div style={{
-            position: 'absolute', top: 0, left: 0, right: 0, height: 200,
-            background: 'linear-gradient(180deg, rgba(12,102,228,0.04) 0%, transparent 100%)',
-            pointerEvents: 'none', zIndex: 0,
-          }} />
+        <main className="relative flex flex-1 flex-col overflow-hidden">
+          {/* Subtle gradient overlay at top (Jira-style depth) */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-48 bg-gradient-to-b from-[var(--accent-primary)]/[0.03] to-transparent" />
 
-          <div style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '20px 24px',
-            position: 'relative', zIndex: 1,
-          }}>
+          <div className="relative z-10 flex-1 overflow-y-auto px-6 py-5">
             <Outlet context={{ theme, currentProject, setShowCreateModal }} />
           </div>
         </main>
       </div>
 
-      {/* Mobile bottom nav (xs screens only) */}
-      <nav style={{
-        display: 'none',
-        // shown only on small screens via inline media query workaround
-      }} className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-[var(--bg-panel)] border-t border-slate-800 px-4 py-2 flex items-center justify-around">
-        {/* Mobile nav left intentionally minimal; full app targets desktop */}
+      {/* Mobile bottom nav (xs screens only - placeholder support) */}
+      <nav className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around border-t border-[var(--border-subtle)] bg-[var(--bg-panel)] px-4 py-2 md:hidden">
+        {/* Mobile nav content would go here if needed */}
       </nav>
     </div>
   );

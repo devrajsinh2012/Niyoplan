@@ -90,36 +90,39 @@
    Light Mode Overrides
    ============================================= */
 [data-theme='light'] {
-  --bg-app:          #F4F5F7;
-  --bg-panel:        #FFFFFF;
-  --bg-panel-hover:  #F4F5F7;
-  --bg-surface:      #EBECF0;
-  --bg-surface-hover:#DFE1E6;
-  --bg-input:        #FFFFFF;
-  --bg-header:       #0052CC;
+  /* --- Base Backgrounds --- */
+  --bg-app:          #FFFFFF;   /* clean white page background */
+  --bg-panel:        #F7F8F9;   /* subtle sidebar background */
+  --bg-panel-hover:  #EBECF0;
+  --bg-surface:      #FFFFFF;   /* cards, white on white with border/shadow */
+  --bg-surface-hover:#F4F5F7;
+  --bg-input:        #F7F8F9;
+  --bg-header:       #FFFFFF;   /* modern Jira top nav is white */
 
-  --border-subtle:   rgba(9, 30, 66, 0.08);
-  --border-strong:   rgba(9, 30, 66, 0.18);
-  --border-focus:    rgba(12, 102, 228, 0.5);
+  /* --- Borders --- */
+  --border-subtle:   #DCDFE4;   /* ADS standard border */
+  --border-strong:   #C1C7D0;
+  --border-focus:    #388BFF;
 
-  --text-primary:    #172B4D;
+  /* --- Text --- */
+  --text-primary:    #172B4D;   /* ADS primary text */
   --text-heading:    #091E42;
-  --text-secondary:  #42526E;
-  --text-muted:      #6B778C;
+  --text-secondary:  #44546F;   /* ADS secondary text */
+  --text-muted:      #626F86;
   --text-link:       #0052CC;
   --text-inverse:    #FFFFFF;
 
-  --accent-primary:  #0052CC;
+  /* --- Accent / Brand --- */
+  --accent-primary:  #0052CC;   /* ADS blue */
   --accent-hover:    #0065FF;
-  --accent-subtle:   rgba(0, 82, 204, 0.1);
+  --accent-subtle:   #E9F2FF;
   --accent-text:     #0052CC;
-  --accent-glow:     rgba(0, 82, 204, 0.2);
+  --accent-glow:     rgba(0, 82, 204, 0.1);
 
-  --bg-header:       #0052CC;
-
-  --shadow-sm:  0 1px 2px rgba(9,30,66,0.15);
-  --shadow-md:  0 3px 6px rgba(9,30,66,0.15), 0 0 0 1px var(--border-subtle);
-  --shadow-lg:  0 6px 20px rgba(9,30,66,0.2), 0 0 0 1px var(--border-subtle);
+  /* --- Shadows --- */
+  --shadow-sm:  0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31);
+  --shadow-md:  0 4px 8px -2px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31);
+  --shadow-lg:  0 12px 24px -6px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31);
 }
 
 /* =============================================
@@ -316,6 +319,7 @@ body {
 .truncate-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

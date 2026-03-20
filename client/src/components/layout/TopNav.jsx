@@ -30,47 +30,30 @@ export default function TopNav({ onCreateClick, theme, onToggleTheme }) {
     : 'U';
 
   const navLinkClass = ({ isActive }) =>
-    `px-3 py-1.5 rounded text-sm font-medium transition-colors whitespace-nowrap ${
+    `px-3 py-1 mr-1 rounded text-sm font-medium transition-colors whitespace-nowrap ${
       isActive
-        ? 'text-white bg-white/10'
-        : 'text-white/75 hover:text-white hover:bg-white/10'
+        ? 'text-[var(--accent-primary)] bg-[var(--accent-subtle)]'
+        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-panel-hover)]'
     }`;
 
   return (
     <header
       id="top-nav"
-      style={{
-        height: 'var(--topnav-height)',
-        background: 'var(--bg-header)',
-        borderBottom: '1px solid var(--border-subtle)',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '4px',
-        padding: '0 12px',
-        flexShrink: 0,
-      }}
+      className="sticky top-0 z-[100] flex h-[var(--topnav-height)] w-full shrink-0 items-center gap-1 border-b border-[var(--border-subtle)] bg-[var(--bg-header)] px-3"
     >
       {/* Logo */}
       <div
         onClick={() => navigate('/')}
-        style={{ cursor: 'pointer', marginRight: '4px', flexShrink: 0 }}
+        className="mr-1 shrink-0 cursor-pointer p-1 transition-transform hover:scale-105"
         title="NiyoPlan Home"
       >
-        <div style={{
-          width: 30, height: 30,
-          background: 'linear-gradient(135deg, #0C66E4, #8B5CF6)',
-          borderRadius: 6,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontWeight: 800, fontSize: 14, color: '#fff',
-          boxShadow: '0 2px 8px rgba(12,102,228,0.4)',
-        }}>N</div>
+        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-[#0C66E4] to-[#0052CC] text-sm font-extrabold text-white shadow-sm">
+          N
+        </div>
       </div>
 
       {/* Global Nav Links */}
-      <nav style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+      <nav className="flex items-center">
         <NavLink to="/projects" className={navLinkClass}>Projects</NavLink>
         <NavLink to="/" end className={navLinkClass}>Dashboards</NavLink>
         {profile?.role === 'admin' && (
@@ -78,35 +61,24 @@ export default function TopNav({ onCreateClick, theme, onToggleTheme }) {
         )}
       </nav>
 
-      {/* Create Button */}
+      {/* Create Button (Signature Jira Blue) */}
       <button
         id="global-create-btn"
         onClick={onCreateClick}
-        className="btn-primary"
-        style={{ marginLeft: '4px', minWidth: 'fit-content', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)' }}
+        className="ml-2 flex min-w-fit items-center gap-1.5 rounded-[3px] bg-[#0052CC] px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-[#0065FF] active:bg-[#0747A6]"
       >
-        <Plus size={14} />
+        <Plus size={16} strokeWidth={2.5} />
         Create
       </button>
 
       {/* Spacer */}
-      <div style={{ flex: 1 }} />
+      <div className="flex-1" />
 
-      {/* Search Bar */}
-      <div style={{
-        position: 'relative',
-        maxWidth: 280,
-        width: '100%',
-        transition: 'max-width var(--transition-smooth)',
-        ...(searchFocused ? { maxWidth: 360 } : {}),
-      }}>
+      {/* Search Bar (ADS Style) */}
+      <div className={`relative transition-all duration-300 ${searchFocused ? 'max-w-md w-full' : 'max-w-[200px] w-full'}`}>
         <Search
           size={14}
-          style={{
-            position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-            color: 'rgba(255,255,255,0.5)',
-            pointerEvents: 'none',
-          }}
+          className={`absolute left-2.5 top-1/2 -translate-y-1/2 transition-colors ${searchFocused ? 'text-[var(--accent-primary)]' : 'text-[var(--text-muted)]'}`}
         />
         <input
           id="global-search"
@@ -114,115 +86,76 @@ export default function TopNav({ onCreateClick, theme, onToggleTheme }) {
           placeholder="Search"
           onFocus={() => setSearchFocused(true)}
           onBlur={() => setSearchFocused(false)}
-          style={{
-            width: '100%',
-            background: 'rgba(255,255,255,0.1)',
-            border: '1px solid rgba(255,255,255,0.2)',
-            borderRadius: 4,
-            color: '#fff',
-            padding: '5px 10px 5px 30px',
-            fontSize: 14,
-            outline: 'none',
-            transition: 'border-color var(--transition-fast), background var(--transition-fast)',
-            ...(searchFocused ? {
-              background: 'rgba(255,255,255,0.15)',
-              borderColor: 'rgba(255,255,255,0.4)',
-            } : {}),
-          }}
+          className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] py-1.5 pl-9 pr-3 text-sm text-[var(--text-primary)] outline-none transition-all focus:border-[var(--accent-primary)] focus:bg-[var(--bg-app)] focus:ring-1 focus:ring-[var(--accent-primary)]/20"
         />
       </div>
 
       {/* Right Icons */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '2px', marginLeft: '4px' }}>
+      <div className="ml-2 flex items-center gap-0.5">
         <button
-          className="btn-icon"
+          className="flex h-8 w-8 items-center justify-center rounded-[3px] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)]"
           title="Notifications"
-          style={{ color: 'rgba(255,255,255,0.7)' }}
           onClick={() => {}}
         >
-          <Bell size={17} />
+          <Bell size={18} />
         </button>
 
         <button
-          className="btn-icon"
+          className="flex h-8 w-8 items-center justify-center rounded-[3px] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)]"
           title="Toggle theme"
-          style={{ color: 'rgba(255,255,255,0.7)' }}
           onClick={onToggleTheme}
         >
-          {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
 
         <button
-          className="btn-icon"
-          title="Help"
-          style={{ color: 'rgba(255,255,255,0.7)' }}
+          className="flex h-8 w-8 items-center justify-center rounded-[3px] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)] md:flex"
         >
-          <HelpCircle size={17} />
+          <HelpCircle size={18} />
         </button>
 
         {/* User avatar / dropdown */}
-        <div style={{ position: 'relative' }} ref={menuRef}>
+        <div className="relative ml-1" ref={menuRef}>
           <button
             id="user-menu-trigger"
             onClick={() => setUserMenuOpen(o => !o)}
+            className="flex h-7 w-7 cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-transparent transition-all hover:border-[var(--accent-primary)]"
             style={{
-              width: 32, height: 32,
-              borderRadius: '50%',
-              border: '2px solid rgba(255,255,255,0.3)',
               background: profile?.avatar_url ? 'transparent' : 'linear-gradient(135deg, #0C66E4, #6554C0)',
-              overflow: 'hidden',
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff', fontSize: 12, fontWeight: 700,
-              transition: 'border-color var(--transition-fast)',
-              marginLeft: 4,
             }}
           >
             {profile?.avatar_url
-              ? <img src={profile.avatar_url} alt="User" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : initials
+              ? <img src={profile.avatar_url} alt="User" className="h-full w-full object-cover" />
+              : <span className="text-[11px] font-bold text-white">{initials}</span>
             }
           </button>
 
           {userMenuOpen && (
             <div
-              className="animate-scale-in"
-              style={{
-                position: 'absolute', top: 'calc(100% + 8px)', right: 0,
-                background: 'var(--bg-surface)',
-                border: '1px solid var(--border-strong)',
-                borderRadius: 'var(--radius-lg)',
-                boxShadow: 'var(--shadow-lg)',
-                minWidth: 200,
-                overflow: 'hidden',
-                zIndex: 200,
-              }}
+              className="animate-scale-in absolute right-0 top-[calc(100%+8px)] z-[200] min-w-[240px] overflow-hidden rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-lg"
             >
-              <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-subtle)' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-heading)' }}>
-                  {profile?.full_name || 'User'}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                  {profile?.email || ''}
+              <div className="border-b border-[var(--border-subtle)] px-4 py-3">
+                <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Account</div>
+                <div className="mt-2 flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#0C66E4] to-[#6554C0] flex items-center justify-center text-white font-bold">
+                    {initials}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold text-[var(--text-heading)]">
+                      {profile?.full_name || 'User'}
+                    </div>
+                    <div className="truncate text-xs text-[var(--text-muted)]">
+                      {profile?.email || ''}
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div style={{ padding: '4px' }}>
+              <div className="p-1">
                 <button
                   onClick={handleLogout}
-                  style={{
-                    width: '100%', textAlign: 'left',
-                    padding: '8px 10px',
-                    borderRadius: 'var(--radius-md)',
-                    background: 'none', border: 'none',
-                    color: 'var(--priority-highest)',
-                    fontSize: 13, cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    transition: 'background var(--transition-fast)',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-blocked)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                  className="flex w-full cursor-pointer items-center gap-2 rounded-[3px] px-3 py-2 text-left text-sm text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-panel-hover)]"
                 >
-                  <LogOut size={14} />
+                  <LogOut size={14} className="text-red-500" />
                   Log out
                 </button>
               </div>

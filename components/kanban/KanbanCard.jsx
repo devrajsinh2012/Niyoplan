@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -104,7 +105,7 @@ export default function KanbanCard({ card, isOverlay, onOpen }) {
         {(card.assignee || initials) && (
           <div className="kanban-card-assignee" title={card.assignee?.full_name || ''}>
             {card.assignee?.avatar_url
-              ? <img src={card.assignee.avatar_url} alt="" />
+              ? <Image src={card.assignee.avatar_url} alt="" width={24} height={24} />
               : initials}
           </div>
         )}

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { 
   X, MoreHorizontal, Paperclip, CheckSquare, Link, ChevronDown, 
   AlignLeft, Activity, List, Clock, Send, Eye
@@ -185,7 +186,7 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
                 <div className="space-y-6">
                   <div className="flex gap-4">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#0C66E4] to-[#6554C0] text-[11px] font-bold text-white">
-                      {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="h-full w-full rounded-full object-cover" /> : myInitials}
+                      {profile?.avatar_url ? <Image src={profile.avatar_url} alt="" width={32} height={32} className="h-full w-full rounded-full object-cover" /> : myInitials}
                     </div>
                     <div className="flex-1">
                       <div className={`relative rounded-[4px] border-2 transition-all p-0.5 ${newComment ? 'border-[#0052CC] bg-white ring-4 ring-[#0052CC]/10' : 'border-[#DFE1E6] bg-[#fdfdfd] hover:border-[#4C9AFF]'}`}>
@@ -260,7 +261,7 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
                   <div className="w-28 shrink-0 text-[13px] font-bold text-[#6B778C]">Assignee</div>
                   <div className="flex flex-1 items-center gap-3 min-w-0">
                     <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0052CC] text-[10px] font-bold text-white">
-                      {card.assignee?.avatar_url ? <img src={card.assignee.avatar_url} alt="" className="h-full w-full rounded-full object-cover" /> : initials}
+                      {card.assignee?.avatar_url ? <Image src={card.assignee.avatar_url} alt="" width={24} height={24} className="h-full w-full rounded-full object-cover" /> : initials}
                     </div>
                     <span className="truncate text-[13px] font-medium text-[var(--text-primary)] hover:underline cursor-pointer">{card.assignee?.full_name || 'Unassigned'}</span>
                   </div>
@@ -271,7 +272,7 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
                   <div className="w-28 shrink-0 text-[13px] font-bold text-[#6B778C]">Reporter</div>
                   <div className="flex flex-1 items-center gap-3 min-w-0">
                     <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#EBECF0] text-[10px] font-bold text-[#42526E]">
-                      {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="h-full w-full rounded-full object-cover" /> : myInitials}
+                      {profile?.avatar_url ? <Image src={profile.avatar_url} alt="" width={24} height={24} className="h-full w-full rounded-full object-cover" /> : myInitials}
                     </div>
                     <span className="truncate text-[13px] font-medium text-[var(--text-primary)]">{profile?.full_name || 'Me'}</span>
                   </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import './SprintManager.css';
@@ -76,7 +77,7 @@ function DraggableIssue({ issue }) {
         {(issue.assignee || initials) && (
           <div className="row-assignee" title={issue.assignee?.full_name || ''}>
             {issue.assignee?.avatar_url
-              ? <img src={issue.assignee.avatar_url} alt="" />
+              ? <Image src={issue.assignee.avatar_url} alt="" width={24} height={24} />
               : initials}
           </div>
         )}
@@ -238,7 +239,7 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
         
         <div className="avatar-filters">
            <div className="avatar-filter-btn">
-             {profile?.avatar_url ? <img src={profile.avatar_url} alt="" /> : (profile?.full_name?.charAt(0) || 'U')}
+             {profile?.avatar_url ? <Image src={profile.avatar_url} alt="" width={24} height={24} /> : (profile?.full_name?.charAt(0) || 'U')}
            </div>
            <div className="avatar-filter-others">+5</div>
         </div>

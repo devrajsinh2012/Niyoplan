@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Search, Bell, HelpCircle, Sun, Moon, Plus, LogOut } from 'lucide-react';
@@ -131,7 +132,7 @@ export default function TopNav({ onCreateClick, theme, onToggleTheme }) {
             }}
           >
             {profile?.avatar_url
-              ? <img src={profile.avatar_url} alt="User" className="h-full w-full object-cover" />
+              ? <Image src={profile.avatar_url} alt="User" width={28} height={28} className="h-full w-full object-cover" />
               : <span className="text-[11px] font-bold text-white">{initials}</span>
             }
           </button>

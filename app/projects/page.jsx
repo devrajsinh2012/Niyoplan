@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { FolderKanban, Plus, Star, Activity } from 'lucide-react';
@@ -164,7 +165,7 @@ export default function ProjectsPage() {
             <FolderKanban size={48} className="mb-4 text-[var(--text-muted)] opacity-50" />
             <h3 className="text-lg font-bold text-[var(--text-heading)] mb-2">No projects found</h3>
             <p className="mb-8 max-w-xs text-sm text-[var(--text-muted)] font-medium leading-relaxed font-sans">
-              Start by creating your first project to organize your team's work.
+              Start by creating your first project to organize your team&apos;s work.
             </p>
             {['admin', 'pm'].includes(profile?.role) && (
               <button 
@@ -215,7 +216,7 @@ export default function ProjectsPage() {
                 <div className="flex items-center -space-x-2">
                   <div className="relative z-20 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-[var(--bg-surface)] bg-[#0052CC] text-[10px] font-bold text-white shadow-sm overflow-hidden" title={project.profiles?.full_name}>
                     {project.profiles?.avatar_url 
-                      ? <img src={project.profiles.avatar_url} alt="" className="h-full w-full object-cover"/>
+                      ? <Image src={project.profiles.avatar_url} alt="" width={24} height={24} className="h-full w-full object-cover"/>
                       : (project.profiles?.full_name?.charAt(0) || '?')}
                   </div>
                   <div className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-[var(--bg-surface)] bg-[#F4F5F7] text-[10px] font-bold text-[#42526E] shadow-sm">

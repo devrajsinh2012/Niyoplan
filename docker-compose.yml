@@ -1,30 +1,14 @@
 services:
-  server:
+  app:
     build:
-      context: ./server
-      dockerfile: Dockerfile.dev
-    container_name: niyoplan-server
-    env_file:
-      - ./server/.env
+      context: .
+      dockerfile: Dockerfile
+    container_name: niyoplan-app
+    restart: always
     ports:
-      - "4000:4000"
-    volumes:
-      - ./server:/app
-      - /app/node_modules
-    command: npm run dev
-
-  client:
-    build:
-      context: ./client
-      dockerfile: Dockerfile.dev
-    container_name: niyoplan-client
+      - "3000:3000"
     env_file:
-      - ./client/.env
-    ports:
-      - "5173:5173"
-    depends_on:
-      - server
-    volumes:
-      - ./client:/app
-      - /app/node_modules
-    command: npm run dev -- --host 0.0.0.0 --port 5173
+      - .env
+    # Optional: If you want to use it for development with hot-reload, 
+    # you would need a different Dockerfile or a complex volume strategy.
+    # This setup is optimized for a robust production-like environment.

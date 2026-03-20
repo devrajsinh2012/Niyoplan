@@ -1,0 +1,123 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { useParams, usePathname, useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import { Loader2, PanelLeftClose, PanelLeft } from 'lucide-react';
+import TopNav from './TopNav';
+import Sidebar from './Sidebar';
+import { supabase } from '@/lib/supabase';
+
+export default function AppShell({ children }) {
+  const { loading, user } = useAuth();
+  const { projectId } = useParams();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const [theme, setTheme] = useState('light');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [currentProject, setCurrentProject] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // Initialize theme from localStorage
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('niyoplan-theme') || 'light';
+    setTheme(savedTheme);
+  }, []);
+
+  // Apply theme
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('niyoplan-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
+
+  // Fetch current project info for the sidebar header
+  useEffect(() => {
+    if (projectId) {
+      supabase.from('projects').select('id, name, prefix').eq('id', projectId).single()
+        .then(({ data }) => setCurrentProject(data));
+    } else {
+      setCurrentProject(null);
+    }
+  }, [projectId]);
+
+  // Redirect to login if not authenticated and not on auth pages
+  useEffect(() => {
+    if (!loading && !user && !['/login', '/register'].includes(pathname)) {
+      router.push('/login');
+    }
+  }, [loading, user, pathname, router]);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-[var(--bg-app)]">
+        <Loader2 className="h-7 w-7 animate-spin text-[var(--accent-primary)]" />
+      </div>
+    );
+  }
+
+  // If on auth pages, don't show the shell
+  if (['/login', '/register'].includes(pathname)) {
+    return <>{children}</>;
+  }
+
+  // If not authenticated, don't show the shell while redirecting
+  if (!user) {
+    return null;
+  }
+
+  return (
+    <div className="flex h-screen w-full flex-col overflow-hidden bg-[var(--bg-app)]">
+      {/* ─── Top Navigation Bar ─── */}
+      <TopNav
+        onCreateClick={() => setShowCreateModal(true)}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
+
+      {/* ─── Body: Sidebar + Content ─── */}
+      <div className="relative flex flex-1 overflow-hidden">
+
+        {/* Sidebar toggle button (ADS style: floating on edge) */}
+        <button
+          id="sidebar-toggle"
+          onClick={() => setSidebarCollapsed(c => !c)}
+          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="absolute z-20 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-[var(--border-strong)] bg-[var(--bg-surface)] text-[var(--text-secondary)] shadow-sm transition-all duration-300"
+          style={{
+            top: 12,
+            left: sidebarCollapsed ? 8 : 'calc(var(--sidebar-width) - 12px)',
+          }}
+        >
+          {sidebarCollapsed
+            ? <PanelLeft size={13} />
+            : <PanelLeftClose size={13} />}
+        </button>
+
+        {/* ─── Project Sidebar ─── */}
+        <Sidebar
+          project={currentProject}
+          collapsed={sidebarCollapsed}
+          onCollapse={() => setSidebarCollapsed(c => !c)}
+        />
+
+        {/* ─── Main Content Area ─── */}
+        <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+          {/* Subtle gradient overlay at top (Jira-style depth) */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-48 bg-gradient-to-b from-[var(--accent-primary)]/[0.03] to-transparent" />
+
+          <div className="relative z-10 flex-1 overflow-y-auto px-6 py-5">
+            {children}
+          </div>
+        </main>
+      </div>
+
+      {/* Mobile bottom nav (xs screens only - placeholder support) */}
+      <nav className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around border-t border-[var(--border-subtle)] bg-[var(--bg-panel)] px-4 py-2 md:hidden">
+        {/* Mobile nav content would go here if needed */}
+      </nav>
+    </div>
+  );
+}

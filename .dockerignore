@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.gitignore
+.dockerignore
+README.md
+LICENSE
+.vscode
+.eslintrc.json
+npm-debug.log
+docker-compose.yml
+Dockerfile

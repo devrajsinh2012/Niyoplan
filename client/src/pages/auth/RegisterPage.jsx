@@ -30,82 +30,121 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#0F172A] flex items-center justify-center p-4 relative overflow-hidden font-inter">
-      {/* Premium Background Effects */}
-      <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-emerald-600/20 blur-[120px] pointer-events-none"></div>
-      <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600/20 blur-[120px] pointer-events-none"></div>
+    <div style={{
+      minHeight: '100vh', width: '100%',
+      background: 'var(--bg-app)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 20, position: 'relative', overflow: 'hidden'
+    }} className="animate-fade-in">
+      
+      {/* Background Ornaments */}
+      <div style={{
+        position: 'absolute', top: '-10%', right: '-10%', width: '40%', height: '40%',
+        borderRadius: '50%', background: 'var(--status-done)', opacity: 0.1,
+        filter: 'blur(120px)', pointerEvents: 'none'
+      }} />
+      <div style={{
+        position: 'absolute', bottom: '-10%', left: '-10%', width: '40%', height: '40%',
+        borderRadius: '50%', background: 'var(--accent-primary)', opacity: 0.1,
+        filter: 'blur(120px)', pointerEvents: 'none'
+      }} />
 
-      <div className="w-full max-w-md animate-fade-in relative z-10">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-tr from-emerald-500 to-teal-400 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20 mx-auto mb-6 transform hover:scale-105 transition-transform">
-            <UserPlus className="text-white w-8 h-8" />
+      <div style={{ width: '100%', maxWidth: 420, position: 'relative', zIndex: 10 }}>
+        
+        <div style={{ textAlign: 'center', marginBottom: 40 }}>
+          <div style={{
+            width: 64, height: 64, margin: '0 auto 24px', borderRadius: 16,
+            background: 'linear-gradient(135deg, var(--status-done), #14805E)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 8px 16px rgba(34, 160, 107, 0.2)',
+          }}>
+            <UserPlus style={{ color: '#fff' }} size={32} />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Create Account</h1>
-          <p className="text-slate-400">Join Niyoplan and start managing projects</p>
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-heading)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>
+            Create Account
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: 14 }}>
+            Join NiyoPlan and organize your work
+          </p>
         </div>
 
-        <div className="glass-card rounded-2xl p-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="card" style={{ padding: 32 }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div>
-              <label className="label-dark" htmlFor="fullName">Full Name</label>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                Full Name
+              </label>
               <input
-                id="fullName"
-                type="text"
-                required
-                className="input-dark"
+                type="text" required
+                style={{
+                  width: '100%', padding: '10px 14px', background: 'var(--bg-panel)',
+                  border: '2px solid var(--border-strong)', borderRadius: 'var(--radius-md)',
+                  color: 'var(--text-primary)', fontSize: 14, transition: 'var(--transition-fast)'
+                }}
                 placeholder="John Doe"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-              />
-            </div>
-            
-            <div>
-              <label className="label-dark" htmlFor="email">Email</label>
-              <input
-                id="email"
-                type="email"
-                required
-                className="input-dark"
-                placeholder="name@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={fullName} onChange={(e) => setFullName(e.target.value)}
+                onFocus={e => e.target.style.borderColor = 'var(--status-done)'}
+                onBlur={e => e.target.style.borderColor = 'var(--border-strong)'}
               />
             </div>
 
             <div>
-              <label className="label-dark" htmlFor="password">Password</label>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                Email
+              </label>
               <input
-                id="password"
-                type="password"
-                required
-                minLength={6}
-                className="input-dark"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                type="email" required
+                style={{
+                  width: '100%', padding: '10px 14px', background: 'var(--bg-panel)',
+                  border: '2px solid var(--border-strong)', borderRadius: 'var(--radius-md)',
+                  color: 'var(--text-primary)', fontSize: 14, transition: 'var(--transition-fast)'
+                }}
+                placeholder="name@company.com"
+                value={email} onChange={(e) => setEmail(e.target.value)}
+                onFocus={e => e.target.style.borderColor = 'var(--status-done)'}
+                onBlur={e => e.target.style.borderColor = 'var(--border-strong)'}
               />
-              <p className="text-xs text-slate-500 mt-2">Must be at least 6 characters long</p>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                Password
+              </label>
+              <input
+                type="password" required minLength={6}
+                style={{
+                  width: '100%', padding: '10px 14px', background: 'var(--bg-panel)',
+                  border: '2px solid var(--border-strong)', borderRadius: 'var(--radius-md)',
+                  color: 'var(--text-primary)', fontSize: 14, transition: 'var(--transition-fast)'
+                }}
+                placeholder="••••••••"
+                value={password} onChange={(e) => setPassword(e.target.value)}
+                onFocus={e => e.target.style.borderColor = 'var(--status-done)'}
+                onBlur={e => e.target.style.borderColor = 'var(--border-strong)'}
+              />
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0' }}>Must be at least 6 characters long</p>
             </div>
 
             <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 px-4 rounded-lg shadow-lg shadow-emerald-500/25 transition-all focus:ring-2 focus:ring-emerald-400 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
+              type="submit" disabled={isSubmitting}
+              style={{
+                width: '100%', padding: '12px', fontSize: 15, display: 'flex', justifyContent: 'center', gap: 8, marginTop: 12,
+                background: 'var(--status-done)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 600
+              }}
+              onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}
+              onMouseLeave={e => e.currentTarget.style.filter = ''}
             >
               {isSubmitting ? (
-                <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-white"></div>
+                <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff' }} className="animate-spin" />
               ) : (
-                <>
-                  <UserPlus size={20} />
-                  Sign Up
-                </>
+                <><UserPlus size={18} /> Sign Up</>
               )}
             </button>
           </form>
 
-          <p className="text-center mt-8 text-slate-400">
+          <p style={{ textAlign: 'center', margin: '32px 0 0', color: 'var(--text-secondary)', fontSize: 14 }}>
             Already have an account?{' '}
-            <Link to="/login" className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors">
+            <Link to="/login" style={{ color: 'var(--status-done)', textDecoration: 'none', fontWeight: 600 }}>
               Sign in
             </Link>
           </p>

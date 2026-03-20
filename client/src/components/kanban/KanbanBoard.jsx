@@ -365,9 +365,22 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
   return (
     <div className="kanban-wrapper">
       <header className="kanban-header">
-        <h2 className="kanban-title">Active Board</h2>
-        <div className="kanban-actions">
-           {/* Add Card handled via parent UI preferably, or a modal link here */}
+        <h2 className="kanban-title">Alpha Board</h2>
+        <div className="kanban-filters">
+          <button className="kanban-filter-chip" title="Filter by type">
+            <span>Type ▾</span>
+          </button>
+          <button className="kanban-filter-chip" title="Filter by priority">
+            <span>Priority ▾</span>
+          </button>
+          <button className="kanban-filter-chip" title="Filter by label">
+            <span>Label ▾</span>
+          </button>
+          <button className="kanban-filter-clear">Clear all</button>
+        </div>
+        <div className="kanban-view-toggle">
+          <button className="active">Board</button>
+          <button>List</button>
         </div>
       </header>
       

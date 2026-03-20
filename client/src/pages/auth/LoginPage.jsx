@@ -29,70 +29,102 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#0F172A] flex items-center justify-center p-4 relative overflow-hidden font-inter">
-      {/* Premium Background Effects */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600/20 blur-[120px] pointer-events-none"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-600/20 blur-[120px] pointer-events-none"></div>
+    <div style={{
+      minHeight: '100vh', width: '100%',
+      background: 'var(--bg-app)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 20, position: 'relative', overflow: 'hidden'
+    }} className="animate-fade-in">
+      
+      {/* Background Ornaments */}
+      <div style={{
+        position: 'absolute', top: '-10%', left: '-10%', width: '40%', height: '40%',
+        borderRadius: '50%', background: 'var(--accent-primary)', opacity: 0.1,
+        filter: 'blur(120px)', pointerEvents: 'none'
+      }} />
+      <div style={{
+        position: 'absolute', bottom: '-10%', right: '-10%', width: '40%', height: '40%',
+        borderRadius: '50%', background: '#6554C0', opacity: 0.1,
+        filter: 'blur(120px)', pointerEvents: 'none'
+      }} />
 
-      <div className="w-full max-w-md animate-fade-in relative z-10">
-        <div className="text-center mb-10">
-          <div className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20 mx-auto mb-6 transform hover:scale-105 transition-transform">
-            <span className="font-bold text-3xl text-white">N</span>
+      <div style={{ width: '100%', maxWidth: 420, position: 'relative', zIndex: 10 }}>
+        
+        <div style={{ textAlign: 'center', marginBottom: 40 }}>
+          <div style={{
+            width: 64, height: 64, margin: '0 auto 24px', borderRadius: 16,
+            background: 'linear-gradient(135deg, var(--accent-primary), #6554C0)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 8px 16px rgba(12, 102, 228, 0.2)',
+          }}>
+            <span style={{ fontWeight: 800, fontSize: 32, color: '#fff', letterSpacing: -1 }}>N</span>
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Welcome to Niyoplan</h1>
-          <p className="text-slate-400">Sign in to your account</p>
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-heading)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>
+            Welcome to NiyoPlan
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: 14 }}>
+            Sign in to your account
+          </p>
         </div>
 
-        <div className="glass-card rounded-2xl p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="card" style={{ padding: 32 }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             <div>
-              <label className="label-dark" htmlFor="email">Email</label>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                Email
+              </label>
               <input
-                id="email"
-                type="email"
-                required
-                className="input-dark"
+                type="email" required
+                style={{
+                  width: '100%', padding: '10px 14px', background: 'var(--bg-panel)',
+                  border: '2px solid var(--border-strong)', borderRadius: 'var(--radius-md)',
+                  color: 'var(--text-primary)', fontSize: 14, transition: 'var(--transition-fast)'
+                }}
                 placeholder="name@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={email} onChange={(e) => setEmail(e.target.value)}
+                onFocus={e => e.target.style.borderColor = 'var(--accent-primary)'}
+                onBlur={e => e.target.style.borderColor = 'var(--border-strong)'}
               />
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="label-dark !mb-0" htmlFor="password">Password</label>
-                <a href="#" className="text-sm text-blue-400 hover:text-blue-300 transition-colors">Forgot?</a>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                  Password
+                </label>
+                <a href="#" style={{ fontSize: 13, color: 'var(--accent-text)', textDecoration: 'none', fontWeight: 500 }}>
+                  Forgot?
+                </a>
               </div>
               <input
-                id="password"
-                type="password"
-                required
-                className="input-dark"
+                type="password" required
+                style={{
+                  width: '100%', padding: '10px 14px', background: 'var(--bg-panel)',
+                  border: '2px solid var(--border-strong)', borderRadius: 'var(--radius-md)',
+                  color: 'var(--text-primary)', fontSize: 14, transition: 'var(--transition-fast)'
+                }}
                 placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={password} onChange={(e) => setPassword(e.target.value)}
+                onFocus={e => e.target.style.borderColor = 'var(--accent-primary)'}
+                onBlur={e => e.target.style.borderColor = 'var(--border-strong)'}
               />
             </div>
 
             <button
-              type="submit"
-              disabled={isSubmitting}
-              className="btn-primary w-full flex items-center justify-center gap-2 mt-4"
+              type="submit" disabled={isSubmitting} className="btn-primary"
+              style={{ width: '100%', padding: '12px', fontSize: 15, display: 'flex', justifyContent: 'center', gap: 8, marginTop: 8 }}
             >
               {isSubmitting ? (
-                <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-white"></div>
+                <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff' }} className="animate-spin" />
               ) : (
-                <>
-                  <LogIn size={20} />
-                  Sign In
-                </>
+                <><LogIn size={18} /> Sign In</>
               )}
             </button>
           </form>
 
-          <p className="text-center mt-8 text-slate-400">
-            Don't have an account?{' '}
-            <Link to="/register" className="text-blue-400 hover:text-blue-300 font-medium transition-colors">
+          <p style={{ textAlign: 'center', margin: '32px 0 0', color: 'var(--text-secondary)', fontSize: 14 }}>
+            Don&apos;t have an account?{' '}
+            <Link to="/register" style={{ color: 'var(--accent-text)', textDecoration: 'none', fontWeight: 600 }}>
               Sign up
             </Link>
           </p>

@@ -2,3 +2,7 @@ node_modules
 .env
 .env.*
 secret key.md
+
+# Design reference assets (not for repo)
+stitch_assets/
+Jira vs. NiyoPlan* 

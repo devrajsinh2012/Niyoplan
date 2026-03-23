@@ -118,8 +118,8 @@ export default function CreateCompanyPage() {
       // Show success with invite code
       toast.success(`Company "${formData.name}" created successfully!`);
 
-      // Navigate to dashboard with welcome modal info
-      router.push(`/dashboard?welcome=true&org=${org.id}&code=${org.invite_code}`);
+      // Navigate to root dashboard with welcome modal info
+      router.push(`/?welcome=true&org=${org.id}&code=${org.invite_code}`);
 
     } catch (error) {
       console.error('Error creating company:', error);

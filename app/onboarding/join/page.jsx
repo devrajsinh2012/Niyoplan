@@ -59,7 +59,7 @@ export default function JoinCompanyPage() {
       if (existingMember) {
         if (existingMember.status === 'active') {
           toast.error('You are already a member of this company');
-          router.push('/dashboard');
+          router.push('/');
           return;
         } else if (existingMember.status === 'pending') {
           toast.error('Your request to join this company is already pending');
@@ -157,7 +157,7 @@ export default function JoinCompanyPage() {
             </div>
 
             <button
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push('/')}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors"
             >
               Go to Dashboard

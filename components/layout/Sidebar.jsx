@@ -163,9 +163,11 @@ export default function Sidebar({ project }) {
               <div className="truncate text-sm font-semibold text-[var(--text-heading)]">
                 {project?.name || 'Niyoplan'}
               </div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                {projectId ? 'Software Project' : 'Project Management'}
-              </div>
+              {projectId && (
+                <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                  Software Project
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -70,7 +70,7 @@ export function withOrganizationAuth(WrappedComponent, options = {}) {
       } else if (organizationStatus === 'no-organization') {
         router.push('/onboarding');
       } else if (organizationStatus === 'no-admin-access') {
-        router.push('/dashboard');
+        router.push('/');
       }
     }, [organizationStatus, router]);
 
@@ -101,7 +101,7 @@ export function withOrganizationAuth(WrappedComponent, options = {}) {
               You need admin permissions to access this page.
             </p>
             <button
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push('/')}
               className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
             >
               Go to Dashboard

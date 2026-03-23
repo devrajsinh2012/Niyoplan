@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { Loader2, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import TopNav from './TopNav';
 import Sidebar from './Sidebar';
 import { supabase } from '@/lib/supabase';
@@ -16,8 +16,8 @@ export default function AppShell({ children }) {
   const router = useRouter();
 
   const [theme, setTheme] = useState('light');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [currentProject, setCurrentProject] = useState(null);
+  const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
 
   // Initialize theme from localStorage
   useEffect(() => {
@@ -30,6 +30,28 @@ export default function AppShell({ children }) {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('niyoplan-theme', theme);
   }, [theme]);
+
+  // Listen for shortcuts modal event
+  useEffect(() => {
+    const handleShowShortcuts = () => setShortcutsModalOpen(true);
+    window.addEventListener('niyoplan:show-shortcuts', handleShowShortcuts);
+    return () => window.removeEventListener('niyoplan:show-shortcuts', handleShowShortcuts);
+  }, []);
+
+  // Keyboard shortcut: ? to open shortcuts modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setShortcutsModalOpen(true);
+      }
+      if (e.key === 'Escape') {
+        setShortcutsModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
 
@@ -68,6 +90,27 @@ export default function AppShell({ children }) {
     return null;
   }
 
+  const shortcuts = [
+    { category: 'Navigation', items: [
+      { keys: ['G', 'D'], description: 'Go to Dashboard' },
+      { keys: ['G', 'P'], description: 'Go to Projects' },
+      { keys: ['G', 'B'], description: 'Go to Board' },
+      { keys: ['G', 'L'], description: 'Go to Backlog' },
+      { keys: ['1-0'], description: 'Switch project tabs' },
+    ]},
+    { category: 'Issues', items: [
+      { keys: ['C'], description: 'Create new issue' },
+      { keys: ['E'], description: 'Edit selected issue' },
+      { keys: ['Enter'], description: 'Open selected issue' },
+      { keys: ['Esc'], description: 'Close modal' },
+    ]},
+    { category: 'General', items: [
+      { keys: ['?'], description: 'Show keyboard shortcuts' },
+      { keys: ['/'], description: 'Focus search' },
+      { keys: ['Ctrl', 'K'], description: 'Quick search' },
+    ]},
+  ];
+
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-[var(--bg-app)]">
       {/* ─── Top Navigation Bar ─── */}
@@ -86,32 +129,11 @@ export default function AppShell({ children }) {
 
       {/* ─── Body: Sidebar + Content ─── */}
       <div className="relative flex flex-1 overflow-hidden">
-
-        {/* Sidebar toggle button (ADS style: floating on edge) */}
-        <button
-          id="sidebar-toggle"
-          onClick={() => setSidebarCollapsed(c => !c)}
-          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className="absolute z-20 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-[var(--border-strong)] bg-[var(--bg-surface)] text-[var(--text-secondary)] shadow-sm transition-all duration-300"
-          style={{
-            top: 12,
-            left: sidebarCollapsed ? 8 : 'calc(var(--sidebar-width) - 12px)',
-          }}
-        >
-          {sidebarCollapsed
-            ? <PanelLeft size={13} />
-            : <PanelLeftClose size={13} />}
-        </button>
-
-        {/* ─── Project Sidebar ─── */}
-        <Sidebar
-          project={currentProject}
-          collapsed={sidebarCollapsed}
-          onCollapse={() => setSidebarCollapsed(c => !c)}
-        />
+        {/* ─── Project Sidebar (Gmail-style hover expand) ─── */}
+        <Sidebar project={currentProject} />
 
         {/* ─── Main Content Area ─── */}
-        <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+        <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden ml-16">
           {/* Subtle gradient overlay at top (Jira-style depth) */}
           <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-48 bg-gradient-to-b from-[var(--accent-primary)]/[0.03] to-transparent" />
 
@@ -120,6 +142,45 @@ export default function AppShell({ children }) {
           </div>
         </main>
       </div>
+
+      {/* Keyboard Shortcuts Modal */}
+      {shortcutsModalOpen && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShortcutsModalOpen(false)}>
+          <div className="w-full max-w-2xl rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-[var(--text-heading)]">Keyboard Shortcuts</h2>
+              <button
+                onClick={() => setShortcutsModalOpen(false)}
+                className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+              >
+                Press <kbd className="ml-1 px-2 py-0.5 bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded text-xs font-mono">Esc</kbd> to close
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {shortcuts.map((section) => (
+                <div key={section.category}>
+                  <h3 className="text-sm font-bold text-[var(--text-muted)] uppercase tracking-wider mb-3">{section.category}</h3>
+                  <div className="space-y-2">
+                    {section.items.map((shortcut, idx) => (
+                      <div key={idx} className="flex items-center justify-between">
+                        <span className="text-sm text-[var(--text-secondary)]">{shortcut.description}</span>
+                        <div className="flex items-center gap-1">
+                          {shortcut.keys.map((key, keyIdx) => (
+                            <React.Fragment key={keyIdx}>
+                              <kbd className="px-2 py-0.5 bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded text-xs font-mono text-[var(--text-primary)]">{key}</kbd>
+                              {keyIdx < shortcut.keys.length - 1 && <span className="text-[var(--text-muted)]">+</span>}
+                            </React.Fragment>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mobile bottom nav (xs screens only - placeholder support) */}
       <nav className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around border-t border-[var(--border-subtle)] bg-[var(--bg-panel)] px-4 py-2 md:hidden">

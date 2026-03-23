@@ -10,6 +10,8 @@ import CardDetail from './CardDetail';
 import './KanbanBoard.css';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
+import { Plus, LayoutGrid } from 'lucide-react';
+import InputModal from '@/components/ui/InputModal';
 
 const DEFAULT_LISTS = [
   { name: 'Backlog', rank: 1000 },
@@ -26,6 +28,9 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
   const [selectedCard, setSelectedCard] = useState(null);
   const [isSavingCard, setIsSavingCard] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showCreateCardModal, setShowCreateCardModal] = useState(false);
+  const [createCardListId, setCreateCardListId] = useState(null);
+  const [showCreateListModal, setShowCreateListModal] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -274,11 +279,10 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
     }
   };
 
-  const handleQuickAddCard = async (listId) => {
-    const title = prompt('Card title:');
-    if (!title || !title.trim()) return;
+  const handleQuickAddCard = async (title) => {
+    if (!title?.trim() || !createCardListId) return;
 
-    const listCards = cards.filter((item) => item.listId === listId);
+    const listCards = cards.filter((item) => item.listId === createCardListId);
     const maxRank = listCards.length ? Math.max(...listCards.map((item) => item.rank || 0)) : 0;
     const startDate = new Date().toISOString();
 
@@ -289,8 +293,8 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
         title: title.trim(),
         issue_type: 'task',
         priority: 'medium',
-        status: getStatusFromList(listId),
-        list_id: listId,
+        status: getStatusFromList(createCardListId),
+        list_id: createCardListId,
         rank: maxRank + 1000,
         start_date: startDate,
         due_date: startDate
@@ -305,6 +309,8 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
 
     setCards((prev) => [...prev, { ...data, prefix: data.custom_id, listId: data.list_id }]);
     toast.success('Card added');
+    setShowCreateCardModal(false);
+    setCreateCardListId(null);
   };
 
   const handleSaveCard = async (updates) => {
@@ -350,15 +356,14 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
     toast.success('Card updated');
   };
 
-  const handleCreateList = async () => {
-    const title = prompt('List Title:');
-    if (!title) return;
-    
+  const handleCreateList = async (title) => {
+    if (!title?.trim()) return;
+
     const maxRank = lists.length > 0 ? Math.max(...lists.map(l => l.rank)) : 0;
-    
+
     const { data, error } = await supabase.from('lists').insert({
       project_id: projectId,
-      name: title,
+      name: title.trim(),
       rank: maxRank + 1000
     }).select().single();
 
@@ -366,6 +371,8 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
       toast.error('Failed to create list');
     } else {
       setLists([...lists, data]);
+      toast.success('List created');
+      setShowCreateListModal(false);
     }
   };
 
@@ -408,20 +415,23 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
         <div className="kanban-board">
           <SortableContext items={displayLists.map(l => l.id)}>
             {displayLists.map(list => (
-              <KanbanColumn 
-                key={list.id} 
-                list={list} 
-                cards={cards.filter(c => c.listId === list.id).sort((a,b) => a.rank - b.rank)} 
+              <KanbanColumn
+                key={list.id}
+                list={list}
+                cards={cards.filter(c => c.listId === list.id).sort((a,b) => a.rank - b.rank)}
                 onCardOpen={(card) => {
                   setSelectedCard(card);
                   router.replace(`/projects/${projectId}?tab=board&cardId=${card.id}`);
                 }}
-                onQuickAddCard={handleQuickAddCard}
+                onQuickAddCard={(listId) => {
+                  setCreateCardListId(listId);
+                  setShowCreateCardModal(true);
+                }}
               />
             ))}
           </SortableContext>
           <div className="kanban-add-list-container">
-            <button className="add-list-btn" onClick={handleCreateList}>+ Add List</button>
+            <button className="add-list-btn" onClick={() => setShowCreateListModal(true)}>+ Add List</button>
           </div>
         </div>
 
@@ -442,6 +452,35 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
           isSaving={isSavingCard}
         />
       )}
+
+      {/* Create Card Modal */}
+      <InputModal
+        isOpen={showCreateCardModal}
+        onClose={() => {
+          setShowCreateCardModal(false);
+          setCreateCardListId(null);
+        }}
+        onSubmit={handleQuickAddCard}
+        title="Create Card"
+        label="Card Title"
+        placeholder="What needs to be done?"
+        icon={Plus}
+        submitLabel="Create Card"
+        maxLength={100}
+      />
+
+      {/* Create List Modal */}
+      <InputModal
+        isOpen={showCreateListModal}
+        onClose={() => setShowCreateListModal(false)}
+        onSubmit={handleCreateList}
+        title="Create List"
+        label="List Name"
+        placeholder="e.g. In Progress, Testing"
+        icon={LayoutGrid}
+        submitLabel="Create List"
+        maxLength={50}
+      />
     </div>
   );
 }

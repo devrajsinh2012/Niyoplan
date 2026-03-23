@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import UserAvatar from '@/components/ui/UserAvatar';
 
 const priorityColorMap = {
   highest: 'var(--priority-highest)',
@@ -50,10 +50,6 @@ export default function KanbanCard({ card, isOverlay, onOpen }) {
     );
   }
 
-
-  const initials = card.assignee?.full_name
-    ? card.assignee.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-    : null;
 
   return (
     <div
@@ -102,11 +98,9 @@ export default function KanbanCard({ card, isOverlay, onOpen }) {
         </div>
 
         {/* Assignee avatar */}
-        {(card.assignee || initials) && (
+        {card.assignee && (
           <div className="kanban-card-assignee" title={card.assignee?.full_name || ''}>
-            {card.assignee?.avatar_url
-              ? <Image src={card.assignee.avatar_url} alt="" width={24} height={24} />
-              : initials}
+            <UserAvatar user={card.assignee} size={24} />
           </div>
         )}
       </div>

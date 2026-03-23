@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabase';
 import { ExternalLink, FileText, Palette, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import UserAvatar from '@/components/ui/UserAvatar';
+import WelcomeModal from '@/components/ui/WelcomeModal';
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({ resolved: 0, open: 0, storyPoints: 0, velocity: 0 });
@@ -159,6 +161,8 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto w-full max-w-7xl animate-fade-in p-6 pb-20 text-primary">
+      <WelcomeModal />
+
       {/* Header */}
       <div className="mb-12">
         <nav className="mb-4 flex items-center gap-2 text-xs font-medium text-[var(--text-muted)]">
@@ -258,11 +262,11 @@ export default function DashboardPage() {
                       key={log.id}
                       className="flex gap-6 px-6 py-6 transition-colors hover:bg-[var(--bg-panel-hover)] group"
                     >
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#0C66E4] to-[#6554C0] text-sm font-bold text-white shadow-md overflow-hidden ring-2 ring-transparent group-hover:ring-[var(--accent-subtle)] transition-all">
-                        {log.user?.avatar_url
-                          ? <img src={log.user.avatar_url} alt="" className="h-full w-full object-cover" />
-                          : (log.user?.full_name?.charAt(0) || '?')}
-                      </div>
+                      <UserAvatar
+                        user={log.user}
+                        size={44}
+                        className="shrink-0 shadow-md ring-2 ring-transparent group-hover:ring-[var(--accent-subtle)] transition-all"
+                      />
                       <div className="flex-1 min-w-0 flex flex-col justify-center">
                         <div className="text-sm text-[var(--text-primary)] leading-relaxed">
                           <span className="font-bold text-[var(--text-heading)] hover:text-[var(--accent-primary)] cursor-pointer">
@@ -355,11 +359,11 @@ export default function DashboardPage() {
                   <div key={i} className="mb-8 last:mb-0 group cursor-default">
                     <div className="mb-3 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#0C66E4] to-[#6554C0] text-[11px] font-bold text-white overflow-hidden shadow-sm ring-1 ring-white">
-                          {w.avatar
-                            ? <img src={w.avatar} alt="" className="h-full w-full object-cover" />
-                            : w.name.charAt(0)}
-                        </div>
+                        <UserAvatar
+                          user={{ full_name: w.name, avatar_url: w.avatar, id: w.id }}
+                          size={32}
+                          className="shrink-0 shadow-sm ring-1 ring-white"
+                        />
                         <span className="truncate text-sm font-bold text-[var(--text-heading)] group-hover:text-[var(--accent-primary)] transition-colors">
                           {w.name}
                         </span>

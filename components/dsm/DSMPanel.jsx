@@ -17,9 +17,9 @@ function getMemberStatus(submittedAt) {
 }
 
 function getStatusBadge(status) {
-  if (status === 'updated') return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
-  if (status === 'stale') return 'bg-amber-500/15 text-amber-300 border-amber-500/30';
-  return 'bg-rose-500/15 text-rose-300 border-rose-500/30';
+  if (status === 'updated') return 'bg-emerald-50 text-emerald-600 border-emerald-200';
+  if (status === 'stale') return 'bg-amber-50 text-amber-600 border-amber-200';
+  return 'bg-rose-50 text-rose-600 border-rose-200';
 }
 
 export default function DSMPanel({ projectId }) {
@@ -161,7 +161,7 @@ export default function DSMPanel({ projectId }) {
 
   if (loading) {
     return (
-      <div className="glass-panel rounded-2xl p-8 flex items-center justify-center text-slate-300">
+      <div className="rounded-2xl p-8 bg-white border border-gray-200 flex items-center justify-center text-gray-600">
         Loading DSM workspace...
       </div>
     );
@@ -169,41 +169,41 @@ export default function DSMPanel({ projectId }) {
 
   return (
     <div className="space-y-6">
-      <section className="glass-panel rounded-2xl p-5 bg-slate-900/50 border border-slate-800">
+      <section className="rounded-2xl p-5 bg-white border border-gray-200 shadow-sm">
         <div className="flex flex-col lg:flex-row gap-6">
           <form className="flex-1 space-y-3" onSubmit={handleSubmit}>
-            <h3 className="text-white text-lg font-semibold">Daily Standup Entry</h3>
+            <h3 className="text-gray-900 text-lg font-semibold">Daily Standup Entry</h3>
             <textarea
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none text-sm min-h-[80px]"
+              className="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm min-h-[80px]"
               placeholder="What did you complete yesterday?"
               value={form.yesterday_text}
               onChange={(e) => handleInputChange('yesterday_text', e.target.value)}
             />
             <textarea
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none text-sm min-h-[80px]"
+              className="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm min-h-[80px]"
               placeholder="What are you doing today?"
               value={form.today_text}
               onChange={(e) => handleInputChange('today_text', e.target.value)}
             />
             <textarea
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none text-sm min-h-[64px]"
+              className="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm min-h-[64px]"
               placeholder="Any blockers?"
               value={form.blockers_text}
               onChange={(e) => handleInputChange('blockers_text', e.target.value)}
             />
             <div className="flex items-center gap-3">
-              <label className="text-sm text-slate-400 font-medium">Mood</label>
+              <label className="text-sm text-gray-500 font-medium">Mood</label>
               <select
-                className="bg-slate-800 border border-slate-700 rounded-lg p-2 text-white outline-none text-sm"
+                className="bg-white border border-gray-300 rounded-lg p-2 text-gray-900 outline-none text-sm"
                 value={form.mood_rating}
                 onChange={(e) => handleInputChange('mood_rating', e.target.value)}
               >
                 {moodOptions.map((mood) => (
-                  <option value={mood} key={mood} className="bg-slate-800">{mood}</option>
+                  <option value={mood} key={mood}>{mood}</option>
                 ))}
               </select>
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className="bg-blue-600 px-6 py-2 rounded-lg text-white font-semibold hover:bg-blue-700 transition-colors ml-auto text-sm disabled:opacity-50"
                 disabled={submitting}
               >
@@ -214,81 +214,81 @@ export default function DSMPanel({ projectId }) {
 
           <div className="lg:w-[420px] space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-white text-lg font-semibold">AI DSM Summary</h3>
-              <button 
-                className="bg-slate-800 border border-slate-700 rounded-lg px-4 py-1.5 text-xs text-slate-300 font-medium hover:bg-slate-700 transition-colors"
-                onClick={generateAiSummary} 
+              <h3 className="text-gray-900 text-lg font-semibold">AI DSM Summary</h3>
+              <button
+                className="bg-gray-100 border border-gray-200 rounded-lg px-4 py-1.5 text-xs text-gray-700 font-medium hover:bg-gray-200 transition-colors"
+                onClick={generateAiSummary}
                 disabled={summarizing}
               >
                 {summarizing ? 'Generating...' : 'Generate with Groq'}
               </button>
             </div>
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 text-sm text-slate-300 min-h-[176px] whitespace-pre-wrap leading-relaxed">
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-700 min-h-[176px] whitespace-pre-wrap leading-relaxed">
               {summary || 'Generate a summary to see overall progress, blockers, and suggested actions.'}
             </div>
           </div>
         </div>
       </section>
 
-      <section className="glass-panel rounded-2xl p-5 bg-slate-900/50 border border-slate-800">
+      <section className="rounded-2xl p-5 bg-white border border-gray-200 shadow-sm">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-white text-lg font-semibold">Team Grid</h3>
-          <div className="text-xs text-slate-400 font-medium">Latest entry per team member</div>
+          <h3 className="text-gray-900 text-lg font-semibold">Team Grid</h3>
+          <div className="text-xs text-gray-500 font-medium">Latest entry per team member</div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           {latestByMember.map((entry) => {
             const status = getMemberStatus(entry.submitted_at);
             return (
-              <article key={entry.id} className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 hover:border-slate-700 transition-colors">
+              <article key={entry.id} className="rounded-xl border border-gray-200 bg-white p-4 hover:border-gray-300 transition-colors shadow-sm">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-white font-semibold text-sm">{entry.user?.full_name || 'Unknown User'}</div>
+                  <div className="text-gray-900 font-semibold text-sm">{entry.user?.full_name || 'Unknown User'}</div>
                   <span className={`px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(status)}`}>
                     {status}
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-500 font-medium mb-2">
+                <p className="text-[10px] text-gray-500 font-medium mb-2">
                   Updated {formatDistanceToNow(new Date(entry.submitted_at), { addSuffix: true })}
                 </p>
-                <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed font-medium">Today: {entry.today_text}</p>
+                <p className="text-xs text-gray-700 line-clamp-2 leading-relaxed font-medium">Today: {entry.today_text}</p>
                 {entry.blockers_text && (
-                  <p className="text-xs text-rose-400 font-semibold line-clamp-2 mt-2">Blockers: {entry.blockers_text}</p>
+                  <p className="text-xs text-rose-600 font-semibold line-clamp-2 mt-2">Blockers: {entry.blockers_text}</p>
                 )}
               </article>
             );
           })}
           {latestByMember.length === 0 && (
-            <div className="text-slate-500 text-sm font-medium py-10 text-center col-span-full">No team entries yet.</div>
+            <div className="text-gray-400 text-sm font-medium py-10 text-center col-span-full">No team entries yet.</div>
           )}
         </div>
       </section>
 
-      <section className="glass-panel rounded-2xl p-5 bg-slate-900/50 border border-slate-800">
+      <section className="rounded-2xl p-5 bg-white border border-gray-200 shadow-sm">
         <div className="flex items-center justify-between mb-4 gap-4">
-          <h3 className="text-white text-lg font-semibold">DSM History</h3>
+          <h3 className="text-gray-900 text-lg font-semibold">DSM History</h3>
           <input
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:border-blue-500 outline-none text-sm max-w-sm"
+            className="w-full bg-white border border-gray-300 rounded-lg p-2.5 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm max-w-sm"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by member, yesterday, today, blockers"
           />
         </div>
 
-        <div className="space-y-3 max-h-[460px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-700">
+        <div className="space-y-3 max-h-[460px] overflow-y-auto pr-1">
           {filteredEntries.map((entry) => (
-            <article key={entry.id} className="rounded-xl border border-slate-800 bg-slate-900/80 p-5 hover:border-slate-700 transition-colors">
+            <article key={entry.id} className="rounded-xl border border-gray-200 bg-gray-50 p-5 hover:border-gray-300 transition-colors">
               <div className="flex items-center justify-between mb-3">
-                <div className="font-bold text-white text-sm">{entry.user?.full_name || 'Unknown User'}</div>
-                <div className="text-[10px] text-slate-500 font-medium">{new Date(entry.submitted_at).toLocaleString()}</div>
+                <div className="font-bold text-gray-900 text-sm">{entry.user?.full_name || 'Unknown User'}</div>
+                <div className="text-[10px] text-gray-500 font-medium">{new Date(entry.submitted_at).toLocaleString()}</div>
               </div>
               <div className="space-y-2">
-                <p className="text-xs text-slate-300 leading-relaxed font-medium"><span className="text-slate-500 mr-1.5 font-bold uppercase text-[9px]">Yesterday:</span> {entry.yesterday_text}</p>
-                <p className="text-xs text-slate-300 leading-relaxed font-medium"><span className="text-slate-500 mr-1.5 font-bold uppercase text-[9px]">Today:</span> {entry.today_text}</p>
-                <p className="text-xs text-slate-300 leading-relaxed font-medium"><span className="text-slate-500 mr-1.5 font-bold uppercase text-[9px]">Blockers:</span> {entry.blockers_text || <span className="text-slate-600 font-normal">None</span>}</p>
+                <p className="text-xs text-gray-700 leading-relaxed font-medium"><span className="text-gray-500 mr-1.5 font-bold uppercase text-[9px]">Yesterday:</span> {entry.yesterday_text}</p>
+                <p className="text-xs text-gray-700 leading-relaxed font-medium"><span className="text-gray-500 mr-1.5 font-bold uppercase text-[9px]">Today:</span> {entry.today_text}</p>
+                <p className="text-xs text-gray-700 leading-relaxed font-medium"><span className="text-gray-500 mr-1.5 font-bold uppercase text-[9px]">Blockers:</span> {entry.blockers_text || <span className="text-gray-400 font-normal">None</span>}</p>
               </div>
             </article>
           ))}
           {!filteredEntries.length && (
-            <div className="text-slate-600 text-sm font-medium py-20 text-center">No entries match your search.</div>
+            <div className="text-gray-400 text-sm font-medium py-20 text-center">No entries match your search.</div>
           )}
         </div>
       </section>

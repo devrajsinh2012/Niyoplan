@@ -1,40 +1,88 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { Search, Bell, HelpCircle, Sun, Moon, Plus, LogOut } from 'lucide-react';
+import { Search, Bell, Sun, Moon, Plus, LogOut, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
+import UserAvatar from '@/components/ui/UserAvatar';
 
 export default function TopNav({ onCreateClick, theme, onToggleTheme }) {
   const { profile, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [globalSearch, setGlobalSearch] = useState('');
   const menuRef = useRef(null);
+  const notificationRef = useRef(null);
 
   useEffect(() => {
     function handleClickOutside(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         setUserMenuOpen(false);
       }
+      if (notificationRef.current && !notificationRef.current.contains(e.target)) {
+        setNotificationsOpen(false);
+      }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!profile?.id) return;
+    setLoadingNotifications(true);
+    try {
+      const res = await fetch(`/api/notifications?userId=${profile.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  }, [profile?.id]);
+
+  useEffect(() => {
+    if (notificationsOpen) {
+      fetchNotifications();
+    }
+  }, [notificationsOpen, fetchNotifications]);
+
+  const markAsRead = async (id) => {
+    try {
+      await fetch(`/api/notifications/${id}/read`, { method: 'PATCH' });
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+    } catch (error) {
+      console.error('Failed to mark as read:', error);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      if (!profile?.id) return;
+      await fetch(`/api/notifications/mark-all-read?userId=${profile.id}`, { method: 'PATCH' });
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      toast.success('All notifications marked as read');
+    } catch (error) {
+      console.error('Failed to mark all as read:', error);
+    }
+  };
 
   const handleLogout = async () => {
     await signOut();
     router.push('/login');
   };
 
-  const initials = profile?.full_name
-    ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-    : 'U';
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   const getNavLinkClass = (href) => {
     const isActive = pathname === href || (href !== '/' && pathname.startsWith(href));
@@ -43,6 +91,19 @@ export default function TopNav({ onCreateClick, theme, onToggleTheme }) {
         ? 'text-[var(--accent-primary)] bg-[var(--accent-subtle)]'
         : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-panel-hover)]'
     }`;
+  };
+
+  const formatTimeAgo = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now - date) / 1000);
+    if (seconds < 60) return 'Just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
   };
 
   return (
@@ -70,7 +131,7 @@ export default function TopNav({ onCreateClick, theme, onToggleTheme }) {
         )}
       </nav>
 
-      {/* Create Button (Signature Jira Blue) */}
+      {/* Create Button */}
       <button
         id="global-create-btn"
         onClick={onCreateClick}
@@ -83,7 +144,7 @@ export default function TopNav({ onCreateClick, theme, onToggleTheme }) {
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Search Bar (ADS Style) */}
+      {/* Search Bar */}
       <div className={`relative transition-all duration-300 ${searchFocused ? 'max-w-md w-full' : 'max-w-[200px] w-full'}`}>
         <Search
           size={14}
@@ -112,14 +173,80 @@ export default function TopNav({ onCreateClick, theme, onToggleTheme }) {
 
       {/* Right Icons */}
       <div className="ml-2 flex items-center gap-0.5">
-        <button
-          className="flex h-8 w-8 items-center justify-center rounded-[3px] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)]"
-          title="Notifications"
-          onClick={() => toast('Notifications panel is coming soon.')}
-        >
-          <Bell size={18} />
-        </button>
+        {/* Notifications */}
+        <div className="relative" ref={notificationRef}>
+          <button
+            className="relative flex h-8 w-8 items-center justify-center rounded-[3px] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)]"
+            title="Notifications"
+            onClick={() => setNotificationsOpen(o => !o)}
+          >
+            <Bell size={18} />
+            {unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
 
+          {notificationsOpen && (
+            <div className="absolute right-0 top-[calc(100%+8px)] z-[200] w-[360px] overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-lg">
+              <div className="flex items-center justify-between border-b border-[var(--border-subtle)] px-4 py-3">
+                <h3 className="text-sm font-semibold text-[var(--text-heading)]">Notifications</h3>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={markAllAsRead}
+                    className="text-xs font-medium text-[var(--accent-primary)] hover:underline"
+                  >
+                    Mark all as read
+                  </button>
+                )}
+              </div>
+              <div className="max-h-[400px] overflow-y-auto">
+                {loadingNotifications ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--border-strong)] border-t-[var(--accent-primary)]" />
+                  </div>
+                ) : notifications.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <Bell size={32} className="mb-3 text-[var(--text-muted)]" />
+                    <p className="text-sm font-medium text-[var(--text-secondary)]">No new notifications</p>
+                    <p className="mt-1 text-xs text-[var(--text-muted)]">You are all caught up!</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-[var(--border-subtle)]">
+                    {notifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className={`flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-[var(--bg-panel-hover)] ${!notification.is_read ? 'bg-[var(--accent-subtle)]' : ''}`}
+                        onClick={() => !notification.is_read && markAsRead(notification.id)}
+                      >
+                        <UserAvatar
+                          user={{ id: notification.actor_id, full_name: notification.actor_name }}
+                          size={32}
+                          className="shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-[var(--text-primary)]">
+                            <span className="font-semibold">{notification.actor_name || 'Niyoplan'}</span>{' '}
+                            {notification.message || notification.type}
+                          </p>
+                          <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+                            {formatTimeAgo(notification.created_at)}
+                          </p>
+                        </div>
+                        {!notification.is_read && (
+                          <div className="h-2 w-2 shrink-0 rounded-full bg-[var(--accent-primary)]" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Theme Toggle */}
         <button
           className="flex h-8 w-8 items-center justify-center rounded-[3px] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)]"
           title="Toggle theme"
@@ -128,28 +255,14 @@ export default function TopNav({ onCreateClick, theme, onToggleTheme }) {
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
 
-        <button
-          className="flex h-8 w-8 items-center justify-center rounded-[3px] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)] md:flex"
-          title="Help"
-          onClick={() => toast('Open project docs from the Docs tab inside any project.')}
-        >
-          <HelpCircle size={18} />
-        </button>
-
         {/* User avatar / dropdown */}
         <div className="relative ml-1" ref={menuRef}>
           <button
             id="user-menu-trigger"
             onClick={() => setUserMenuOpen(o => !o)}
-            className="flex h-7 w-7 cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-transparent transition-all hover:border-[var(--accent-primary)]"
-            style={{
-              background: profile?.avatar_url ? 'transparent' : 'linear-gradient(135deg, #0C66E4, #6554C0)',
-            }}
+            className="flex cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-transparent transition-all hover:border-[var(--accent-primary)]"
           >
-            {profile?.avatar_url
-              ? <Image src={profile.avatar_url} alt="User" width={28} height={28} className="h-full w-full object-cover" />
-              : <span className="text-[11px] font-bold text-white">{initials}</span>
-            }
+            <UserAvatar user={profile} size={28} />
           </button>
 
           {userMenuOpen && (
@@ -159,9 +272,7 @@ export default function TopNav({ onCreateClick, theme, onToggleTheme }) {
               <div className="border-b border-[var(--border-subtle)] px-4 py-3">
                 <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Account</div>
                 <div className="mt-2 flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#0C66E4] to-[#6554C0] flex items-center justify-center text-white font-bold">
-                    {initials}
-                  </div>
+                  <UserAvatar user={profile} size={36} />
                   <div className="min-w-0">
                     <div className="truncate text-sm font-semibold text-[var(--text-heading)]">
                       {profile?.full_name || 'User'}
@@ -173,6 +284,14 @@ export default function TopNav({ onCreateClick, theme, onToggleTheme }) {
                 </div>
               </div>
               <div className="p-1">
+                <Link
+                  href="/settings/profile"
+                  className="flex w-full cursor-pointer items-center gap-2 rounded-[3px] px-3 py-2 text-left text-sm text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-panel-hover)]"
+                  onClick={() => setUserMenuOpen(false)}
+                >
+                  <Settings size={14} />
+                  Profile Settings
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="flex w-full cursor-pointer items-center gap-2 rounded-[3px] px-3 py-2 text-left text-sm text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-panel-hover)]"

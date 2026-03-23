@@ -1,14 +1,15 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import Image from 'next/image';
 import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import './SprintManager.css';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import toast from 'react-hot-toast';
-import { ChevronDown, ChevronRight, MoreHorizontal, Search } from 'lucide-react';
+import { ChevronDown, ChevronRight, MoreHorizontal, Search, Zap } from 'lucide-react';
+import UserAvatar from '@/components/ui/UserAvatar';
+import InputModal from '@/components/ui/InputModal';
 
 const issueTypeIcon = (type) => {
   const t = (type || '').toLowerCase();
@@ -45,17 +46,13 @@ function DraggableIssue({ issue }) {
     'TO DO': 'var(--status-todo)',
     'IN REVIEW': 'var(--status-review)'
   };
-  
+
   const bgMap = {
     'DONE': 'var(--bg-done)',
     'IN PROGRESS': 'var(--bg-inprogress)',
     'TO DO': 'var(--bg-todo)',
     'IN REVIEW': 'var(--bg-review)'
   };
-
-  const initials = issue.assignee?.full_name
-    ? issue.assignee.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-    : null;
 
   return (
     <div ref={setNodeRef} style={style} className={`backlog-row ${isDragging ? 'dragging' : ''}`} {...attributes} {...listeners}>
@@ -74,11 +71,9 @@ function DraggableIssue({ issue }) {
         <div className="status-badge" style={{ color: statusColorMap[statusLabel] || 'var(--status-todo)', background: bgMap[statusLabel] || 'var(--bg-todo)' }}>
           {statusLabel}
         </div>
-        {(issue.assignee || initials) && (
+        {issue.assignee && (
           <div className="row-assignee" title={issue.assignee?.full_name || ''}>
-            {issue.assignee?.avatar_url
-              ? <Image src={issue.assignee.avatar_url} alt="" width={24} height={24} />
-              : initials}
+            <UserAvatar user={issue.assignee} size={24} />
           </div>
         )}
         <div className="story-points">{issue.story_points || '-'}</div>
@@ -102,6 +97,7 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
   const [cards, setCards] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [collapsed, setCollapsed] = useState({});
+  const [showCreateSprintModal, setShowCreateSprintModal] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -131,18 +127,19 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
     if (projectId) fetchSprintsAndBacklog();
   }, [projectId, refreshNonce, fetchSprintsAndBacklog]);
 
-  const handleCreateSprint = async () => {
-    const name = prompt('Sprint Name (e.g. Sprint 4):');
-    if (!name) return;
+  const handleCreateSprint = async (name) => {
+    if (!name?.trim()) return;
 
     const { data, error } = await supabase.from('sprints').insert({
-      project_id: projectId, name, status: 'planning'
+      project_id: projectId, name: name.trim(), status: 'planning'
     }).select().single();
 
-    if (error) { toast.error('Failed to create sprint'); }
-    else {
+    if (error) {
+      toast.error('Failed to create sprint');
+    } else {
       setSprints([data, ...sprints]);
       toast.success('Sprint created');
+      setShowCreateSprintModal(false);
     }
   };
 
@@ -226,7 +223,7 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
         <h2 className="backlog-title">Backlog</h2>
         <div className="backlog-header-actions">
            <button className="rounded-[3px] border border-[var(--border-subtle)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--bg-panel-hover)] transition-colors flex items-center gap-1.5"><MoreHorizontal size={14} /> Insights</button>
-           <button className="bg-[#0052CC] text-white px-4 py-1.5 rounded-[3px] text-sm font-semibold hover:bg-[#0065FF] transition-colors" onClick={handleCreateSprint}>Create Sprint</button>
+           <button className="bg-[#0052CC] text-white px-4 py-1.5 rounded-[3px] text-sm font-semibold hover:bg-[#0065FF] transition-colors" onClick={() => setShowCreateSprintModal(true)}>Create Sprint</button>
         </div>
       </header>
 
@@ -239,7 +236,7 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
         
         <div className="avatar-filters">
            <div className="avatar-filter-btn">
-             {profile?.avatar_url ? <Image src={profile.avatar_url} alt="" width={24} height={24} /> : (profile?.full_name?.charAt(0) || 'U')}
+             <UserAvatar user={profile} size={24} />
            </div>
            <div className="avatar-filter-others">+5</div>
         </div>
@@ -310,7 +307,7 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
               <span className="sprint-meta">({backlog.length} issues)</span>
             </div>
             <div className="sprint-block-right">
-               <button className="rounded-[3px] border border-[var(--border-subtle)] px-3 py-1 text-sm font-medium hover:bg-slate-200 transition-colors" onClick={handleCreateSprint}>Create Sprint</button>
+               <button className="rounded-[3px] border border-[var(--border-subtle)] px-3 py-1 text-sm font-medium hover:bg-slate-200 transition-colors" onClick={() => setShowCreateSprintModal(true)}>Create Sprint</button>
             </div>
           </div>
 
@@ -328,6 +325,19 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
           )}
         </div>
       </DndContext>
+
+      {/* Create Sprint Modal */}
+      <InputModal
+        isOpen={showCreateSprintModal}
+        onClose={() => setShowCreateSprintModal(false)}
+        onSubmit={handleCreateSprint}
+        title="Create Sprint"
+        label="Sprint Name"
+        placeholder="e.g. Sprint 4, Q1 Sprint 2"
+        icon={Zap}
+        submitLabel="Create Sprint"
+        maxLength={50}
+      />
     </div>
   );
 }

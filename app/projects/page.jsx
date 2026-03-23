@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { FolderKanban, Plus, Star, Activity } from 'lucide-react';
 import toast from 'react-hot-toast';
+import UserAvatar from '@/components/ui/UserAvatar';
 
 const DEFAULT_LISTS = [
   { name: 'Backlog', rank: 1000 },
@@ -243,10 +244,8 @@ export default function ProjectsPage() {
               
               <div className="mt-auto flex items-center justify-between border-t border-[var(--border-subtle)] pt-5">
                 <div className="flex items-center -space-x-2">
-                  <div className="relative z-20 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-[var(--bg-surface)] bg-[#0052CC] text-[10px] font-bold text-white shadow-sm overflow-hidden" title={project.profiles?.full_name}>
-                    {project.profiles?.avatar_url 
-                      ? <Image src={project.profiles.avatar_url} alt="" width={24} height={24} className="h-full w-full object-cover"/>
-                      : (project.profiles?.full_name?.charAt(0) || '?')}
+                  <div className="relative z-20 border-2 border-[var(--bg-surface)] rounded-full shadow-sm" title={project.profiles?.full_name}>
+                    <UserAvatar user={project.profiles} size={24} />
                   </div>
                   <div className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-[var(--bg-surface)] bg-[#F4F5F7] text-[10px] font-bold text-[#42526E] shadow-sm">
                     +4

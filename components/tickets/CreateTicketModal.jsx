@@ -18,7 +18,7 @@ export default function CreateTicketModal({ projectId, onClose, onCreated }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [users, setUsers] = useState([]);
   const { profile } = useAuth();
-  
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -29,7 +29,6 @@ export default function CreateTicketModal({ projectId, onClose, onCreated }) {
   });
 
   useEffect(() => {
-    // Fetch workspace users for assignee dropdown
     const fetchUsers = async () => {
       const { data } = await supabase.from('profiles').select('id, full_name');
       if (data) setUsers(data);
@@ -104,8 +103,7 @@ export default function CreateTicketModal({ projectId, onClose, onCreated }) {
         .single();
 
       if (error) throw error;
-      
-      // Log activity
+
       await supabase.from('activity_log').insert({
         card_id: data.id,
         user_id: profile.id,
@@ -124,57 +122,54 @@ export default function CreateTicketModal({ projectId, onClose, onCreated }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-fade-in">
-      <div className="glass-card w-full max-w-2xl rounded-2xl border border-slate-700 shadow-2xl flex flex-col max-h-[90vh] bg-slate-900">
-        
-        <div className="p-6 border-b border-slate-800 flex justify-between items-center text-primary">
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <AlertCircle className="text-blue-400" size={24} />
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+      <div className="w-full max-w-2xl rounded-2xl border border-gray-200 shadow-2xl flex flex-col max-h-[90vh] bg-white">
+
+        <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <AlertCircle className="text-blue-600" size={24} />
             Create Issue
           </h2>
-          <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-900 transition-colors">
             <X size={24} />
           </button>
         </div>
-        
+
         <div className="p-6 overflow-y-auto flex-1">
           <form id="create-ticket-form" onSubmit={handleSubmit} className="space-y-6 flex flex-col">
-            
-            {/* Title */}
-            <div className="text-primary">
-              <label className="label-dark text-slate-300 mb-2 block">Summary / Title *</label>
+
+            <div>
+              <label className="text-gray-700 mb-2 block text-sm font-medium">Summary / Title *</label>
               <input
                 name="title"
                 required
                 type="text"
-                className="input-dark text-lg w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                className="text-lg w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                 placeholder="What needs to be done?"
                 value={formData.title}
                 onChange={handleChange}
               />
             </div>
 
-            {/* Description */}
-            <div className="text-primary">
-              <label className="label-dark text-slate-300 mb-2 block">Description</label>
+            <div>
+              <label className="text-gray-700 mb-2 block text-sm font-medium">Description</label>
               <textarea
                 name="description"
-                className="input-dark min-h-[150px] resize-y w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                className="min-h-[150px] resize-y w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                 placeholder="Add details, acceptance criteria, context..."
                 value={formData.description}
                 onChange={handleChange}
               />
             </div>
 
-            {/* 3-Column Meta Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-primary">
-              
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+
               <div>
-                <label className="label-dark text-slate-300 mb-2 block">Issue Type</label>
-                <select 
-                  name="issue_type" 
-                  className="input-dark w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none" 
-                  value={formData.issue_type} 
+                <label className="text-gray-700 mb-2 block text-sm font-medium">Issue Type</label>
+                <select
+                  name="issue_type"
+                  className="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                  value={formData.issue_type}
                   onChange={handleChange}
                 >
                   <option value="task">Task</option>
@@ -185,11 +180,11 @@ export default function CreateTicketModal({ projectId, onClose, onCreated }) {
               </div>
 
               <div>
-                <label className="label-dark text-slate-300 mb-2 block">Priority</label>
-                <select 
-                  name="priority" 
-                  className="input-dark w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none" 
-                  value={formData.priority} 
+                <label className="text-gray-700 mb-2 block text-sm font-medium">Priority</label>
+                <select
+                  name="priority"
+                  className="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                  value={formData.priority}
                   onChange={handleChange}
                 >
                   <option value="urgent">Urgent</option>
@@ -200,13 +195,13 @@ export default function CreateTicketModal({ projectId, onClose, onCreated }) {
               </div>
 
               <div>
-                <label className="label-dark text-slate-300 mb-2 block">Story Points</label>
+                <label className="text-gray-700 mb-2 block text-sm font-medium">Story Points</label>
                 <input
                   name="story_points"
                   type="number"
                   min="0"
                   max="100"
-                  className="input-dark font-mono w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                  className="font-mono w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                   placeholder="e.g. 5"
                   value={formData.story_points}
                   onChange={handleChange}
@@ -214,13 +209,12 @@ export default function CreateTicketModal({ projectId, onClose, onCreated }) {
               </div>
             </div>
 
-            {/* Assignee */}
-            <div className="text-primary">
-              <label className="label-dark text-slate-300 mb-2 block">Assignee</label>
-              <select 
-                name="assignee_id" 
-                className="input-dark w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none" 
-                value={formData.assignee_id} 
+            <div>
+              <label className="text-gray-700 mb-2 block text-sm font-medium">Assignee</label>
+              <select
+                name="assignee_id"
+                className="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                value={formData.assignee_id}
                 onChange={handleChange}
               >
                 <option value="">Unassigned</option>
@@ -233,17 +227,17 @@ export default function CreateTicketModal({ projectId, onClose, onCreated }) {
           </form>
         </div>
 
-        <div className="p-6 border-t border-slate-800 flex justify-end gap-3 bg-slate-900/50 rounded-b-2xl">
-          <button 
-            type="button" 
-            onClick={onClose} 
-            className="rounded-lg px-6 py-2 text-slate-400 hover:text-white hover:bg-slate-800 transition-all font-semibold"
+        <div className="p-6 border-t border-gray-200 flex justify-end gap-3 bg-gray-50 rounded-b-2xl">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg px-6 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all font-semibold"
           >
             Cancel
           </button>
-          <button 
-            form="create-ticket-form" 
-            type="submit" 
+          <button
+            form="create-ticket-form"
+            type="submit"
             disabled={isSubmitting}
             className="rounded-lg bg-blue-600 px-8 py-2 text-white hover:bg-blue-700 disabled:opacity-50 transition-all shadow-lg shadow-blue-500/20 active:scale-95 flex items-center gap-2 font-semibold"
           >

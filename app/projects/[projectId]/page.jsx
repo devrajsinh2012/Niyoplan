@@ -23,6 +23,7 @@ import GoalsPanel from '@/components/goals/GoalsPanel';
 import DocsWorkspacePanel from '@/components/docs/DocsWorkspacePanel';
 import WorkspaceViewsPanel from '@/components/workspace/WorkspaceViewsPanel';
 import AIToolsPanel from '@/components/ai/AIToolsPanel';
+import UserAvatar from '@/components/ui/UserAvatar';
 
 class TabErrorBoundary extends React.Component {
   constructor(props) {
@@ -61,7 +62,6 @@ export default function ProjectDetailPage() {
   const [cards, setCards] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [showShortcuts, setShowShortcuts] = useState(false);
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [selectedCard, setSelectedCard] = useState(null);
   const [isSavingCard, setIsSavingCard] = useState(false);
@@ -136,18 +136,7 @@ export default function ProjectDetailPage() {
       const tag = event.target?.tagName?.toLowerCase();
       const isTypingTarget = tag === 'input' || tag === 'textarea' || event.target?.isContentEditable;
 
-      if (event.key === 'Escape') {
-        setShowShortcuts(false);
-        return;
-      }
-
       if (isTypingTarget) return;
-
-      if (event.key === '?') {
-        event.preventDefault();
-        setShowShortcuts((prev) => !prev);
-        return;
-      }
 
       if (event.key === '/') {
         event.preventDefault();
@@ -284,12 +273,11 @@ export default function ProjectDetailPage() {
             </div>
             <p className="text-[var(--text-secondary)] max-w-2xl text-sm leading-relaxed">{project.description}</p>
           </div>
-          
+
           <div className="flex items-center gap-2">
-            <button onClick={() => setShowShortcuts(true)} className="rounded-[3px] border border-[var(--border-subtle)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--bg-panel-hover)] transition-colors">Shortcuts (?)</button>
             {canWrite && (
-              <button 
-                onClick={() => setShowModal(true)} 
+              <button
+                onClick={() => setShowModal(true)}
                 className="flex items-center gap-2 rounded-[3px] bg-[#0052CC] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#0065FF]"
               >
                 <Plus size={18} strokeWidth={2.5} />
@@ -387,13 +375,7 @@ export default function ProjectDetailPage() {
                         </td>
                         <td className="p-4">
                           <div className="flex items-center gap-2">
-                             <div className="w-6 h-6 rounded-full bg-[var(--bg-panel-hover)] overflow-hidden flex items-center justify-center border border-[var(--border-subtle)]">
-                              {card.assignee?.avatar_url ? (
-                                <img src={card.assignee.avatar_url} alt="Assignee" className="w-full h-full object-cover" />
-                              ) : (
-                                <span className="text-[10px] font-bold text-[var(--text-muted)]">{card.assignee?.full_name?.charAt(0) || 'U'}</span>
-                              )}
-                            </div>
+                            <UserAvatar user={card.assignee} size={24} className="border border-[var(--border-subtle)]" />
                             <span className="text-[var(--text-secondary)] text-xs font-medium truncate max-w-[100px]" title={card.assignee?.full_name}>
                               {card.assignee?.full_name?.split(' ')[0] || 'Unassigned'}
                             </span>
@@ -505,40 +487,6 @@ export default function ProjectDetailPage() {
         />
       )}
 
-      {showShortcuts && (
-        <div className="fixed inset-0 z-[2000] bg-[var(--bg-app)]/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowShortcuts(false)}>
-          <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[4px] shadow-2xl w-full max-w-xl p-8" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-[var(--text-heading)] text-xl font-bold">Keyboard Shortcuts</h3>
-              <button 
-                className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-                onClick={() => setShowShortcuts(false)}
-              >
-                Close (Esc)
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-x-12 gap-y-4 text-sm">
-              <div className="flex justify-between border-b border-[var(--border-subtle)] pb-2">
-                <span className="text-[var(--text-secondary)]">Switch tabs</span>
-                <kbd className="bg-[var(--bg-panel)] px-2 py-0.5 rounded border border-[var(--border-strong)] font-mono font-bold">1-0</kbd>
-              </div>
-              <div className="flex justify-between border-b border-[var(--border-subtle)] pb-2">
-                <span className="text-[var(--text-secondary)]">Focus list search</span>
-                <kbd className="bg-[var(--bg-panel)] px-2 py-0.5 rounded border border-[var(--border-strong)] font-mono font-bold">/</kbd>
-              </div>
-              <div className="flex justify-between border-b border-[var(--border-subtle)] pb-2">
-                <span className="text-[var(--text-secondary)]">Create issue</span>
-                <kbd className="bg-[var(--bg-panel)] px-2 py-0.5 rounded border border-[var(--border-strong)] font-mono font-bold">C</kbd>
-              </div>
-              <div className="flex justify-between border-b border-[var(--border-subtle)] pb-2">
-                <span className="text-[var(--text-secondary)]">Show shortcuts</span>
-                <kbd className="bg-[var(--bg-panel)] px-2 py-0.5 rounded border border-[var(--border-strong)] font-mono font-bold">?</kbd>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      
     </div>
   );
 }

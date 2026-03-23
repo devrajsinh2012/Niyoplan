@@ -7,6 +7,7 @@ import { Loader2, PanelLeftClose, PanelLeft } from 'lucide-react';
 import TopNav from './TopNav';
 import Sidebar from './Sidebar';
 import { supabase } from '@/lib/supabase';
+import toast from 'react-hot-toast';
 
 export default function AppShell({ children }) {
   const { loading, user } = useAuth();
@@ -17,7 +18,6 @@ export default function AppShell({ children }) {
   const [theme, setTheme] = useState('light');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [currentProject, setCurrentProject] = useState(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Initialize theme from localStorage
   useEffect(() => {
@@ -72,7 +72,14 @@ export default function AppShell({ children }) {
     <div className="flex h-screen w-full flex-col overflow-hidden bg-[var(--bg-app)]">
       {/* ─── Top Navigation Bar ─── */}
       <TopNav
-        onCreateClick={() => setShowCreateModal(true)}
+        onCreateClick={() => {
+          if (projectId) {
+            window.dispatchEvent(new CustomEvent('niyoplan:create-issue'));
+            return;
+          }
+          toast('Open a project to create an issue.');
+          router.push('/projects');
+        }}
         theme={theme}
         onToggleTheme={toggleTheme}
       />

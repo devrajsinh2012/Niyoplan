@@ -28,6 +28,7 @@ export default function MeetingReviewsPanel({ projectId }) {
     try {
       const loadPm = async () => {
         const res = await fetch(`/api/projects/${projectId}/meetings/pm`);
+        if (!res.ok) return [];
         return res.json();
       };
       const loadHr = async () => {
@@ -37,13 +38,14 @@ export default function MeetingReviewsPanel({ projectId }) {
       };
       const loadCal = async () => {
         const res = await fetch(`/api/projects/${projectId}/meetings/calendar`);
+        if (!res.ok) return [];
         return res.json();
       };
 
       const [pm, hr, cal] = await Promise.all([loadPm(), loadHr(), loadCal()]);
-      setPmReviews(pm || []);
-      setHrReviews(hr || []);
-      setCalendarRows(cal || []);
+      setPmReviews(Array.isArray(pm) ? pm : []);
+      setHrReviews(Array.isArray(hr) ? hr : []);
+      setCalendarRows(Array.isArray(cal) ? cal : []);
     } catch (error) {
       console.error(error);
       toast.error('Failed to load meetings data');
@@ -262,7 +264,7 @@ export default function MeetingReviewsPanel({ projectId }) {
           <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-700">
             {calendarRows.map((row) => (
               <div key={`${row.type}-${row.id}`} className="border border-slate-800 rounded-lg p-3 bg-slate-900/40 hover:border-slate-700 transition-colors">
-                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{row.date} • {row.type.replace('_', ' ')}</div>
+                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{row.date || '-'} • {(row.type || 'event').replace('_', ' ')}</div>
                 <div className="text-sm text-white font-semibold mt-0.5">{row.title}</div>
                 <div className="text-xs text-slate-400 mt-1 leading-relaxed">{row.details || 'No details'}</div>
               </div>

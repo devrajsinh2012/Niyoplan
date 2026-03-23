@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter, usePathname } from 'next/navigation';
+import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import {
   ChevronDown, ChevronRight,
@@ -28,15 +28,15 @@ const NavSection = ({ title, children }) => {
   );
 };
 
-const SideNavItem = ({ href, icon: Icon, label }) => {
+const SideNavItem = ({ href, icon: Icon, label, isActive }) => {
   const pathname = usePathname();
-  const isActive = pathname === href || (href !== '/' && pathname.startsWith(href));
+  const active = isActive ?? (pathname === href || (href !== '/' && pathname.startsWith(href)));
   
   return (
     <Link
       href={href}
       className={`flex items-center gap-3 px-3 py-2 rounded-[3px] text-sm font-medium transition-all duration-200 ${
-        isActive
+        active
           ? 'bg-[var(--accent-subtle)] text-[var(--accent-primary)] border-r-2 border-[var(--accent-primary)]'
           : 'text-[var(--text-secondary)] hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)] border-r-2 border-transparent'
       }`}
@@ -51,7 +51,13 @@ export default function Sidebar({ project, collapsed }) {
   const { profile } = useAuth();
   const { projectId: paramsId } = useParams();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const projectId = paramsId || project?.id;
+  const activeTab = searchParams.get('tab') || 'list';
+
+  const projectTabHref = (tab) => `/projects/${projectId}?tab=${tab}`;
+  const onProjectPage = pathname === `/projects/${projectId}`;
 
   return (
     <aside
@@ -85,22 +91,22 @@ export default function Sidebar({ project, collapsed }) {
         {projectId ? (
           <div className="space-y-4">
             <NavSection title="Planning">
-              <SideNavItem href={`/projects/${projectId}`} icon={Layers} label="Backlog" />
-              <SideNavItem href={`/projects/${projectId}/board`} icon={KanbanSquare} label="Board" />
-              <SideNavItem href={`/projects/${projectId}/gantt`} icon={Calendar} label="Timeline" />
+              <SideNavItem href={projectTabHref('backlog')} icon={Layers} label="Backlog" isActive={onProjectPage && activeTab === 'backlog'} />
+              <SideNavItem href={projectTabHref('board')} icon={KanbanSquare} label="Board" isActive={onProjectPage && activeTab === 'board'} />
+              <SideNavItem href={projectTabHref('gantt')} icon={Calendar} label="Timeline" isActive={onProjectPage && activeTab === 'gantt'} />
             </NavSection>
 
             <NavSection title="Development">
-              <SideNavItem href={`/projects/${projectId}/dsm`} icon={Zap} label="DSM Module" />
-              <SideNavItem href={`/projects/${projectId}/meetings`} icon={MessageSquare} label="Meetings" />
-              <SideNavItem href={`/projects/${projectId}/goals`} icon={Target} label="Goals & OKRs" />
-              <SideNavItem href={`/projects/${projectId}/docs`} icon={BookOpen} label="Docs" />
-              <SideNavItem href={`/projects/${projectId}/ai`} icon={Zap} label="AI Tools" />
+              <SideNavItem href={projectTabHref('dsm')} icon={Zap} label="DSM Module" isActive={onProjectPage && activeTab === 'dsm'} />
+              <SideNavItem href={projectTabHref('meetings')} icon={MessageSquare} label="Meetings" isActive={onProjectPage && activeTab === 'meetings'} />
+              <SideNavItem href={projectTabHref('goals')} icon={Target} label="Goals & OKRs" isActive={onProjectPage && activeTab === 'goals'} />
+              <SideNavItem href={projectTabHref('docs')} icon={BookOpen} label="Docs" isActive={onProjectPage && activeTab === 'docs'} />
+              <SideNavItem href={projectTabHref('ai-tools')} icon={Zap} label="AI Tools" isActive={onProjectPage && activeTab === 'ai-tools'} />
             </NavSection>
 
             <NavSection title="Analytics">
-              <SideNavItem href={`/projects/${projectId}/reports`} icon={BarChart2} label="Reports" />
-              <SideNavItem href={`/projects/${projectId}/list`} icon={Tag} label="Issues" />
+              <SideNavItem href={projectTabHref('views')} icon={BarChart2} label="Reports" isActive={onProjectPage && activeTab === 'views'} />
+              <SideNavItem href={projectTabHref('list')} icon={Tag} label="Issues" isActive={onProjectPage && activeTab === 'list'} />
             </NavSection>
           </div>
         ) : (
@@ -108,7 +114,7 @@ export default function Sidebar({ project, collapsed }) {
             <SideNavItem href="/" icon={LayoutDashboard} label="Dashboard" />
             <SideNavItem href="/projects" icon={KanbanSquare} label="Projects" />
             {profile?.role === 'admin' && (
-              <SideNavItem href="/admin" icon={Settings} label="Admin Settings" />
+              <SideNavItem href="/admin/settings" icon={Settings} label="Admin Settings" />
             )}
           </div>
         )}
@@ -117,7 +123,7 @@ export default function Sidebar({ project, collapsed }) {
       {/* Project Settings at bottom */}
       {projectId && (
         <div className="shrink-0 border-t border-[var(--border-subtle)] p-2">
-          <SideNavItem href={`/projects/${projectId}/settings`} icon={Settings} label="Project settings" />
+          <SideNavItem href={projectTabHref('views')} icon={Settings} label="Project settings" isActive={onProjectPage && activeTab === 'views'} />
         </div>
       )}
     </aside>

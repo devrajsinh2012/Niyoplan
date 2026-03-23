@@ -18,8 +18,9 @@ export default function GoalsPanel({ projectId }) {
     setLoading(true);
     try {
       const res = await fetch(`/api/projects/${projectId}/goals`);
+      if (!res.ok) throw new Error('Failed to load goals');
       const data = await res.json();
-      setGoals(data || []);
+      setGoals(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error(error);
       toast.error('Failed to load goals');

@@ -14,6 +14,7 @@ import toast from 'react-hot-toast';
 // Sub-components
 import CreateTicketModal from '@/components/tickets/CreateTicketModal';
 import KanbanBoard from '@/components/kanban/KanbanBoard';
+import CardDetail from '@/components/kanban/CardDetail';
 import SprintManager from '@/components/sprints/SprintManager';
 import GanttChart from '@/components/gantt/GanttChart';
 import DSMPanel from '@/components/dsm/DSMPanel';
@@ -22,6 +23,33 @@ import GoalsPanel from '@/components/goals/GoalsPanel';
 import DocsWorkspacePanel from '@/components/docs/DocsWorkspacePanel';
 import WorkspaceViewsPanel from '@/components/workspace/WorkspaceViewsPanel';
 import AIToolsPanel from '@/components/ai/AIToolsPanel';
+
+class TabErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error) {
+    console.error('Project tab render error:', error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 text-sm text-[var(--text-secondary)]">
+          This tab failed to render. Please switch tabs and try again.
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -35,9 +63,16 @@ export default function ProjectDetailPage() {
   const [showModal, setShowModal] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [refreshNonce, setRefreshNonce] = useState(0);
+  const [selectedCard, setSelectedCard] = useState(null);
+  const [isSavingCard, setIsSavingCard] = useState(false);
   
   // Get active tab from URL search params or default to 'list'
-  const activeTab = searchParams.get('tab') || 'list';
+  const requestedTab = searchParams.get('tab') || 'list';
+  const tabAliases = {
+    ai: 'ai-tools',
+    'ai-tools': 'ai-tools'
+  };
+  const activeTab = tabAliases[requestedTab] || requestedTab;
   const { profile } = useAuth();
   const searchInputRef = useRef(null);
   const canWrite = ['admin', 'pm', 'member'].includes(profile?.role);
@@ -52,7 +87,7 @@ export default function ProjectDetailPage() {
     { id: 'goals', name: 'Goals & OKRs', icon: Target },
     { id: 'docs', name: 'Docs', icon: LayoutGrid },
     { id: 'views', name: 'Views & Inbox', icon: ListIcon },
-    { id: 'ai', name: 'AI Tools', icon: Sparkles },
+    { id: 'ai-tools', name: 'AI Tools', icon: Sparkles },
   ]), []);
   
   // Filtering for List view
@@ -91,6 +126,12 @@ export default function ProjectDetailPage() {
   }, [fetchProjectAndCards]);
 
   useEffect(() => {
+    const openModal = () => setShowModal(true);
+    window.addEventListener('niyoplan:create-issue', openModal);
+    return () => window.removeEventListener('niyoplan:create-issue', openModal);
+  }, []);
+
+  useEffect(() => {
     const onKeyDown = (event) => {
       const tag = event.target?.tagName?.toLowerCase();
       const isTypingTarget = tag === 'input' || tag === 'textarea' || event.target?.isContentEditable;
@@ -110,7 +151,7 @@ export default function ProjectDetailPage() {
 
       if (event.key === '/') {
         event.preventDefault();
-        setActiveTab('list');
+        router.push(`/projects/${id}?tab=list`);
         requestAnimationFrame(() => searchInputRef.current?.focus());
         return;
       }
@@ -143,6 +184,46 @@ export default function ProjectDetailPage() {
     router.push(`/projects/${id}?tab=${tabId}`);
   };
 
+  const handleSaveCard = async (updates) => {
+    if (!selectedCard?.id) return;
+    setIsSavingCard(true);
+
+    const payload = {
+      title: updates.title,
+      description: updates.description,
+      priority: updates.priority,
+      status: updates.status,
+      story_points: updates.story_points,
+      start_date: updates.start_date || null,
+      due_date: updates.due_date || null,
+    };
+
+    const { data, error } = await supabase
+      .from('cards')
+      .update(payload)
+      .eq('id', selectedCard.id)
+      .select('*, assignee:profiles!cards_assignee_id_fkey(full_name, avatar_url)')
+      .single();
+
+    setIsSavingCard(false);
+
+    if (error) {
+      toast.error('Failed to save card');
+      return;
+    }
+
+    setCards((prev) => prev.map((item) => (item.id === data.id ? data : item)));
+    setSelectedCard((prev) => (prev?.id === data.id ? data : prev));
+    toast.success('Card updated');
+  };
+
+  useEffect(() => {
+    const selectedCardId = searchParams.get('cardId');
+    if (!selectedCardId || !cards.length) return;
+    const match = cards.find((card) => card.id === selectedCardId);
+    if (match) setSelectedCard(match);
+  }, [cards, searchParams]);
+
   const getStatusColor = (status) => {
     const map = {
       backlog: 'bg-[#F4F5F7] text-[#42526E]',
@@ -170,6 +251,12 @@ export default function ProjectDetailPage() {
                           card.custom_id.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
+
+  useEffect(() => {
+    if (!tabs.some((tab) => tab.id === activeTab)) {
+      router.replace(`/projects/${id}?tab=list`);
+    }
+  }, [tabs, activeTab, router, id]);
 
   if (isLoading) return <div className="flex justify-center py-40"><div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-[var(--accent-primary)]"></div></div>;
 
@@ -234,7 +321,8 @@ export default function ProjectDetailPage() {
       {/* Tab Contents */}
       <div className="flex-1 shrink-0 flex flex-col">
         {activeTab === 'list' && (
-          <div className="flex flex-col flex-1 animate-fade-in">
+          <TabErrorBoundary>
+            <div className="flex flex-col flex-1 animate-fade-in">
             <div className="flex flex-col sm:flex-row gap-4 justify-between items-center mb-4">
               <div className="relative w-full sm:max-w-xs">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} />
@@ -281,7 +369,11 @@ export default function ProjectDetailPage() {
                   </thead>
                   <tbody className="divide-y divide-[var(--border-subtle)] text-[var(--text-primary)] text-sm">
                     {filteredCards.map(card => (
-                      <tr key={card.id} className="hover:bg-[var(--bg-panel-hover)] transition-colors group cursor-pointer">
+                      <tr
+                        key={card.id}
+                        className="hover:bg-[var(--bg-panel-hover)] transition-colors group cursor-pointer"
+                        onClick={() => setSelectedCard(card)}
+                      >
                         <td className="p-4 font-mono font-medium text-[var(--accent-primary)] hover:underline">{card.custom_id}</td>
                         <td className="p-4 font-medium text-[var(--text-heading)] pr-8">{card.title}</td>
                         <td className="p-4 uppercase text-[10px] font-bold tracking-wide text-[var(--text-muted)]">{card.issue_type}</td>
@@ -322,7 +414,8 @@ export default function ProjectDetailPage() {
                 </table>
               </div>
             </div>
-          </div>
+            </div>
+          </TabErrorBoundary>
         )}
 
         {activeTab === 'board' && (
@@ -332,9 +425,11 @@ export default function ProjectDetailPage() {
         )}
 
         {activeTab === 'backlog' && (
-          <div className="flex-1 animate-fade-in flex flex-col">
-            <SprintManager projectId={id} refreshNonce={refreshNonce} />
-          </div>
+          <TabErrorBoundary>
+            <div className="flex-1 animate-fade-in flex flex-col">
+              <SprintManager projectId={id} refreshNonce={refreshNonce} />
+            </div>
+          </TabErrorBoundary>
         )}
 
         {activeTab === 'gantt' && (
@@ -350,38 +445,64 @@ export default function ProjectDetailPage() {
         )}
 
         {activeTab === 'meetings' && (
-          <div className="flex-1 animate-fade-in flex flex-col">
-            <MeetingReviewsPanel projectId={id} />
-          </div>
+          <TabErrorBoundary>
+            <div className="flex-1 animate-fade-in flex flex-col">
+              <MeetingReviewsPanel projectId={id} />
+            </div>
+          </TabErrorBoundary>
         )}
 
         {activeTab === 'goals' && (
-          <div className="flex-1 animate-fade-in flex flex-col">
-            <GoalsPanel projectId={id} />
-          </div>
+          <TabErrorBoundary>
+            <div className="flex-1 animate-fade-in flex flex-col">
+              <GoalsPanel projectId={id} />
+            </div>
+          </TabErrorBoundary>
         )}
 
         {activeTab === 'docs' && (
-          <div className="flex-1 animate-fade-in flex flex-col">
-            <DocsWorkspacePanel projectId={id} />
-          </div>
+          <TabErrorBoundary>
+            <div className="flex-1 animate-fade-in flex flex-col">
+              <DocsWorkspacePanel projectId={id} />
+            </div>
+          </TabErrorBoundary>
         )}
 
         {activeTab === 'views' && (
-          <div className="flex-1 animate-fade-in flex flex-col">
-            <WorkspaceViewsPanel projectId={id} />
-          </div>
+          <TabErrorBoundary>
+            <div className="flex-1 animate-fade-in flex flex-col">
+              <WorkspaceViewsPanel projectId={id} />
+            </div>
+          </TabErrorBoundary>
         )}
 
-        {activeTab === 'ai' && (
-          <div className="flex-1 animate-fade-in flex flex-col">
-            <AIToolsPanel projectId={id} />
+        {activeTab === 'ai-tools' && (
+          <TabErrorBoundary>
+            <div className="flex-1 animate-fade-in flex flex-col">
+              <AIToolsPanel projectId={id} />
+            </div>
+          </TabErrorBoundary>
+        )}
+
+        {!tabs.some((tab) => tab.id === activeTab) && (
+          <div className="rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 text-sm text-[var(--text-secondary)]">
+            Unknown tab selected. Redirecting to List View.
           </div>
         )}
       </div>
 
       {showModal && (
         <CreateTicketModal projectId={id} onClose={() => setShowModal(false)} onCreated={handleCreated} />
+      )}
+
+      {selectedCard && (
+        <CardDetail
+          key={selectedCard.id}
+          card={selectedCard}
+          onClose={() => setSelectedCard(null)}
+          onSave={handleSaveCard}
+          isSaving={isSavingCard}
+        />
       )}
 
       {showShortcuts && (

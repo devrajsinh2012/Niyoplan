@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Search, Bell, HelpCircle, Sun, Moon, Plus, LogOut } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function TopNav({ onCreateClick, theme, onToggleTheme }) {
   const { profile, signOut } = useAuth();
@@ -13,6 +14,7 @@ export default function TopNav({ onCreateClick, theme, onToggleTheme }) {
   const pathname = usePathname();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [globalSearch, setGlobalSearch] = useState('');
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -64,7 +66,7 @@ export default function TopNav({ onCreateClick, theme, onToggleTheme }) {
         <Link href="/projects" className={getNavLinkClass('/projects')}>Projects</Link>
         <Link href="/" className={getNavLinkClass('/')}>Dashboards</Link>
         {profile?.role === 'admin' && (
-          <Link href="/admin" className={getNavLinkClass('/admin')}>Settings</Link>
+          <Link href="/admin/settings" className={getNavLinkClass('/admin/settings')}>Settings</Link>
         )}
       </nav>
 
@@ -91,8 +93,19 @@ export default function TopNav({ onCreateClick, theme, onToggleTheme }) {
           id="global-search"
           type="text"
           placeholder="Search"
+          value={globalSearch}
+          onChange={(e) => setGlobalSearch(e.target.value)}
           onFocus={() => setSearchFocused(true)}
           onBlur={() => setSearchFocused(false)}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter') return;
+            const query = globalSearch.trim();
+            if (!query) {
+              toast('Type a project name or issue key first.');
+              return;
+            }
+            router.push(`/projects?search=${encodeURIComponent(query)}`);
+          }}
           className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] py-1.5 pl-9 pr-3 text-sm text-[var(--text-primary)] outline-none transition-all focus:border-[var(--accent-primary)] focus:bg-[var(--bg-app)] focus:ring-1 focus:ring-[var(--accent-primary)]/20"
         />
       </div>
@@ -102,7 +115,7 @@ export default function TopNav({ onCreateClick, theme, onToggleTheme }) {
         <button
           className="flex h-8 w-8 items-center justify-center rounded-[3px] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)]"
           title="Notifications"
-          onClick={() => {}}
+          onClick={() => toast('Notifications panel is coming soon.')}
         >
           <Bell size={18} />
         </button>
@@ -117,6 +130,8 @@ export default function TopNav({ onCreateClick, theme, onToggleTheme }) {
 
         <button
           className="flex h-8 w-8 items-center justify-center rounded-[3px] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)] md:flex"
+          title="Help"
+          onClick={() => toast('Open project docs from the Docs tab inside any project.')}
         >
           <HelpCircle size={18} />
         </button>

@@ -16,16 +16,23 @@ export default function AIToolsPanel({ projectId }) {
   const loadContext = useCallback(async () => {
     if (!projectId) return;
     try {
-      const loadCards = () => fetch(`/api/projects/${projectId}/cards`).then(res => res.json());
-      const loadSprints = () => fetch(`/api/projects/${projectId}/sprints`).then(res => res.json());
-      const loadMeetings = () => fetch(`/api/projects/${projectId}/meetings/calendar`).then(res => res.json());
+      const safeArray = async (url) => {
+        const res = await fetch(url);
+        if (!res.ok) return [];
+        const data = await res.json();
+        return Array.isArray(data) ? data : [];
+      };
+
+      const loadCards = () => safeArray(`/api/projects/${projectId}/cards`);
+      const loadSprints = () => safeArray(`/api/projects/${projectId}/sprints`);
+      const loadMeetings = () => safeArray(`/api/projects/${projectId}/meetings/calendar`);
 
       const [cardsRes, sprintsRes, meetingsRes] = await Promise.all([
         loadCards(), loadSprints(), loadMeetings()
       ]);
-      setCards(cardsRes || []);
-      setSprints(sprintsRes || []);
-      setMeetings(meetingsRes || []);
+      setCards(cardsRes);
+      setSprints(sprintsRes);
+      setMeetings(meetingsRes);
     } catch (error) {
       console.error(error);
       toast.error('Failed to load AI context data');

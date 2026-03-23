@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { ExternalLink, FileText, Palette, BookOpen } from 'lucide-react';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({ resolved: 0, open: 0, storyPoints: 0, velocity: 0 });
@@ -102,6 +103,52 @@ export default function DashboardPage() {
     return 'var(--priority-lowest)';
   };
 
+  const getSprintTimelineText = (sprint) => {
+    if (!sprint?.end_date) return 'End date not set';
+    const now = new Date();
+    const endDate = new Date(sprint.end_date);
+    const dayDiff = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    const label = endDate.toLocaleDateString();
+    if (dayDiff > 1) return `Ends in ${dayDiff} days (${label})`;
+    if (dayDiff === 1) return `Ends tomorrow (${label})`;
+    if (dayDiff === 0) return `Ends today (${label})`;
+    if (dayDiff === -1) return `Ended yesterday (${label})`;
+    return `Ended ${Math.abs(dayDiff)} days ago (${label})`;
+  };
+
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success('Dashboard link copied.');
+    } catch {
+      toast.error('Could not copy link.');
+    }
+  };
+
+  const handleExport = () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      stats,
+      activeSprint,
+      recentIssues,
+      activities,
+      workload,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'niyoplan-dashboard-export.json';
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success('Dashboard export downloaded.');
+  };
+
+  const handleViewHistory = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    toast('Showing latest team activity on this page.');
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center pt-32">
@@ -122,10 +169,10 @@ export default function DashboardPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
           <h1 className="text-3xl font-extrabold text-[var(--text-heading)] tracking-tight">Project Overview</h1>
           <div className="flex gap-3">
-            <button className="flex items-center gap-2 rounded-[3px] border border-[var(--border-strong)] bg-[var(--bg-surface)] px-4 py-2 text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider transition-all hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)] shadow-sm">
+            <button onClick={handleShare} className="flex items-center gap-2 rounded-[3px] border border-[var(--border-strong)] bg-[var(--bg-surface)] px-4 py-2 text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider transition-all hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)] shadow-sm">
               <ExternalLink size={14} /> Share
             </button>
-            <button className="flex items-center gap-2 rounded-[3px] bg-[#0052CC] px-6 py-2 text-[11px] font-bold text-white uppercase tracking-wider transition-all hover:bg-[#00388D] shadow-md hover:shadow-lg active:scale-95">
+            <button onClick={handleExport} className="flex items-center gap-2 rounded-[3px] bg-[#0052CC] px-6 py-2 text-[11px] font-bold text-white uppercase tracking-wider transition-all hover:bg-[#00388D] shadow-md hover:shadow-lg active:scale-95">
               Export
             </button>
           </div>
@@ -151,9 +198,7 @@ export default function DashboardPage() {
                   {activeSprint?.name || 'Alpha Release V1.2'}
                 </h3>
                 <p className="mt-2 text-xs font-medium text-[var(--text-muted)]">
-                  {activeSprint
-                    ? `Ends ${activeSprint.end_date ? new Date(activeSprint.end_date).toLocaleDateString() : 'TBD'}`
-                    : 'Ends in 6 days (Nov 24, 2025)'}
+                  {activeSprint ? getSprintTimelineText(activeSprint) : 'No active sprint'}
                 </p>
               </div>
               <span className="rounded-[3px] bg-[#E3FCEF] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#006644] border border-[#006644]/15">
@@ -198,7 +243,7 @@ export default function DashboardPage() {
               <h3 className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-[0.15em]">
                 Team Activity
               </h3>
-              <button className="text-[11px] font-bold text-[var(--accent-primary)] uppercase tracking-wider hover:underline">
+              <button onClick={handleViewHistory} className="text-[11px] font-bold text-[var(--accent-primary)] uppercase tracking-wider hover:underline">
                 View History
               </button>
             </div>
@@ -260,7 +305,7 @@ export default function DashboardPage() {
               ) : (
                 recentIssues.map(issue => (
                   <Link
-                    href={`/projects/${issue.project_id}?tab=backlog&cardId=${issue.id}`}
+                    href={`/projects/${issue.project_id}?tab=board&cardId=${issue.id}`}
                     key={issue.id}
                     className="flex gap-6 px-6 py-5 transition-colors hover:bg-[var(--bg-panel-hover)] cursor-pointer group"
                   >

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { FolderKanban, Plus, Star, Activity } from 'lucide-react';
@@ -21,16 +22,39 @@ export default function ProjectsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const { profile } = useAuth();
+  const searchParams = useSearchParams();
   
   // New Project Form
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [prefix, setPrefix] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [projectScope, setProjectScope] = useState('all');
 
   useEffect(() => {
     fetchProjects();
   }, []);
+
+  useEffect(() => {
+    const incoming = searchParams.get('search') || '';
+    setSearchTerm(incoming);
+  }, [searchParams]);
+  const filteredProjects = projects.filter((project) => {
+    const query = searchTerm.trim().toLowerCase();
+    const matchesSearch = !query || [project.name, project.description, project.prefix]
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(query));
+
+    if (!matchesSearch) return false;
+
+    if (projectScope === 'my') {
+      return project.created_by === profile?.id;
+    }
+
+    return true;
+  });
+
 
   const fetchProjects = async () => {
     try {
@@ -145,14 +169,19 @@ export default function ProjectsPage() {
           <input 
             type="text" 
             placeholder="Search projects" 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-4 py-2 text-sm text-[var(--text-primary)] transition-all focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]"
           />
         </div>
         <div className="flex items-center gap-2">
-          <select className="rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] transition-all focus:border-[var(--accent-primary)] focus:outline-none">
-            <option>All Projects</option>
-            <option>My Projects</option>
-            <option>Starred</option>
+          <select
+            value={projectScope}
+            onChange={(e) => setProjectScope(e.target.value)}
+            className="rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] transition-all focus:border-[var(--accent-primary)] focus:outline-none"
+          >
+            <option value="all">All Projects</option>
+            <option value="my">My Projects</option>
           </select>
         </div>
       </div>
@@ -160,7 +189,7 @@ export default function ProjectsPage() {
       {/* ── Project Grid ── */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         
-        {projects.length === 0 ? (
+        {filteredProjects.length === 0 ? (
           <div className="col-span-full flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-[var(--border-strong)] bg-[var(--bg-panel-hover)] px-6 py-20 text-center">
             <FolderKanban size={48} className="mb-4 text-[var(--text-muted)] opacity-50" />
             <h3 className="text-lg font-bold text-[var(--text-heading)] mb-2">No projects found</h3>
@@ -177,7 +206,7 @@ export default function ProjectsPage() {
             )}
           </div>
         ) : (
-          projects.map(project => (
+          filteredProjects.map(project => (
             <Link 
               href={`/projects/${project.id}`} 
               key={project.id}

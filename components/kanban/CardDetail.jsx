@@ -59,6 +59,7 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
 
   const getStatusStyle = (status) => {
     switch(status) {
+      case 'backlog': return 'bg-[#F4F5F7] text-[#42526E] border-[#DFE1E6] hover:bg-[#EBECF0]';
       case 'todo': return 'bg-[#F4F5F7] text-[#42526E] border-[#DFE1E6] hover:bg-[#EBECF0]';
       case 'in_progress': return 'bg-[#EAE6FF] text-[#403294] border-[#C0B6F2] hover:bg-[#DED9FB]';
       case 'in_review': return 'bg-[#DEEBFF] text-[#0052CC] border-[#B3D4FF] hover:bg-[#CCE0FF]';
@@ -240,6 +241,7 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
                     handleSubmit();
                   }}
                 >
+                  <option value="backlog">BACKLOG</option>
                   <option value="todo">TO DO</option>
                   <option value="in_progress">IN PROGRESS</option>
                   <option value="in_review">IN REVIEW</option>

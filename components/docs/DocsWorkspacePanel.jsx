@@ -18,18 +18,21 @@ export default function DocsWorkspacePanel({ projectId }) {
     try {
       const loadDocs = async () => {
         const res = await fetch(`/api/projects/${projectId}/docs`);
+        if (!res.ok) return [];
         return res.json();
       };
       const loadHierarchy = async () => {
         const res = await fetch(`/api/projects/${projectId}/spaces`);
+        if (!res.ok) return { spaces: [], folders: [] };
         return res.json();
       };
 
       const [docRows, hierarchy] = await Promise.all([loadDocs(), loadHierarchy()]);
-      setDocs(docRows || []);
-      setSpaces(hierarchy?.spaces || []);
-      setFolders(hierarchy?.folders || []);
-      if ((docRows || []).length > 0 && !selectedDocId) setSelectedDocId(docRows[0].id);
+      const normalizedDocs = Array.isArray(docRows) ? docRows : [];
+      setDocs(normalizedDocs);
+      setSpaces(Array.isArray(hierarchy?.spaces) ? hierarchy.spaces : []);
+      setFolders(Array.isArray(hierarchy?.folders) ? hierarchy.folders : []);
+      if (normalizedDocs.length > 0 && !selectedDocId) setSelectedDocId(normalizedDocs[0].id);
     } catch (error) {
       console.error(error);
       toast.error('Failed to load docs workspace');

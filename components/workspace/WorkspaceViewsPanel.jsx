@@ -10,23 +10,24 @@ export default function WorkspaceViewsPanel({ projectId }) {
   const loadViews = useCallback(async () => {
     setLoading(true);
     try {
-      const loadList = () => fetch(`/api/projects/${projectId}/views/list`).then(res => res.json());
-      const loadCalendar = () => fetch(`/api/projects/${projectId}/views/calendar`).then(res => res.json());
-      const loadMyWork = () => fetch(`/api/projects/${projectId}/views/my-work`).then(res => res.json());
-      const loadWorkload = () => fetch(`/api/projects/${projectId}/views/workload`).then(res => res.json());
-      const loadNotifications = () => fetch(`/api/projects/${projectId}/notifications`).then(res => res.json());
+      const safeJsonList = async (url) => {
+        const res = await fetch(url);
+        if (!res.ok) return [];
+        const data = await res.json();
+        return Array.isArray(data) ? data : [];
+      };
+
+      const loadList = () => safeJsonList(`/api/projects/${projectId}/views/list`);
+      const loadCalendar = () => safeJsonList(`/api/projects/${projectId}/views/calendar`);
+      const loadMyWork = () => safeJsonList(`/api/projects/${projectId}/views/my-work`);
+      const loadWorkload = () => safeJsonList(`/api/projects/${projectId}/views/workload`);
+      const loadNotifications = () => safeJsonList(`/api/projects/${projectId}/notifications`);
 
       const [list, calendar, myWork, workload, notifications] = await Promise.all([
         loadList(), loadCalendar(), loadMyWork(), loadWorkload(), loadNotifications()
       ]);
 
-      setViewData({ 
-        list: list || [], 
-        calendar: calendar || [], 
-        myWork: myWork || [], 
-        workload: workload || [], 
-        notifications: notifications || [] 
-      });
+      setViewData({ list, calendar, myWork, workload, notifications });
     } catch (error) {
       console.error(error);
       toast.error('Failed to load workspace views');

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { DndContext, closestCorners, TouchSensor, MouseSensor, KeyboardSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import KanbanColumn from './KanbanColumn';
@@ -25,6 +26,8 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
   const [selectedCard, setSelectedCard] = useState(null);
   const [isSavingCard, setIsSavingCard] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const getStatusFromList = useCallback((listId) => {
     const list = lists.find((item) => item.id === listId);
@@ -120,6 +123,15 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
       fetchBoardData();
     }
   }, [projectId, refreshNonce, fetchBoardData]);
+
+  useEffect(() => {
+    const cardId = searchParams.get('cardId');
+    if (!cardId || cards.length === 0) return;
+    const card = cards.find((item) => item.id === cardId);
+    if (card) {
+      setSelectedCard(card);
+    }
+  }, [cards, searchParams]);
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
@@ -400,7 +412,10 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
                 key={list.id} 
                 list={list} 
                 cards={cards.filter(c => c.listId === list.id).sort((a,b) => a.rank - b.rank)} 
-                onCardOpen={(card) => setSelectedCard(card)}
+                onCardOpen={(card) => {
+                  setSelectedCard(card);
+                  router.replace(`/projects/${projectId}?tab=board&cardId=${card.id}`);
+                }}
                 onQuickAddCard={handleQuickAddCard}
               />
             ))}
@@ -419,7 +434,10 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
         <CardDetail
           key={selectedCard.id}
           card={selectedCard}
-          onClose={() => setSelectedCard(null)}
+          onClose={() => {
+            setSelectedCard(null);
+            router.replace(`/projects/${projectId}?tab=board`);
+          }}
           onSave={handleSaveCard}
           isSaving={isSavingCard}
         />

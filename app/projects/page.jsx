@@ -9,6 +9,8 @@ import { useAuth } from '@/context/AuthContext';
 import { FolderKanban, Plus, Star, Activity } from 'lucide-react';
 import toast from 'react-hot-toast';
 import UserAvatar from '@/components/ui/UserAvatar';
+import BrandMark from '@/components/ui/BrandMark';
+import { ProjectsPageSkeleton } from '@/components/ui/PageSkeleton';
 
 const DEFAULT_LISTS = [
   { name: 'Backlog', rank: 1000 },
@@ -133,11 +135,7 @@ export default function ProjectsPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center pt-32">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--border-strong)] border-t-[var(--accent-primary)]" />
-      </div>
-    );
+    return <ProjectsPageSkeleton />;
   }
 
   return (
@@ -145,13 +143,16 @@ export default function ProjectsPage() {
       
       {/* ── Header ── */}
       <header className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--text-heading)] tracking-tight">
-            Projects
-          </h1>
-          <p className="mt-1 text-sm text-[var(--text-muted)] font-medium">
+        <div className="flex items-center gap-4">
+          <BrandMark size={40} />
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--text-heading)] tracking-tight">
+              Projects
+            </h1>
+            <p className="mt-1 text-sm text-[var(--text-muted)] font-medium">
             Manage and track all your workspace projects in one place.
           </p>
+          </div>
         </div>
         
         {['admin', 'pm'].includes(profile?.role) && (

@@ -6,25 +6,27 @@ import AppShell from '@/components/layout/AppShell'
 import OnboardingMiddleware from '@/components/middleware/OnboardingMiddleware'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
+const iconVersion = '20260324d'
 
 export const metadata = {
   title: 'Niyoplan',
   description: 'Project Management, Simplified.',
   icons: {
-    icon: '/favicon.svg',
-    shortcut: '/favicon.svg',
-    apple: '/apple-touch-icon.svg',
+    icon: `/favicon.svg?v=${iconVersion}`,
+    shortcut: `/favicon.svg?v=${iconVersion}`,
+    apple: `/apple-touch-icon.svg?v=${iconVersion}`,
   },
 }
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
+        <link rel="icon" href={`/favicon.svg?v=${iconVersion}`} type="image/svg+xml" />
+        <link rel="shortcut icon" href={`/favicon.svg?v=${iconVersion}`} type="image/svg+xml" />
+        <link rel="apple-touch-icon" href={`/apple-touch-icon.svg?v=${iconVersion}`} />
       </head>
-      <body className={`${inter.variable} font-sans`}>
+      <body className={`${inter.variable} font-sans`} suppressHydrationWarning>
         <AuthProvider>
           <OnboardingMiddleware>
             <AppShell>

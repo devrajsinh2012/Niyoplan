@@ -24,6 +24,7 @@ import DocsWorkspacePanel from '@/components/docs/DocsWorkspacePanel';
 import WorkspaceViewsPanel from '@/components/workspace/WorkspaceViewsPanel';
 import AIToolsPanel from '@/components/ai/AIToolsPanel';
 import UserAvatar from '@/components/ui/UserAvatar';
+import { ProjectDetailPageSkeleton } from '@/components/ui/PageSkeleton';
 
 class TabErrorBoundary extends React.Component {
   constructor(props) {
@@ -247,7 +248,7 @@ export default function ProjectDetailPage() {
     }
   }, [tabs, activeTab, router, id]);
 
-  if (isLoading) return <div className="flex justify-center py-40"><div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-[var(--accent-primary)]"></div></div>;
+  if (isLoading) return <ProjectDetailPageSkeleton />;
 
   if (!project) return <div className="text-center py-20"><h2 className="text-2xl font-bold text-[var(--text-heading)] mb-4" >Project Not Found</h2><Link href="/projects" className="text-[var(--accent-primary)] hover:underline">Return to Projects</Link></div>;
 

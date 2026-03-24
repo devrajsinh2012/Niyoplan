@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '@/components/ui/ConfirmModal';
+import { ProjectSettingsPageSkeleton } from '@/components/ui/PageSkeleton';
 
 const TABS = [
   { id: 'general', label: 'General', icon: Settings },
@@ -282,11 +283,7 @@ export default function ProjectSettingsPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
-      </div>
-    );
+    return <ProjectSettingsPageSkeleton />;
   }
 
   return (

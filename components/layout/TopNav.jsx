@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Search, Bell, Sun, Moon, Plus, LogOut, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
 import UserAvatar from '@/components/ui/UserAvatar';
+import BrandMark from '@/components/ui/BrandMark';
 
 export default function TopNav({ onCreateClick, theme, onToggleTheme }) {
   const { profile, signOut } = useAuth();
@@ -79,7 +80,7 @@ export default function TopNav({ onCreateClick, theme, onToggleTheme }) {
 
   const handleLogout = async () => {
     await signOut();
-    router.push('/login');
+    router.replace('/login');
   };
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
@@ -117,18 +118,13 @@ export default function TopNav({ onCreateClick, theme, onToggleTheme }) {
         className="mr-2 shrink-0 cursor-pointer p-1 transition-transform hover:scale-105"
         title="NiyoPlan Home"
       >
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-[#0C66E4] to-[#0052CC] text-sm font-extrabold text-white shadow-sm">
-          N
-        </div>
+        <BrandMark size={28} className="rounded-md" />
       </Link>
 
       {/* Global Nav Links */}
       <nav className="flex items-center gap-1">
         <Link href="/projects" className={getNavLinkClass('/projects')}>Projects</Link>
         <Link href="/" className={getNavLinkClass('/')}>Dashboards</Link>
-        {profile?.role === 'admin' && (
-          <Link href="/admin/settings" className={getNavLinkClass('/admin/settings')}>Settings</Link>
-        )}
       </nav>
 
       {/* Create Button */}

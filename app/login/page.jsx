@@ -1,29 +1,59 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { LogIn } from 'lucide-react';
 import toast from 'react-hot-toast';
+import BrandMark from '@/components/ui/BrandMark';
+
+const REMEMBER_ME_KEY = 'niyoplan-remember-me';
+const REMEMBERED_EMAIL_KEY = 'niyoplan-remembered-email';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { signIn } = useAuth();
+  const { signIn, user, loading } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    const rememberedEmail = localStorage.getItem(REMEMBERED_EMAIL_KEY) || '';
+    const rememberFlag = localStorage.getItem(REMEMBER_ME_KEY);
+
+    if (rememberedEmail) {
+      setEmail(rememberedEmail);
+    }
+
+    if (rememberFlag === '0') {
+      setRememberMe(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace('/');
+    }
+  }, [loading, router, user]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      const { error } = await signIn(email, password);
+      const { error } = await signIn(email, password, { rememberMe });
       if (error) throw error;
+
+      if (rememberMe) {
+        localStorage.setItem(REMEMBERED_EMAIL_KEY, email);
+      } else {
+        localStorage.removeItem(REMEMBERED_EMAIL_KEY);
+      }
       
       toast.success('Welcome back!');
-      router.push('/');
+      router.replace('/');
     } catch (error) {
       toast.error(error?.message || 'Failed to sign in');
     } finally {
@@ -54,14 +84,7 @@ export default function LoginPage() {
       <div style={{ width: '100%', maxWidth: 420, position: 'relative', zIndex: 10 }}>
         
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <div style={{
-            width: 64, height: 64, margin: '0 auto 24px', borderRadius: 16,
-            background: 'linear-gradient(135deg, var(--accent-primary), #6554C0)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 8px 16px rgba(12, 102, 228, 0.2)',
-          }}>
-            <span style={{ fontWeight: 800, fontSize: 32, color: '#fff', letterSpacing: -1 }}>N</span>
-          </div>
+          <BrandMark size={64} className="mx-auto mb-6 rounded-2xl" />
           <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-heading)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>
             Welcome to NiyoPlan
           </h1>
@@ -112,6 +135,17 @@ export default function LoginPage() {
                 onBlur={e => e.target.style.borderColor = 'var(--border-strong)'}
               />
             </div>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: -6, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+              />
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                Remember me on this browser
+              </span>
+            </label>
 
             <button
               type="submit" disabled={isSubmitting} className="btn-primary"

@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { MeetingsPanelSkeleton } from '@/components/ui/PageSkeleton';
 
 export default function MeetingReviewsPanel({ projectId }) {
   const [pmReviews, setPmReviews] = useState([]);
@@ -131,7 +132,7 @@ export default function MeetingReviewsPanel({ projectId }) {
   };
 
   if (loading) {
-    return <div className="rounded-2xl p-6 bg-white border border-gray-200 text-gray-600">Loading meeting reviews...</div>;
+    return <MeetingsPanelSkeleton />;
   }
 
   return (

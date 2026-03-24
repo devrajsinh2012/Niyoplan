@@ -321,6 +321,59 @@ CREATE TABLE IF NOT EXISTS public.organization_members (
   UNIQUE(user_id, organization_id)
 );
 
+-- 22. Card Comments (Thread-based Comments)
+CREATE TABLE IF NOT EXISTS public.card_comments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  card_id UUID NOT NULL REFERENCES public.cards(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE SET NULL,
+  content TEXT NOT NULL,
+  edited_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_card_comments_card_id ON public.card_comments(card_id);
+CREATE INDEX IF NOT EXISTS idx_card_comments_user_id ON public.card_comments(user_id);
+CREATE INDEX IF NOT EXISTS idx_card_comments_created_at ON public.card_comments(created_at DESC);
+
+-- 23. Card Subtasks (Linked to Cards)
+CREATE TABLE IF NOT EXISTS public.card_subtasks (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  card_id UUID NOT NULL REFERENCES public.cards(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  completed BOOLEAN DEFAULT FALSE,
+  assignee_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  rank FLOAT,
+  due_date TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_card_subtasks_card_id ON public.card_subtasks(card_id);
+CREATE INDEX IF NOT EXISTS idx_card_subtasks_assignee_id ON public.card_subtasks(assignee_id);
+CREATE INDEX IF NOT EXISTS idx_card_subtasks_completed ON public.card_subtasks(completed);
+
+-- 24. Saved Views/Filters (Board State Persistence)
+CREATE TABLE IF NOT EXISTS public.saved_views (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  creator_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  name VARCHAR(120) NOT NULL,
+  view_type VARCHAR(20) DEFAULT 'kanban',
+  is_default BOOLEAN DEFAULT FALSE,
+  filters JSONB DEFAULT '{}'::jsonb,
+  sort_by VARCHAR(50) DEFAULT 'rank',
+  sort_order VARCHAR(4) DEFAULT 'asc',
+  hidden_columns JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_saved_views_project_id ON public.saved_views(project_id);
+CREATE INDEX IF NOT EXISTS idx_saved_views_creator_id ON public.saved_views(creator_id);
+CREATE INDEX IF NOT EXISTS idx_saved_views_is_default ON public.saved_views(is_default);
+
 
 -- TRIGGERS & FUNCTIONS
 

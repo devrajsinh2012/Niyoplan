@@ -8,11 +8,11 @@ import { supabase } from '@/lib/supabase';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { Upload, X, Trash2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { ProfileSettingsPageSkeleton } from '@/components/ui/PageSkeleton';
 
 export default function ProfileSettingsPage() {
   const { profile, refreshProfile } = useAuth();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Personal Information
@@ -231,11 +231,7 @@ export default function ProfileSettingsPage() {
   const passwordStrength = getPasswordStrength(newPassword);
 
   if (!profile) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
-      </div>
-    );
+    return <ProfileSettingsPageSkeleton />;
   }
 
   return (

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
+import BrandMark from '@/components/ui/BrandMark';
 
 export default function RegisterPage() {
   const [fullName, setFullName] = useState('');
@@ -55,13 +56,8 @@ export default function RegisterPage() {
       <div style={{ width: '100%', maxWidth: 420, position: 'relative', zIndex: 10 }}>
         
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <div style={{
-            width: 64, height: 64, margin: '0 auto 24px', borderRadius: 16,
-            background: 'linear-gradient(135deg, var(--status-done), #14805E)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 8px 16px rgba(34, 160, 107, 0.2)',
-          }}>
-            <UserPlus style={{ color: '#fff' }} size={32} />
+          <div style={{ margin: '0 auto 24px' }}>
+            <BrandMark size={64} className="rounded-2xl" />
           </div>
           <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-heading)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>
             Create Account

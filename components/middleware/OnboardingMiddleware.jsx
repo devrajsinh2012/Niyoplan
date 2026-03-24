@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 
 export default function OnboardingMiddleware({ children }) {
-  const { profile, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [checking, setChecking] = useState(true);
@@ -16,6 +16,7 @@ export default function OnboardingMiddleware({ children }) {
   const allowedPaths = [
     '/login',
     '/signup',
+    '/register',
     '/onboarding',
     '/onboarding/create',
     '/onboarding/join'
@@ -25,15 +26,26 @@ export default function OnboardingMiddleware({ children }) {
   const isAllowedPath = allowedPaths.some(path => pathname.startsWith(path));
 
   const checkOnboardingStatus = useCallback(async () => {
-    // Don't check for allowed paths or during auth loading
-    if (authLoading || isAllowedPath) {
+    // Public pages bypass organization checks.
+    if (isAllowedPath) {
       setChecking(false);
       return;
     }
 
-    // If no profile and not on allowed path, redirect to login
+    if (authLoading) {
+      setChecking(true);
+      return;
+    }
+
+    setChecking(true);
+
+    if (!user) {
+      router.replace('/login');
+      return;
+    }
+
+    // Wait until the profile is available for authenticated users.
     if (!profile?.id) {
-      router.push('/login');
       return;
     }
 
@@ -65,7 +77,7 @@ export default function OnboardingMiddleware({ children }) {
         } else {
           // No organization at all, need onboarding
           setHasOrganization(false);
-          router.push('/onboarding');
+          router.replace('/onboarding');
           return;
         }
       }
@@ -73,12 +85,12 @@ export default function OnboardingMiddleware({ children }) {
       console.error('Onboarding check error:', error);
       // On error, assume no organization and redirect to onboarding
       setHasOrganization(false);
-      router.push('/onboarding');
+      router.replace('/onboarding');
       return;
     }
 
     setChecking(false);
-  }, [authLoading, isAllowedPath, profile?.id, router]);
+  }, [authLoading, isAllowedPath, profile?.id, router, user]);
 
   useEffect(() => {
     checkOnboardingStatus();

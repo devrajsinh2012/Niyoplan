@@ -19,6 +19,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import ConfirmModal from '@/components/ui/ConfirmModal';
+import { CompanySettingsPageSkeleton } from '@/components/ui/PageSkeleton';
 
 export default function CompanySettingsPage() {
   const router = useRouter();
@@ -260,11 +261,7 @@ export default function CompanySettingsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-      </div>
-    );
+    return <CompanySettingsPageSkeleton />;
   }
 
   if (!organization) {

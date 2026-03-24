@@ -61,7 +61,6 @@ export default function Sidebar({ project }) {
   const searchParams = useSearchParams();
   const projectId = paramsId || project?.id;
   const activeTab = searchParams.get('tab') || 'list';
-  const [isHovered, setIsHovered] = useState(false);
   const [organization, setOrganization] = useState(null);
   const [userRole, setUserRole] = useState(null);
 
@@ -103,21 +102,38 @@ export default function Sidebar({ project }) {
   const projectTabHref = (tab) => `/projects/${projectId}?tab=${tab}`;
   const onProjectPage = pathname === `/projects/${projectId}`;
 
-  const expanded = isHovered;
+  const getProjectBadgeText = () => {
+    if (project?.prefix) {
+      return project.prefix.slice(0, 2).toUpperCase();
+    }
+
+    if (project?.name) {
+      const initials = project.name
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(part => part.charAt(0).toUpperCase())
+        .join('');
+
+      if (initials) {
+        return initials;
+      }
+    }
+
+    return 'NP';
+  };
+
+  const expanded = true;
 
   const handleLogout = async () => {
     await signOut();
-    router.push('/login');
+    router.replace('/login');
   };
 
   return (
     <aside
       id="project-sidebar"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className={`fixed left-0 top-[var(--topnav-height)] h-[calc(100vh-var(--topnav-height))] z-40 flex flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-panel)] transition-all duration-300 ease-in-out ${
-        expanded ? 'w-60' : 'w-16'
-      }`}
+      className="fixed left-0 top-[var(--topnav-height)] h-[calc(100vh-var(--topnav-height))] z-40 flex w-60 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-panel)]"
     >
       {/* Project/App Header */}
       <div className="shrink-0 border-b border-[var(--border-subtle)] p-3">
@@ -125,7 +141,7 @@ export default function Sidebar({ project }) {
         {organization && expanded && (
           <div className="mb-3 pb-3 border-b border-[var(--border-subtle)]">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 text-sm font-bold text-white shadow-sm">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-primary)] text-sm font-bold text-white shadow-sm">
                 {organization.logo_url ? (
                   <Image
                     src={organization.logo_url}
@@ -151,14 +167,14 @@ export default function Sidebar({ project }) {
         )}
 
         {/* Project Header */}
-        <div
-          className={`group flex cursor-pointer items-center gap-3 rounded-lg p-2 hover:bg-[var(--bg-panel-hover)] ${!expanded ? 'justify-center' : ''}`}
-          onClick={() => projectId ? router.push(`/projects/${projectId}`) : router.push('/')}
-        >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-[#0C66E4] to-[#6554C0] text-sm font-bold text-white shadow-sm transition-transform group-hover:scale-105">
-            {project?.name?.charAt(0) || 'N'}
-          </div>
-          {expanded && (
+        {(projectId || !organization) && (
+          <div
+            className="group flex cursor-pointer items-center gap-3 rounded-lg p-2 hover:bg-[var(--bg-panel-hover)]"
+            onClick={() => projectId ? router.push(`/projects/${projectId}`) : router.push('/')}
+          >
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--accent-primary)] text-sm font-bold text-white shadow-sm transition-transform group-hover:scale-105">
+              {getProjectBadgeText()}
+            </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-semibold text-[var(--text-heading)]">
                 {project?.name || 'Niyoplan'}
@@ -169,51 +185,34 @@ export default function Sidebar({ project }) {
                 </div>
               )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Nav Items */}
       <nav className="flex-1 overflow-y-auto py-3 scrollbar-hide">
         {projectId ? (
           <div className="space-y-4">
-            {expanded ? (
-              <>
-                <NavSection title="Planning" expanded={expanded}>
-                  <SideNavItem href={projectTabHref('backlog')} icon={Layers} label="Backlog" isActive={onProjectPage && activeTab === 'backlog'} expanded={expanded} />
-                  <SideNavItem href={projectTabHref('board')} icon={KanbanSquare} label="Board" isActive={onProjectPage && activeTab === 'board'} expanded={expanded} />
-                  <SideNavItem href={projectTabHref('gantt')} icon={Calendar} label="Timeline" isActive={onProjectPage && activeTab === 'gantt'} expanded={expanded} />
-                </NavSection>
-
-                <NavSection title="Development" expanded={expanded}>
-                  <SideNavItem href={projectTabHref('dsm')} icon={Zap} label="DSM Module" isActive={onProjectPage && activeTab === 'dsm'} expanded={expanded} />
-                  <SideNavItem href={projectTabHref('meetings')} icon={MessageSquare} label="Meetings" isActive={onProjectPage && activeTab === 'meetings'} expanded={expanded} />
-                  <SideNavItem href={projectTabHref('goals')} icon={Target} label="Goals & OKRs" isActive={onProjectPage && activeTab === 'goals'} expanded={expanded} />
-                  <SideNavItem href={projectTabHref('docs')} icon={BookOpen} label="Docs" isActive={onProjectPage && activeTab === 'docs'} expanded={expanded} />
-                  <SideNavItem href={projectTabHref('ai-tools')} icon={Zap} label="AI Tools" isActive={onProjectPage && activeTab === 'ai-tools'} expanded={expanded} />
-                </NavSection>
-
-                <NavSection title="Analytics" expanded={expanded}>
-                  <SideNavItem href={projectTabHref('views')} icon={BarChart2} label="Reports" isActive={onProjectPage && activeTab === 'views'} expanded={expanded} />
-                  <SideNavItem href={projectTabHref('list')} icon={Tag} label="Issues" isActive={onProjectPage && activeTab === 'list'} expanded={expanded} />
-                </NavSection>
-              </>
-            ) : (
-              <div className="space-y-1">
+            <>
+              <NavSection title="Planning" expanded={expanded}>
                 <SideNavItem href={projectTabHref('backlog')} icon={Layers} label="Backlog" isActive={onProjectPage && activeTab === 'backlog'} expanded={expanded} />
                 <SideNavItem href={projectTabHref('board')} icon={KanbanSquare} label="Board" isActive={onProjectPage && activeTab === 'board'} expanded={expanded} />
                 <SideNavItem href={projectTabHref('gantt')} icon={Calendar} label="Timeline" isActive={onProjectPage && activeTab === 'gantt'} expanded={expanded} />
-                <div className="my-2 border-t border-[var(--border-subtle)]" />
+              </NavSection>
+
+              <NavSection title="Development" expanded={expanded}>
                 <SideNavItem href={projectTabHref('dsm')} icon={Zap} label="DSM Module" isActive={onProjectPage && activeTab === 'dsm'} expanded={expanded} />
                 <SideNavItem href={projectTabHref('meetings')} icon={MessageSquare} label="Meetings" isActive={onProjectPage && activeTab === 'meetings'} expanded={expanded} />
                 <SideNavItem href={projectTabHref('goals')} icon={Target} label="Goals & OKRs" isActive={onProjectPage && activeTab === 'goals'} expanded={expanded} />
                 <SideNavItem href={projectTabHref('docs')} icon={BookOpen} label="Docs" isActive={onProjectPage && activeTab === 'docs'} expanded={expanded} />
                 <SideNavItem href={projectTabHref('ai-tools')} icon={Zap} label="AI Tools" isActive={onProjectPage && activeTab === 'ai-tools'} expanded={expanded} />
-                <div className="my-2 border-t border-[var(--border-subtle)]" />
+              </NavSection>
+
+              <NavSection title="Analytics" expanded={expanded}>
                 <SideNavItem href={projectTabHref('views')} icon={BarChart2} label="Reports" isActive={onProjectPage && activeTab === 'views'} expanded={expanded} />
                 <SideNavItem href={projectTabHref('list')} icon={Tag} label="Issues" isActive={onProjectPage && activeTab === 'list'} expanded={expanded} />
-              </div>
-            )}
+              </NavSection>
+            </>
           </div>
         ) : (
           <div className="space-y-1">

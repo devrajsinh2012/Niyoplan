@@ -5,6 +5,7 @@ import { format, addDays, startOfToday, eachDayOfInterval, isSameDay, difference
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import './GanttChart.css';
+import { GanttPanelSkeleton } from '@/components/ui/PageSkeleton';
 
 const ZOOM_LEVELS = {
   compact: 24,
@@ -223,7 +224,7 @@ const GanttChart = ({ projectId, refreshNonce = 0 }) => {
     URL.revokeObjectURL(url);
   };
 
-  if (loading) return <div className="gantt-loading">Loading Timeline...</div>;
+  if (loading) return <GanttPanelSkeleton />;
 
   return (
     <div className="gantt-container glass-panel" style={{ '--day-width': `${dayWidth}px` }}>

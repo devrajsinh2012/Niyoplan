@@ -7,6 +7,8 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import UserAvatar from '@/components/ui/UserAvatar';
 import WelcomeModal from '@/components/ui/WelcomeModal';
+import BrandMark from '@/components/ui/BrandMark';
+import { DashboardPageSkeleton } from '@/components/ui/PageSkeleton';
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({ resolved: 0, open: 0, storyPoints: 0, velocity: 0 });
@@ -152,11 +154,7 @@ export default function DashboardPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center pt-32">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--border-strong)] border-t-[var(--accent-primary)]" />
-      </div>
-    );
+    return <DashboardPageSkeleton />;
   }
 
   return (
@@ -165,11 +163,14 @@ export default function DashboardPage() {
 
       {/* Header */}
       <div className="mb-12">
-        <nav className="mb-4 flex items-center gap-2 text-xs font-medium text-[var(--text-muted)]">
-          <span>Projects</span>
-          <span>/</span>
-          <span className="text-[var(--text-secondary)]">Niyoplan Alpha</span>
-        </nav>
+        <div className="flex items-center gap-4 mb-4">
+          <BrandMark size={40} />
+          <nav className="flex items-center gap-2 text-xs font-medium text-[var(--text-muted)]">
+            <span>Workspace</span>
+            <span>/</span>
+            <span className="text-[var(--text-secondary)]">Dashboard</span>
+          </nav>
+        </div>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
           <h1 className="text-3xl font-extrabold text-[var(--text-heading)] tracking-tight">Project Overview</h1>
           <div className="flex gap-3">
@@ -335,7 +336,7 @@ export default function DashboardPage() {
               )}
               <Link
                 href="/projects"
-                className="w-full py-4 text-[10px] font-black text-center text-[var(--text-muted)] uppercase tracking-[0.2em] transition-all hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)] bg-[var(--bg-panel)]/30"
+                className="block w-full py-4 text-[10px] font-black text-center text-[var(--text-muted)] uppercase tracking-[0.2em] transition-all hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)] bg-[var(--bg-panel)]/30"
               >
                 Go to Projects
               </Link>

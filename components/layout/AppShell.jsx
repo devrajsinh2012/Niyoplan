@@ -3,11 +3,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { Loader2 } from 'lucide-react';
 import TopNav from './TopNav';
 import Sidebar from './Sidebar';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
+import { AppShellSkeleton } from '@/components/ui/PageSkeleton';
 
 export default function AppShell({ children }) {
   const { loading, user } = useAuth();
@@ -16,6 +16,7 @@ export default function AppShell({ children }) {
   const router = useRouter();
 
   const [theme, setTheme] = useState('light');
+  const [themeLoaded, setThemeLoaded] = useState(false);
   const [currentProject, setCurrentProject] = useState(null);
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
 
@@ -23,13 +24,16 @@ export default function AppShell({ children }) {
   useEffect(() => {
     const savedTheme = localStorage.getItem('niyoplan-theme') || 'light';
     setTheme(savedTheme);
+    setThemeLoaded(true);
   }, []);
 
   // Apply theme
   useEffect(() => {
+    if (!themeLoaded) return;
     document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.style.colorScheme = theme;
     localStorage.setItem('niyoplan-theme', theme);
-  }, [theme]);
+  }, [theme, themeLoaded]);
 
   // Listen for shortcuts modal event
   useEffect(() => {
@@ -65,23 +69,15 @@ export default function AppShell({ children }) {
     }
   }, [projectId]);
 
-  // Redirect to login if not authenticated and not on auth pages
-  useEffect(() => {
-    if (!loading && !user && !['/login', '/register'].includes(pathname)) {
-      router.push('/login');
-    }
-  }, [loading, user, pathname, router]);
-
   if (loading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-[var(--bg-app)]">
-        <Loader2 className="h-7 w-7 animate-spin text-[var(--accent-primary)]" />
-      </div>
-    );
+    return <AppShellSkeleton />;
   }
 
-  // If on auth pages, don't show the shell
-  if (['/login', '/register'].includes(pathname)) {
+  // Auth and onboarding flows should render without app chrome.
+  if (
+    ['/login', '/register'].includes(pathname) ||
+    pathname.startsWith('/onboarding')
+  ) {
     return <>{children}</>;
   }
 
@@ -129,11 +125,11 @@ export default function AppShell({ children }) {
 
       {/* ─── Body: Sidebar + Content ─── */}
       <div className="relative flex flex-1 overflow-hidden">
-        {/* ─── Project Sidebar (Gmail-style hover expand) ─── */}
+        {/* ─── Project Sidebar ─── */}
         <Sidebar project={currentProject} />
 
         {/* ─── Main Content Area ─── */}
-        <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden ml-16">
+        <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden ml-60">
           {/* Subtle gradient overlay at top (Jira-style depth) */}
           <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-48 bg-gradient-to-b from-[var(--accent-primary)]/[0.03] to-transparent" />
 

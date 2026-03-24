@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import InputModal from '@/components/ui/InputModal';
 import { FolderPlus, FilePlus2, Layers3 } from 'lucide-react';
+import { DocsPanelSkeleton } from '@/components/ui/PageSkeleton';
 
 export default function DocsWorkspacePanel({ projectId }) {
   const [docs, setDocs] = useState([]);
@@ -164,7 +165,7 @@ export default function DocsWorkspacePanel({ projectId }) {
     }
   };
 
-  if (loading) return <div className="rounded-2xl p-6 bg-white border border-gray-200 text-gray-600 font-medium text-center py-20">Loading docs...</div>;
+  if (loading) return <DocsPanelSkeleton />;
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr] gap-4 min-h-[600px]">

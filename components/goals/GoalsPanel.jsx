@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { GoalsPanelSkeleton } from '@/components/ui/PageSkeleton';
 
 export default function GoalsPanel({ projectId }) {
   const [goals, setGoals] = useState([]);
@@ -113,7 +114,7 @@ export default function GoalsPanel({ projectId }) {
     }
   };
 
-  if (loading) return <div className="rounded-2xl p-6 bg-white border border-gray-200 text-gray-600">Loading goals...</div>;
+  if (loading) return <GoalsPanelSkeleton />;
 
   return (
     <div className="space-y-6">

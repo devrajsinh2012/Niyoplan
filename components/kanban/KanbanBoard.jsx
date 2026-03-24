@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import { Plus, LayoutGrid } from 'lucide-react';
 import InputModal from '@/components/ui/InputModal';
+import { KanbanPanelSkeleton } from '@/components/ui/PageSkeleton';
 
 const DEFAULT_LISTS = [
   { name: 'Backlog', rank: 1000 },
@@ -377,7 +378,7 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
   };
 
   if (isLoading) {
-    return <div className="kanban-wrapper"><div className="p-10 flex justify-center"><div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-blue-500"></div></div></div>;
+    return <KanbanPanelSkeleton />;
   }
 
   // Map db 'name' to component 'title' expected by KanbanColumn

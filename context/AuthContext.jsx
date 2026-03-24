@@ -4,13 +4,15 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext({});
+const REMEMBER_ME_KEY = 'niyoplan-remember-me';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = useCallback(async (userId) => {
+  const fetchProfile = useCallback(async (userId, attempt = 0) => {
+    let shouldRetry = false;
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -20,15 +22,19 @@ export const AuthProvider = ({ children }) => {
 
       if (!error && data) {
         setProfile(data);
-      } else if (error && error.code === 'PGRST116') {
-        // Profile not found yet (maybe trigger hasn't fired yet). Retry after delay.
-        setTimeout(() => fetchProfile(userId), 1000);
-        return;
+      } else if (error && error.code === 'PGRST116' && attempt < 5) {
+        // Profile trigger can lag right after first sign-in.
+        shouldRetry = true;
+        setTimeout(() => fetchProfile(userId, attempt + 1), 800);
+      } else {
+        setProfile(null);
       }
     } catch (err) {
       console.error('Error fetching profile:', err);
     } finally {
-      setLoading(false);
+      if (!shouldRetry) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -36,7 +42,10 @@ export const AuthProvider = ({ children }) => {
     // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
+      if (session?.user) {
+        setLoading(true);
+        fetchProfile(session.user.id);
+      }
       else setLoading(false);
     });
 
@@ -44,6 +53,7 @@ export const AuthProvider = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
+        setLoading(true);
         fetchProfile(session.user.id);
       } else {
         setProfile(null);
@@ -67,11 +77,19 @@ export const AuthProvider = ({ children }) => {
     return { data, error };
   };
 
-  const signIn = async (email, password) => {
-    return supabase.auth.signInWithPassword({ email, password });
+  const signIn = async (email, password, options = {}) => {
+    const { rememberMe = true } = options;
+    const result = await supabase.auth.signInWithPassword({ email, password });
+
+    if (!result.error) {
+      localStorage.setItem(REMEMBER_ME_KEY, rememberMe ? '1' : '0');
+    }
+
+    return result;
   };
 
   const signOut = async () => {
+    localStorage.removeItem(REMEMBER_ME_KEY);
     return supabase.auth.signOut();
   };
 

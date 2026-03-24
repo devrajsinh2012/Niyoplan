@@ -18,6 +18,7 @@ export default function AppShell({ children }) {
   const [theme, setTheme] = useState('light');
   const [themeLoaded, setThemeLoaded] = useState(false);
   const [currentProject, setCurrentProject] = useState(null);
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
 
   // Initialize theme from localStorage
@@ -126,10 +127,16 @@ export default function AppShell({ children }) {
       {/* ─── Body: Sidebar + Content ─── */}
       <div className="relative flex flex-1 overflow-hidden">
         {/* ─── Project Sidebar ─── */}
-        <Sidebar project={currentProject} />
+        <Sidebar
+          project={currentProject}
+          expanded={sidebarExpanded}
+          onExpandedChange={setSidebarExpanded}
+        />
 
         {/* ─── Main Content Area ─── */}
-        <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden ml-60">
+        <main
+          className={`relative flex min-w-0 flex-1 flex-col overflow-hidden transition-[margin] duration-200 ${sidebarExpanded ? 'ml-60' : 'ml-16'}`}
+        >
           {/* Subtle gradient overlay at top (Jira-style depth) */}
           <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-48 bg-gradient-to-b from-[var(--accent-primary)]/[0.03] to-transparent" />
 

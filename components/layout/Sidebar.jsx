@@ -53,7 +53,7 @@ const SideNavItem = ({ href, icon: Icon, label, isActive, expanded }) => {
   );
 };
 
-export default function Sidebar({ project }) {
+export default function Sidebar({ project, expanded, onExpandedChange }) {
   const { profile, signOut } = useAuth();
   const { projectId: paramsId } = useParams();
   const router = useRouter();
@@ -123,8 +123,6 @@ export default function Sidebar({ project }) {
     return 'NP';
   };
 
-  const expanded = true;
-
   const handleLogout = async () => {
     await signOut();
     router.replace('/login');
@@ -133,7 +131,9 @@ export default function Sidebar({ project }) {
   return (
     <aside
       id="project-sidebar"
-      className="fixed left-0 top-[var(--topnav-height)] h-[calc(100vh-var(--topnav-height))] z-40 flex w-60 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-panel)]"
+      onMouseEnter={() => onExpandedChange?.(true)}
+      onMouseLeave={() => onExpandedChange?.(false)}
+      className={`fixed left-0 top-[var(--topnav-height)] h-[calc(100vh-var(--topnav-height))] z-40 flex flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-panel)] transition-all duration-200 ${expanded ? 'w-60' : 'w-16'}`}
     >
       {/* Project/App Header */}
       <div className="shrink-0 border-b border-[var(--border-subtle)] p-3">
@@ -169,22 +169,24 @@ export default function Sidebar({ project }) {
         {/* Project Header */}
         {(projectId || !organization) && (
           <div
-            className="group flex cursor-pointer items-center gap-3 rounded-lg p-2 hover:bg-[var(--bg-panel-hover)]"
+            className={`group flex cursor-pointer items-center rounded-lg p-2 hover:bg-[var(--bg-panel-hover)] ${expanded ? 'gap-3' : 'justify-center'}`}
             onClick={() => projectId ? router.push(`/projects/${projectId}`) : router.push('/')}
           >
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--accent-primary)] text-sm font-bold text-white shadow-sm transition-transform group-hover:scale-105">
               {getProjectBadgeText()}
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold text-[var(--text-heading)]">
-                {project?.name || 'Niyoplan'}
-              </div>
-              {projectId && (
-                <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                  Software Project
+            {expanded && (
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold text-[var(--text-heading)]">
+                  {project?.name || 'Niyoplan'}
                 </div>
-              )}
-            </div>
+                {projectId && (
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                    Software Project
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -21,7 +21,8 @@ export const AuthProvider = ({ children }) => {
         .single();
 
       if (!error && data) {
-        setProfile(data);
+        const { data: authData } = await supabase.auth.getUser();
+        setProfile({ ...data, email: authData?.user?.email || data.email || '' });
       } else if (error && error.code === 'PGRST116' && attempt < 5) {
         // Profile trigger can lag right after first sign-in.
         shouldRetry = true;
@@ -93,8 +94,14 @@ export const AuthProvider = ({ children }) => {
     return supabase.auth.signOut();
   };
 
+  const refreshProfile = useCallback(async () => {
+    if (!user?.id) return;
+    setLoading(true);
+    await fetchProfile(user.id);
+  }, [user?.id, fetchProfile]);
+
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, profile, loading, signUp, signIn, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

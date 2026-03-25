@@ -6,7 +6,6 @@ import { useAuth } from '@/context/AuthContext';
 import TopNav from './TopNav';
 import Sidebar from './Sidebar';
 import { supabase } from '@/lib/supabase';
-import toast from 'react-hot-toast';
 import { AppShellSkeleton } from '@/components/ui/PageSkeleton';
 
 export default function AppShell({ children }) {
@@ -112,14 +111,6 @@ export default function AppShell({ children }) {
     <div className="flex h-screen w-full flex-col overflow-hidden bg-[var(--bg-app)]">
       {/* ─── Top Navigation Bar ─── */}
       <TopNav
-        onCreateClick={() => {
-          if (projectId) {
-            window.dispatchEvent(new CustomEvent('niyoplan:create-issue'));
-            return;
-          }
-          toast('Open a project to create an issue.');
-          router.push('/projects');
-        }}
         theme={theme}
         onToggleTheme={toggleTheme}
       />

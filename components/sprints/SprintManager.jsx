@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { ChevronDown, ChevronRight, MoreHorizontal, Search, Zap } from 'lucide-react';
 import UserAvatar from '@/components/ui/UserAvatar';
 import InputModal from '@/components/ui/InputModal';
+import SprintInsightsModal from '@/components/sprints/SprintInsightsModal';
 
 const issueTypeIcon = (type) => {
   const t = (type || '').toLowerCase();
@@ -98,6 +99,14 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
   const [isLoading, setIsLoading] = useState(true);
   const [collapsed, setCollapsed] = useState({});
   const [showCreateSprintModal, setShowCreateSprintModal] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const [onlyMyIssues, setOnlyMyIssues] = useState(false);
+  const [recentOnly, setRecentOnly] = useState(false);
+  const [showInsights, setShowInsights] = useState(false);
+  const [insightsSprintId, setInsightsSprintId] = useState(null);
+  const [openMenuSprintId, setOpenMenuSprintId] = useState(null);
+  const [editingSprint, setEditingSprint] = useState(null);
+  const [editForm, setEditForm] = useState({ name: '', goal: '', start_date: '', end_date: '' });
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -143,26 +152,174 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
     }
   };
 
-  const updateSprintStatus = async (id, status) => {
-    const { error } = await supabase.from('sprints').update({ status }).eq('id', id);
+  const updateSprintStatus = async (sprint, status, sprintIssues = []) => {
+    if (!sprint?.id) return;
+
+    if (status === 'completed') {
+      const openIssues = sprintIssues.filter((issue) => issue.status !== 'done').length;
+      if (openIssues > 0) {
+        const shouldContinue = window.confirm(`${openIssues} issue(s) are not done yet. Complete sprint anyway?`);
+        if (!shouldContinue) return;
+      }
+    }
+
+    const nextPayload = { status };
+    if (status === 'active' && !sprint.start_date) {
+      const now = new Date();
+      const twoWeeksOut = new Date(now);
+      twoWeeksOut.setDate(now.getDate() + 14);
+      nextPayload.start_date = now.toISOString();
+      nextPayload.end_date = sprint.end_date || twoWeeksOut.toISOString();
+    }
+
+    const { error } = await supabase.from('sprints').update(nextPayload).eq('id', sprint.id);
     if (error) { toast.error('Failed to update status'); }
     else {
-      setSprints(sprints.map(s => s.id === id ? { ...s, status } : s));
+      setSprints(sprints.map(s => s.id === sprint.id ? { ...s, ...nextPayload } : s));
       toast.success(`Sprint marked as ${status}`);
     }
   };
 
-  const backlog = useMemo(() => cards.filter((card) => !card.sprint_id), [cards]);
+  const filteredCards = useMemo(() => {
+    let result = [...cards];
+
+    if (searchText.trim()) {
+      const query = searchText.trim().toLowerCase();
+      result = result.filter((card) => {
+        const title = (card.title || '').toLowerCase();
+        const key = (card.custom_id || '').toLowerCase();
+        return title.includes(query) || key.includes(query);
+      });
+    }
+
+    if (onlyMyIssues && profile?.id) {
+      result = result.filter((card) => card.assignee_id === profile.id);
+    }
+
+    if (recentOnly) {
+      result.sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
+    }
+
+    return result;
+  }, [cards, onlyMyIssues, profile?.id, recentOnly, searchText]);
 
   const cardsBySprint = useMemo(() => {
     const map = new Map();
-    cards.forEach((card) => {
+    filteredCards.forEach((card) => {
       if (!card.sprint_id) return;
       if (!map.has(card.sprint_id)) map.set(card.sprint_id, []);
       map.get(card.sprint_id).push(card);
     });
     return map;
-  }, [cards]);
+  }, [filteredCards]);
+
+  const filteredBacklog = useMemo(
+    () => filteredCards.filter((card) => !card.sprint_id),
+    [filteredCards]
+  );
+
+  const activeSprint = useMemo(
+    () => sprints.find((sprint) => sprint.status === 'active') || sprints[0] || null,
+    [sprints]
+  );
+
+  const teammateCount = useMemo(() => {
+    const ids = new Set(filteredCards.map((card) => card.assignee_id).filter(Boolean));
+    if (profile?.id && ids.has(profile.id)) ids.delete(profile.id);
+    return ids.size;
+  }, [filteredCards, profile?.id]);
+
+  const dispatchCreateIssue = (sprintId = null) => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('niyoplan:create-issue', { detail: { sprintId } }));
+  };
+
+  const openInsightsForSprint = (sprintId) => {
+    setInsightsSprintId(sprintId || activeSprint?.id || null);
+    setShowInsights(true);
+  };
+
+  const openEditSprint = (sprint) => {
+    setEditingSprint(sprint);
+    setEditForm({
+      name: sprint.name || '',
+      goal: sprint.goal || '',
+      start_date: sprint.start_date ? new Date(sprint.start_date).toISOString().slice(0, 10) : '',
+      end_date: sprint.end_date ? new Date(sprint.end_date).toISOString().slice(0, 10) : ''
+    });
+    setOpenMenuSprintId(null);
+  };
+
+  const handleSaveSprintEdit = async () => {
+    if (!editingSprint?.id) return;
+    const payload = {
+      name: editForm.name?.trim() || editingSprint.name,
+      goal: editForm.goal?.trim() || null,
+      start_date: editForm.start_date || null,
+      end_date: editForm.end_date || null,
+      status: editingSprint.status,
+      updated_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+      .from('sprints')
+      .update(payload)
+      .eq('id', editingSprint.id)
+      .eq('project_id', projectId)
+      .select('*')
+      .single();
+
+    if (error) {
+      toast.error('Failed to update sprint');
+      return;
+    }
+
+    setSprints((prev) => prev.map((item) => item.id === data.id ? data : item));
+    setEditingSprint(null);
+    toast.success('Sprint updated');
+  };
+
+  const deleteSprint = async (sprint) => {
+    const sprintIssues = cardsBySprint.get(sprint.id) || [];
+    const warning = sprintIssues.length > 0
+      ? `This sprint has ${sprintIssues.length} issue(s). They will move to Unplanned. Delete sprint?`
+      : 'Delete this sprint?';
+
+    if (!window.confirm(warning)) {
+      setOpenMenuSprintId(null);
+      return;
+    }
+
+    if (sprintIssues.length > 0) {
+      const ids = sprintIssues.map((issue) => issue.id);
+      const { error: moveError } = await supabase
+        .from('cards')
+        .update({ sprint_id: null })
+        .in('id', ids);
+
+      if (moveError) {
+        toast.error('Failed to move sprint issues');
+        return;
+      }
+
+      setCards((prev) => prev.map((card) => ids.includes(card.id) ? { ...card, sprint_id: null } : card));
+    }
+
+    const { error } = await supabase
+      .from('sprints')
+      .delete()
+      .eq('id', sprint.id)
+      .eq('project_id', projectId);
+
+    if (error) {
+      toast.error('Failed to delete sprint');
+      return;
+    }
+
+    setSprints((prev) => prev.filter((item) => item.id !== sprint.id));
+    setOpenMenuSprintId(null);
+    toast.success('Sprint deleted');
+  };
 
   const assignCardToSprint = async (cardId, sprintId) => {
     const previousCards = cards;
@@ -220,9 +377,9 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
   return (
     <div className="backlog-wrapper animate-fade-in">
       <header className="backlog-header-main">
-        <h2 className="backlog-title">Backlog</h2>
+        <h2 className="backlog-title">Sprint</h2>
         <div className="backlog-header-actions">
-           <button className="rounded-[3px] border border-[var(--border-subtle)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--bg-panel-hover)] transition-colors flex items-center gap-1.5"><MoreHorizontal size={14} /> Insights</button>
+          <button className="rounded-[3px] border border-[var(--border-subtle)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--bg-panel-hover)] transition-colors flex items-center gap-1.5" onClick={() => openInsightsForSprint(activeSprint?.id)}><MoreHorizontal size={14} /> Insights</button>
            <button className="bg-[#0052CC] text-white px-4 py-1.5 rounded-[3px] text-sm font-semibold hover:bg-[#0065FF] transition-colors" onClick={() => setShowCreateSprintModal(true)}>Create Sprint</button>
         </div>
       </header>
@@ -231,18 +388,24 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
       <div className="backlog-filter-bar">
         <div className="search-input-wrapper">
           <Search size={14} className="search-icon" />
-          <input type="text" placeholder="Search backlog" className="backlog-search" />
+          <input
+            type="text"
+            placeholder="Search sprint issues"
+            className="backlog-search"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+          />
         </div>
         
         <div className="avatar-filters">
-           <div className="avatar-filter-btn">
+           <button type="button" className="avatar-filter-btn" onClick={() => setOnlyMyIssues(true)}>
              <UserAvatar user={profile} size={24} />
-           </div>
-           <div className="avatar-filter-others">+5</div>
+           </button>
+           <div className="avatar-filter-others">+{teammateCount}</div>
         </div>
 
-        <button className="filter-text-btn">Only my issues</button>
-        <button className="filter-text-btn">Recently updated</button>
+        <button className="filter-text-btn" onClick={() => setOnlyMyIssues((prev) => !prev)}>{onlyMyIssues ? 'All issues' : 'Only my issues'}</button>
+        <button className="filter-text-btn" onClick={() => setRecentOnly((prev) => !prev)}>{recentOnly ? 'Default order' : 'Recently updated'}</button>
 
         <div className="filter-spacer" />
         
@@ -273,9 +436,18 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
                     <span className="sprint-meta">{sprintIssues.length} issues {dates && `· ${dates}`}</span>
                   </div>
                   <div className="sprint-block-right">
-                    <button className="btn-icon rounded p-1 hover:bg-slate-200 transition-colors"><MoreHorizontal size={16} /></button>
-                    {sprint.status === 'planning' && <button className="rounded-[3px] border border-[var(--border-subtle)] px-3 py-1 text-sm font-medium hover:bg-slate-200 transition-colors" onClick={() => updateSprintStatus(sprint.id, 'active')}>Start Sprint</button>}
-                    {sprint.status === 'active' && <button className="bg-[#0052CC] text-white px-3 py-1 rounded-[3px] text-sm font-semibold hover:bg-[#0065FF] transition-colors" onClick={() => updateSprintStatus(sprint.id, 'completed')}>Complete Sprint</button>}
+                    <div className="relative">
+                      <button className="btn-icon rounded p-1 hover:bg-slate-200 transition-colors" onClick={() => setOpenMenuSprintId((prev) => prev === sprint.id ? null : sprint.id)}><MoreHorizontal size={16} /></button>
+                      {openMenuSprintId === sprint.id && (
+                        <div className="absolute right-0 top-8 z-20 min-w-[180px] rounded-md border border-slate-200 bg-white py-1 shadow-lg">
+                          <button className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50" onClick={() => openEditSprint(sprint)}>Edit sprint</button>
+                          <button className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50" onClick={() => { openInsightsForSprint(sprint.id); setOpenMenuSprintId(null); }}>Manage sprint</button>
+                          <button className="w-full px-3 py-2 text-left text-sm text-rose-600 hover:bg-rose-50" onClick={() => deleteSprint(sprint)}>Delete sprint</button>
+                        </div>
+                      )}
+                    </div>
+                    {sprint.status === 'planning' && <button className="rounded-[3px] border border-[var(--border-subtle)] px-3 py-1 text-sm font-medium hover:bg-slate-200 transition-colors" onClick={() => updateSprintStatus(sprint, 'active', sprintIssues)}>Start Sprint</button>}
+                    {sprint.status === 'active' && <button className="bg-[#0052CC] text-white px-3 py-1 rounded-[3px] text-sm font-semibold hover:bg-[#0065FF] transition-colors" onClick={() => updateSprintStatus(sprint, 'completed', sprintIssues)}>Complete Sprint</button>}
                   </div>
                 </div>
 
@@ -288,7 +460,7 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
                     ) : (
                       <div className="empty-sprint-text">Plan a sprint by dragging work items into it, or by dragging the sprint footer.</div>
                     )}
-                    <button className="create-issue-inline">+ Create issue</button>
+                    <button className="create-issue-inline" onClick={() => dispatchCreateIssue(sprint.id)}>+ Create issue</button>
                   </DropZone>
                 )}
               </div>
@@ -303,8 +475,8 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
               <button className="collapse-btn">
                 {collapsed['backlog'] ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
               </button>
-              <h3 className="sprint-name">Backlog</h3>
-              <span className="sprint-meta">({backlog.length} issues)</span>
+              <h3 className="sprint-name">Unplanned</h3>
+              <span className="sprint-meta">({filteredBacklog.length} issues)</span>
             </div>
             <div className="sprint-block-right">
                <button className="rounded-[3px] border border-[var(--border-subtle)] px-3 py-1 text-sm font-medium hover:bg-slate-200 transition-colors" onClick={() => setShowCreateSprintModal(true)}>Create Sprint</button>
@@ -313,18 +485,46 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
 
           {!collapsed['backlog'] && (
             <DropZone id="backlog">
-              {backlog.length ? (
+              {filteredBacklog.length ? (
                 <div className="backlog-items">
-                  {backlog.map((item) => <DraggableIssue key={item.id} issue={item} />)}
+                  {filteredBacklog.map((item) => <DraggableIssue key={item.id} issue={item} />)}
                 </div>
               ) : (
-                <div className="empty-sprint-text border-dashed">Your backlog is empty.</div>
+                <div className="empty-sprint-text border-dashed">No unplanned issues.</div>
               )}
-              <button className="create-issue-inline">+ Create issue</button>
+              <button className="create-issue-inline" onClick={() => dispatchCreateIssue(null)}>+ Create issue</button>
             </DropZone>
           )}
         </div>
       </DndContext>
+
+      {editingSprint && (
+        <div className="fixed inset-0 z-[2150] flex items-center justify-center bg-black/40 p-4" onClick={() => setEditingSprint(null)}>
+          <div className="w-full max-w-lg rounded-lg border border-slate-200 bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="mb-4 text-lg font-semibold text-slate-900">Edit Sprint</h3>
+            <div className="space-y-3">
+              <input className="w-full rounded border border-slate-300 px-3 py-2 text-sm" value={editForm.name} onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))} placeholder="Sprint name" />
+              <textarea className="min-h-[90px] w-full rounded border border-slate-300 px-3 py-2 text-sm" value={editForm.goal} onChange={(e) => setEditForm((prev) => ({ ...prev, goal: e.target.value }))} placeholder="Sprint goal" />
+              <div className="grid grid-cols-2 gap-3">
+                <input type="date" className="rounded border border-slate-300 px-3 py-2 text-sm" value={editForm.start_date} onChange={(e) => setEditForm((prev) => ({ ...prev, start_date: e.target.value }))} />
+                <input type="date" className="rounded border border-slate-300 px-3 py-2 text-sm" value={editForm.end_date} onChange={(e) => setEditForm((prev) => ({ ...prev, end_date: e.target.value }))} />
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button className="rounded border border-slate-300 px-3 py-1.5 text-sm" onClick={() => setEditingSprint(null)}>Cancel</button>
+              <button className="rounded bg-[#0052CC] px-3 py-1.5 text-sm font-semibold text-white" onClick={handleSaveSprintEdit}>Save changes</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showInsights && insightsSprintId && (
+        <SprintInsightsModal
+          projectId={projectId}
+          sprintId={insightsSprintId}
+          onClose={() => setShowInsights(false)}
+        />
+      )}
 
       {/* Create Sprint Modal */}
       <InputModal

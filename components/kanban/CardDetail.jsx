@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import UserAvatar from '@/components/ui/UserAvatar';
+import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 
 const toDateInput = (value) => {
@@ -18,6 +19,7 @@ const toDateInput = (value) => {
 
 export default function CardDetail({ card, onClose, onSave, isSaving = false }) {
   const { profile } = useAuth();
+  const [users, setUsers] = useState([]);
   
   const [form, setForm] = useState({
     title: card?.title || '',
@@ -25,6 +27,7 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
     status: card?.status || 'todo',
     priority: card?.priority || 'medium',
     story_points: card?.story_points ?? '',
+    assignee_id: card?.assignee_id || '',
     start_date: toDateInput(card?.start_date),
     due_date: toDateInput(card?.due_date)
   });
@@ -69,13 +72,51 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
     }
   }, [card?.id]);
 
+  const fetchUsers = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .order('full_name', { ascending: true });
+
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
   // Fetch comments and subtasks
   useEffect(() => {
     if (card?.id) {
       fetchComments();
       fetchSubtasks();
+      fetchUsers();
     }
-  }, [card?.id, fetchComments, fetchSubtasks]);
+  }, [card?.id, fetchComments, fetchSubtasks, fetchUsers]);
+
+  useEffect(() => {
+    setForm({
+      title: card?.title || '',
+      description: card?.description || '',
+      status: card?.status || 'todo',
+      priority: card?.priority || 'medium',
+      story_points: card?.story_points ?? '',
+      assignee_id: card?.assignee_id || '',
+      start_date: toDateInput(card?.start_date),
+      due_date: toDateInput(card?.due_date)
+    });
+  }, [
+    card?.id,
+    card?.title,
+    card?.description,
+    card?.status,
+    card?.priority,
+    card?.story_points,
+    card?.assignee_id,
+    card?.start_date,
+    card?.due_date
+  ]);
 
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
@@ -156,14 +197,21 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
 
   if (!card) return null;
 
+  const buildPayload = (source) => ({
+    ...source,
+    assignee_id: source.assignee_id || card?.reporter_id || profile?.id || null,
+    story_points: source.story_points === '' ? null : Number(source.story_points),
+    start_date: source.start_date || null,
+    due_date: source.due_date || null
+  });
+
+  const submitForm = async (nextState) => {
+    await onSave?.(buildPayload(nextState));
+  };
+
   const handleSubmit = async (event) => {
     event?.preventDefault();
-    await onSave?.({
-      ...form,
-      story_points: form.story_points === '' ? null : Number(form.story_points),
-      start_date: form.start_date || null,
-      due_date: form.due_date || null
-    });
+    await submitForm(form);
   };
 
   const handleDescSave = () => {
@@ -451,8 +499,9 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
                   className={`w-full cursor-pointer appearance-none rounded-[3px] border-2 px-3 py-2 text-[12px] font-bold uppercase transition-all focus:outline-none focus:ring-4 focus:ring-[#0052CC]/10 ${getStatusStyle(form.status)}`}
                   value={form.status}
                   onChange={(e) => {
-                    setForm(p => ({ ...p, status: e.target.value }));
-                    handleSubmit();
+                    const nextForm = { ...form, status: e.target.value };
+                    setForm(nextForm);
+                    submitForm(nextForm);
                   }}
                 >
                   <option value="backlog">BACKLOG</option>
@@ -477,7 +526,20 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
                   <div className="w-28 shrink-0 text-[13px] font-bold text-[#6B778C]">Assignee</div>
                   <div className="flex flex-1 items-center gap-3 min-w-0">
                     <UserAvatar user={card.assignee} size={24} className="shrink-0" />
-                    <span className="truncate text-[13px] font-medium text-[var(--text-primary)] hover:underline cursor-pointer">{card.assignee?.full_name || 'Unassigned'}</span>
+                    <select
+                      className="w-full bg-transparent py-0.5 text-[13px] font-medium text-[var(--text-primary)] transition-all focus:outline-none"
+                      value={form.assignee_id}
+                      onChange={(e) => {
+                        const nextForm = { ...form, assignee_id: e.target.value };
+                        setForm(nextForm);
+                        submitForm(nextForm);
+                      }}
+                    >
+                      <option value="">Auto (Reporter)</option>
+                      {users.map((user) => (
+                        <option key={user.id} value={user.id}>{user.full_name}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -498,8 +560,9 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
                       className="w-full cursor-pointer bg-transparent py-0.5 text-[13px] font-medium text-[var(--text-primary)] transition-all focus:outline-none"
                       value={form.priority}
                       onChange={(e) => {
-                        setForm(p => ({ ...p, priority: e.target.value }));
-                        handleSubmit();
+                        const nextForm = { ...form, priority: e.target.value };
+                        setForm(nextForm);
+                        submitForm(nextForm);
                       }}
                     >
                       <option value="highest">Highest</option>

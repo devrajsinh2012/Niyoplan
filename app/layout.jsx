@@ -2,6 +2,7 @@ import './globals.css'
 import { Inter } from 'next/font/google'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from '@/context/AuthContext'
+import { OrganizationProvider } from '@/context/OrganizationContext'
 import AppShell from '@/components/layout/AppShell'
 import OnboardingMiddleware from '@/components/middleware/OnboardingMiddleware'
 
@@ -28,11 +29,13 @@ export default function RootLayout({ children }) {
       </head>
       <body className={`${inter.variable} font-sans`} suppressHydrationWarning>
         <AuthProvider>
-          <OnboardingMiddleware>
-            <AppShell>
-              {children}
-            </AppShell>
-          </OnboardingMiddleware>
+          <OrganizationProvider>
+            <OnboardingMiddleware>
+              <AppShell>
+                {children}
+              </AppShell>
+            </OnboardingMiddleware>
+          </OrganizationProvider>
           <Toaster position="top-right" toastOptions={{
             duration: 3000,
             style: {

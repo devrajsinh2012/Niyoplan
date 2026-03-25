@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { useOrganization } from '@/context/OrganizationContext';
 import {
   ChevronDown, ChevronRight,
   LayoutDashboard, Layers, KanbanSquare,
@@ -13,7 +13,7 @@ import {
   Zap, MessageSquare, Calendar, LogOut, Building2
 } from 'lucide-react';
 import UserAvatar from '@/components/ui/UserAvatar';
-import { supabase } from '@/lib/supabase';
+import ProjectBadge from '@/components/ui/ProjectBadge';
 
 const NavSection = ({ title, children, expanded }) => {
   const [open, setOpen] = useState(true);
@@ -55,73 +55,18 @@ const SideNavItem = ({ href, icon: Icon, label, isActive, expanded }) => {
 
 export default function Sidebar({ project, expanded, onExpandedChange }) {
   const { profile, signOut } = useAuth();
+  const { activeOrganization } = useOrganization();
   const { projectId: paramsId } = useParams();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const projectId = paramsId || project?.id;
   const activeTab = searchParams.get('tab') || 'list';
-  const [organization, setOrganization] = useState(null);
-  const [userRole, setUserRole] = useState(null);
-
-  const loadOrganization = useCallback(async () => {
-    if (!profile?.id) return;
-
-    try {
-      const { data: membership } = await supabase
-        .from('organization_members')
-        .select(`
-          role,
-          status,
-          organizations:organization_id (
-            id,
-            name,
-            slug,
-            logo_url
-          )
-        `)
-        .eq('user_id', profile.id)
-        .eq('status', 'active')
-        .order('joined_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (membership?.organizations) {
-        setOrganization(membership.organizations);
-        setUserRole(membership.role);
-      }
-    } catch (error) {
-      console.error('Error loading organization:', error);
-    }
-  }, [profile?.id]);
-
-  useEffect(() => {
-    loadOrganization();
-  }, [loadOrganization]);
+  const organization = activeOrganization;
+  const userRole = activeOrganization?.role;
 
   const projectTabHref = (tab) => `/projects/${projectId}?tab=${tab}`;
   const onProjectPage = pathname === `/projects/${projectId}`;
-
-  const getProjectBadgeText = () => {
-    if (project?.prefix) {
-      return project.prefix.slice(0, 2).toUpperCase();
-    }
-
-    if (project?.name) {
-      const initials = project.name
-        .split(/\s+/)
-        .filter(Boolean)
-        .slice(0, 2)
-        .map(part => part.charAt(0).toUpperCase())
-        .join('');
-
-      if (initials) {
-        return initials;
-      }
-    }
-
-    return 'NP';
-  };
 
   const handleLogout = async () => {
     await signOut();
@@ -136,45 +81,13 @@ export default function Sidebar({ project, expanded, onExpandedChange }) {
       className={`fixed left-0 top-[var(--topnav-height)] h-[calc(100vh-var(--topnav-height))] z-40 flex flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-panel)] transition-all duration-200 ${expanded ? 'w-60' : 'w-16'}`}
     >
       {/* Project/App Header */}
-      <div className="shrink-0 border-b border-[var(--border-subtle)] p-3">
-        {/* Organization Header */}
-        {organization && expanded && (
-          <div className="mb-3 pb-3 border-b border-[var(--border-subtle)]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-primary)] text-sm font-bold text-white shadow-sm">
-                {organization.logo_url ? (
-                  <Image
-                    src={organization.logo_url}
-                    alt={organization.name}
-                    width={40}
-                    height={40}
-                    className="h-full w-full rounded-lg object-cover"
-                  />
-                ) : (
-                  organization.name.charAt(0).toUpperCase()
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold text-[var(--text-heading)]">
-                  {organization.name}
-                </div>
-                <div className="text-[10px] font-medium uppercase tracking-wider text-[var(--text-muted)]">
-                  {userRole === 'admin' ? 'Admin' : userRole === 'viewer' ? 'Viewer' : 'Member'}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Project Header */}
-        {(projectId || !organization) && (
+      {(projectId || !organization) && (
+        <div className="shrink-0 border-b border-[var(--border-subtle)] p-3">
           <div
             className={`group flex cursor-pointer items-center rounded-lg p-2 hover:bg-[var(--bg-panel-hover)] ${expanded ? 'gap-3' : 'justify-center'}`}
             onClick={() => projectId ? router.push(`/projects/${projectId}`) : router.push('/')}
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--accent-primary)] text-sm font-bold text-white shadow-sm transition-transform group-hover:scale-105">
-              {getProjectBadgeText()}
-            </div>
+            <ProjectBadge project={project} size={32} className="shrink-0 transition-transform group-hover:scale-105" />
             {expanded && (
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold text-[var(--text-heading)]">
@@ -188,8 +101,8 @@ export default function Sidebar({ project, expanded, onExpandedChange }) {
               </div>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Nav Items */}
       <nav className="flex-1 overflow-y-auto py-3 scrollbar-hide">
@@ -232,7 +145,7 @@ export default function Sidebar({ project, expanded, onExpandedChange }) {
         {/* Keyboard Shortcuts */}
         <button
           onClick={() => window.dispatchEvent(new CustomEvent('niyoplan:show-shortcuts'))}
-          className={`flex w-full items-center gap-3 rounded-lg transition-all duration-200 ${
+          className={`mx-2 flex items-center gap-3 rounded-lg transition-all duration-200 ${
             expanded ? 'px-3 py-2' : 'px-2 py-2.5 justify-center'
           } text-[var(--text-secondary)] hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)]`}
           title={!expanded ? 'Keyboard Shortcuts' : undefined}

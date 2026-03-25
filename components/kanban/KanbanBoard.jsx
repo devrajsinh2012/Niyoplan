@@ -22,7 +22,7 @@ const DEFAULT_LISTS = [
   { name: 'Done', rank: 5000 }
 ];
 
-export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
+export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards = null, onCardUpdated = null }) {
   const [lists, setLists] = useState([]);
   const [cards, setCards] = useState([]);
   const [activeCard, setActiveCard] = useState(null);
@@ -115,13 +115,19 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
 
       setLists(boardLists);
       setCards(formattedCards);
+
+      if (typeof onCardUpdated === 'function') {
+        formattedCards.forEach((card) => {
+          onCardUpdated({ ...card, list_id: card.listId || card.list_id });
+        });
+      }
     } catch (err) {
       toast.error('Failed to load board data');
       console.error(err);
     } finally {
       setIsLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, onCardUpdated]);
 
   // Fetch lists and cards
   useEffect(() => {
@@ -138,6 +144,24 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
       setSelectedCard(card);
     }
   }, [cards, searchParams]);
+
+  useEffect(() => {
+    if (!Array.isArray(sharedCards)) return;
+
+    const backlogList = lists.find((list) => {
+      const normalized = (list.name || '').trim().toLowerCase();
+      return normalized === 'backlog' || normalized === 'to do' || normalized === 'todo';
+    });
+    const fallbackListId = (backlogList || lists[0])?.id;
+
+    const normalizedCards = sharedCards.map((card) => ({
+      ...card,
+      prefix: card.custom_id,
+      listId: card.list_id || getListIdFromStatus(card.status) || fallbackListId || card.listId
+    }));
+
+    setCards(normalizedCards);
+  }, [sharedCards, lists, getListIdFromStatus]);
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
@@ -276,6 +300,13 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
        if (error) {
          toast.error('Failed to save card position');
          await fetchBoardData();
+      } else if (typeof onCardUpdated === 'function') {
+        onCardUpdated({
+          ...card,
+          list_id: card.listId,
+          status: getStatusFromList(card.listId),
+          rank: newRank
+        });
        }
     }
   };
@@ -309,6 +340,9 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
     }
 
     setCards((prev) => [...prev, { ...data, prefix: data.custom_id, listId: data.list_id }]);
+    if (typeof onCardUpdated === 'function') {
+      onCardUpdated({ ...data, list_id: data.list_id });
+    }
     toast.success('Card added');
     setShowCreateCardModal(false);
     setCreateCardListId(null);
@@ -324,6 +358,7 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
       description: updates.description,
       priority: updates.priority,
       status: updates.status,
+      assignee_id: updates.assignee_id || selectedCard.reporter_id || null,
       story_points: updates.story_points,
       start_date: updates.start_date || null,
       due_date: updates.due_date || null,
@@ -334,7 +369,7 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
       .from('cards')
       .update(payload)
       .eq('id', selectedCard.id)
-      .select('*')
+      .select('*, assignee:profiles!cards_assignee_id_fkey(id, full_name, avatar_url), reporter:profiles!cards_reporter_id_fkey(id, full_name, avatar_url)')
       .single();
 
     setIsSavingCard(false);
@@ -354,6 +389,9 @@ export default function KanbanBoard({ projectId, refreshNonce = 0 }) {
       };
     }));
     setSelectedCard((prev) => (prev && prev.id === data.id ? { ...prev, ...data } : prev));
+    if (typeof onCardUpdated === 'function') {
+      onCardUpdated({ ...data, list_id: data.list_id });
+    }
     toast.success('Card updated');
   };
 

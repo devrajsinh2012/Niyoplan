@@ -2,50 +2,99 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { ExternalLink, FileText, Palette, BookOpen } from 'lucide-react';
+import { FileText, Palette, BookOpen, X, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import UserAvatar from '@/components/ui/UserAvatar';
 import WelcomeModal from '@/components/ui/WelcomeModal';
 import BrandMark from '@/components/ui/BrandMark';
 import { DashboardPageSkeleton } from '@/components/ui/PageSkeleton';
+import { useRouter } from 'next/navigation';
+import { useOrganization } from '@/context/OrganizationContext';
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { activeOrganization, loading: orgLoading } = useOrganization();
   const [stats, setStats] = useState({ resolved: 0, open: 0, storyPoints: 0, velocity: 0 });
   const [activities, setActivities] = useState([]);
   const [recentIssues, setRecentIssues] = useState([]);
   const [workload, setWorkload] = useState([]);
   const [activeSprint, setActiveSprint] = useState(null);
+  const [resourceProjectId, setResourceProjectId] = useState(null);
+  const [resourceLinks, setResourceLinks] = useState({
+    projectRequirement: '',
+    designPrototype: '',
+    apiDocumentation: '',
+  });
+  const [viewerState, setViewerState] = useState({ open: false, title: '', url: '' });
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchDashboardData = useCallback(async () => {
     try {
+      const organizationId = activeOrganization?.id;
+
+      if (!organizationId) {
+        setStats({ resolved: 0, open: 0, storyPoints: 0, velocity: 0 });
+        setActiveSprint(null);
+        setActivities([]);
+        setRecentIssues([]);
+        setWorkload([]);
+        setResourceLinks({ projectRequirement: '', designPrototype: '', apiDocumentation: '' });
+        setResourceProjectId(null);
+        return;
+      }
+
+      const { data: orgProjects } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('organization_id', organizationId);
+
+      const projectIds = (orgProjects || []).map((p) => p.id);
+
+      if (projectIds.length === 0) {
+        setStats({ resolved: 0, open: 0, storyPoints: 0, velocity: 0 });
+        setActiveSprint(null);
+        setActivities([]);
+        setRecentIssues([]);
+        setWorkload([]);
+        setResourceLinks({ projectRequirement: '', designPrototype: '', apiDocumentation: '' });
+        setResourceProjectId(null);
+        return;
+      }
+
       const [
         { count: totalCards },
         { count: doneCards },
-        { data: activityLogs },
+        { data: activityLogsAll },
         { data: recent },
         { data: sprintData },
         { data: cardData },
       ] = await Promise.all([
-        supabase.from('cards').select('*', { count: 'exact', head: true }),
-        supabase.from('cards').select('*', { count: 'exact', head: true }).eq('status', 'done'),
+        supabase.from('cards').select('*', { count: 'exact', head: true }).in('project_id', projectIds),
+        supabase.from('cards').select('*', { count: 'exact', head: true }).eq('status', 'done').in('project_id', projectIds),
         supabase.from('activity_log')
-          .select('*, user:profiles(full_name, avatar_url), card:cards(custom_id, title)')
-          .order('created_at', { ascending: false }).limit(8),
+          .select('*, user:profiles(full_name, avatar_url), card:cards(project_id, custom_id, title)')
+          .order('created_at', { ascending: false }).limit(100),
         supabase.from('cards')
           .select('id, custom_id, title, status, priority, created_at, project_id')
+          .in('project_id', projectIds)
           .order('created_at', { ascending: false }).limit(5),
         supabase.from('sprints')
           .select('*')
           .eq('status', 'active')
+          .in('project_id', projectIds)
           .limit(1),
         supabase.from('cards')
           .select('assignee_id, story_points, profiles:assignee_id(full_name, avatar_url)')
+          .in('project_id', projectIds)
           .not('assignee_id', 'is', null),
       ]);
 
       const sprint = sprintData?.[0] || null;
+      const projectIdSet = new Set(projectIds);
+      const activityLogs = (activityLogsAll || [])
+        .filter((log) => projectIdSet.has(log.card?.project_id))
+        .slice(0, 8);
       const openCount = (totalCards || 0) - (doneCards || 0);
       const totalSP = (cardData || []).reduce((sum, c) => sum + (c.story_points || 0), 0);
 
@@ -58,6 +107,30 @@ export default function DashboardPage() {
       setActiveSprint(sprint);
       setActivities(activityLogs || []);
       setRecentIssues(recent || []);
+
+      const contextProjectId = sprint?.project_id || recent?.[0]?.project_id || projectIds[0];
+      setResourceProjectId(contextProjectId || null);
+
+      if (contextProjectId) {
+        const { data: docs } = await supabase
+          .from('docs')
+          .select('title, content')
+          .eq('project_id', contextProjectId);
+
+        const normalize = (value) => (value || '').trim().toLowerCase();
+        const byTitle = (docs || []).reduce((acc, doc) => {
+          acc[normalize(doc.title)] = doc.content || '';
+          return acc;
+        }, {});
+
+        setResourceLinks({
+          projectRequirement: byTitle['project requirement'] || byTitle['product requirements'] || '',
+          designPrototype: byTitle['design prototype'] || '',
+          apiDocumentation: byTitle['api documentation'] || '',
+        });
+      } else {
+        setResourceLinks({ projectRequirement: '', designPrototype: '', apiDocumentation: '' });
+      }
 
       // Compute workload per user
       const userMap = {};
@@ -81,9 +154,13 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [activeOrganization?.id]);
 
-  useEffect(() => { fetchDashboardData(); }, [fetchDashboardData]);
+  useEffect(() => {
+    if (orgLoading) return;
+    setIsLoading(true);
+    fetchDashboardData();
+  }, [fetchDashboardData, orgLoading]);
 
   const relativeTime = (ts) => {
     if (!ts) return '';
@@ -120,38 +197,36 @@ export default function DashboardPage() {
     return `Ended ${Math.abs(dayDiff)} days ago (${label})`;
   };
 
-  const handleShare = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      toast.success('Dashboard link copied.');
-    } catch {
-      toast.error('Could not copy link.');
-    }
-  };
-
-  const handleExport = () => {
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      stats,
-      activeSprint,
-      recentIssues,
-      activities,
-      workload,
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'niyoplan-dashboard-export.json';
-    link.click();
-    URL.revokeObjectURL(url);
-    toast.success('Dashboard export downloaded.');
-  };
-
   const handleViewHistory = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     toast('Showing latest team activity on this page.');
   };
+
+  const normalizeLink = (value) => {
+    const trimmed = (value || '').trim();
+    if (!trimmed) return '';
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    return `https://${trimmed}`;
+  };
+
+  const toPreviewUrl = (value) => {
+    const url = normalizeLink(value);
+    const driveFileMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/i);
+    if (driveFileMatch?.[1]) {
+      return `https://drive.google.com/file/d/${driveFileMatch[1]}/preview`;
+    }
+    return url;
+  };
+
+  const openResource = (title, link) => {
+    if (!link) {
+      toast('No document link configured for this project yet.');
+      return;
+    }
+    setViewerState({ open: true, title, url: toPreviewUrl(link) });
+  };
+
+  const closeViewer = () => setViewerState({ open: false, title: '', url: '' });
 
   if (isLoading) {
     return <DashboardPageSkeleton />;
@@ -173,14 +248,6 @@ export default function DashboardPage() {
         </div>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
           <h1 className="text-3xl font-extrabold text-[var(--text-heading)] tracking-tight">Project Overview</h1>
-          <div className="flex gap-3">
-            <button onClick={handleShare} className="flex items-center gap-2 rounded-[3px] border border-[var(--border-strong)] bg-[var(--bg-surface)] px-4 py-2 text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider transition-all hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)] shadow-sm">
-              <ExternalLink size={14} /> Share
-            </button>
-            <button onClick={handleExport} className="flex items-center gap-2 rounded-[3px] bg-[#0052CC] px-6 py-2 text-[11px] font-bold text-white uppercase tracking-wider transition-all hover:bg-[#00388D] shadow-md hover:shadow-lg active:scale-95">
-              Export
-            </button>
-          </div>
         </div>
       </div>
 
@@ -191,7 +258,14 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-10">
 
           {/* Active Sprint Card */}
-          <div className="rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-10 shadow-sm transition-all hover:shadow-md">
+          <div
+            className={`rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-10 shadow-sm transition-all hover:shadow-md ${activeSprint?.project_id ? 'cursor-pointer hover:border-[var(--accent-primary)]' : ''}`}
+            onClick={() => {
+              if (activeSprint?.project_id) {
+                router.push(`/projects/${activeSprint.project_id}?tab=backlog`);
+              }
+            }}
+          >
             <div className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
               <div>
                 <div className="mb-3 flex items-center gap-3">
@@ -405,24 +479,66 @@ export default function DashboardPage() {
             </div>
             <div className="p-4 grid grid-cols-1 gap-1.5">
               {[
-                { icon: FileText, label: 'Product Requirements', color: '#0052CC' },
-                { icon: Palette, label: 'Design Prototype', color: '#F24E1E' },
-                { icon: BookOpen, label: 'API Documentation', color: '#006644' },
+                { icon: FileText, label: 'Project Requirement', key: 'projectRequirement', color: '#0052CC' },
+                { icon: Palette, label: 'Design Prototype', key: 'designPrototype', color: '#F24E1E' },
+                { icon: BookOpen, label: 'API Documentation', key: 'apiDocumentation', color: '#006644' },
               ].map((r, i) => (
                 <button
                   key={i}
                   className="flex w-full items-center gap-5 rounded-[4px] p-4 text-left transition-all hover:bg-[var(--bg-panel-hover)] group"
+                  onClick={() => openResource(r.label, resourceLinks[r.key])}
                 >
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] group-hover:border-transparent group-hover:shadow-md transition-all">
                     <r.icon size={18} style={{ color: r.color }} />
                   </div>
-                  <span className="text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-[0.15em] group-hover:text-[var(--text-primary)] transition-colors">{r.label}</span>
+                  <div className="flex-1">
+                    <span className="text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-[0.15em] group-hover:text-[var(--text-primary)] transition-colors">{r.label}</span>
+                  </div>
                 </button>
               ))}
             </div>
           </div>
         </div>
       </div>
+
+      {viewerState.open && (
+        <div className="fixed inset-0 z-[2000] bg-black/70 backdrop-blur-sm">
+          <div className="h-full w-full bg-[var(--bg-app)] flex flex-col">
+            <div className="shrink-0 h-14 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center justify-between px-4">
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--text-heading)]">{viewerState.title}</h3>
+                {resourceProjectId && (
+                  <p className="text-xs text-[var(--text-muted)]">Project resource preview</p>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={viewerState.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-panel-hover)]"
+                >
+                  <ExternalLink size={14} /> Open in new tab
+                </a>
+                <button
+                  onClick={closeViewer}
+                  className="inline-flex items-center gap-1 rounded-md bg-[var(--accent-primary)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+                >
+                  <X size={14} /> Close
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 bg-white">
+              <iframe
+                title={viewerState.title}
+                src={viewerState.url}
+                className="h-full w-full"
+                referrerPolicy="strict-origin-when-cross-origin"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

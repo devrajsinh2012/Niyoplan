@@ -2,29 +2,35 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { Search, Bell, Sun, Moon, Plus, LogOut, Settings } from 'lucide-react';
+import { Search, Bell, Sun, Moon, LogOut, Settings, ChevronDown, Check, Building2, Plus } from 'lucide-react';
+import { useOrganization } from '@/context/OrganizationContext';
 import toast from 'react-hot-toast';
 import UserAvatar from '@/components/ui/UserAvatar';
 import BrandMark from '@/components/ui/BrandMark';
 
-export default function TopNav({ onCreateClick, theme, onToggleTheme }) {
+export default function TopNav({ theme, onToggleTheme }) {
   const { profile, signOut } = useAuth();
+  const { activeOrganization, userOrganizations, switchOrganization, loading: orgLoading } = useOrganization();
   const router = useRouter();
   const pathname = usePathname();
+  const [orgMenuOpen, setOrgMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [globalSearch, setGlobalSearch] = useState('');
+  const orgRef = useRef(null);
   const menuRef = useRef(null);
   const notificationRef = useRef(null);
 
   useEffect(() => {
     function handleClickOutside(e) {
+      if (orgRef.current && !orgRef.current.contains(e.target)) {
+        setOrgMenuOpen(false);
+      }
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         setUserMenuOpen(false);
       }
@@ -115,27 +121,89 @@ export default function TopNav({ onCreateClick, theme, onToggleTheme }) {
       {/* Logo */}
       <Link
         href="/"
-        className="mr-2 shrink-0 cursor-pointer p-1 transition-transform hover:scale-105"
+        className="mr-2 inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-md p-1 transition-transform hover:scale-105"
         title="NiyoPlan Home"
       >
         <BrandMark size={28} className="rounded-md" />
+        <span className="hidden text-sm font-semibold tracking-wide text-[var(--text-heading)] sm:inline">Niyoplan</span>
       </Link>
 
       {/* Global Nav Links */}
       <nav className="flex items-center gap-1">
+        <div className="relative mr-2" ref={orgRef}>
+          <button
+            onClick={() => setOrgMenuOpen((prev) => !prev)}
+            className="inline-flex items-center gap-2 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--bg-panel-hover)]"
+            title="Switch organization"
+          >
+            <Building2 size={14} className="text-[var(--text-muted)]" />
+            <span className="max-w-[160px] truncate">
+              {orgLoading ? 'Loading org...' : (activeOrganization?.name || 'No company')}
+            </span>
+            <ChevronDown size={14} className="text-[var(--text-muted)]" />
+          </button>
+
+          {orgMenuOpen && (
+            <div className="absolute left-0 top-[calc(100%+8px)] z-[220] w-[320px] overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-xl">
+              <div className="border-b border-[var(--border-subtle)] px-4 py-3">
+                <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Organizations</div>
+              </div>
+
+              <div className="max-h-[280px] overflow-y-auto">
+                {userOrganizations.length === 0 ? (
+                  <div className="px-4 py-8 text-sm text-[var(--text-muted)] text-center">No organizations found</div>
+                ) : (
+                  userOrganizations.map((org) => (
+                    <button
+                      key={org.id}
+                      onClick={async () => {
+                        const changed = activeOrganization?.id !== org.id;
+                        await switchOrganization(org.id);
+                        setOrgMenuOpen(false);
+                        if (changed) {
+                          toast.success(`Switched to ${org.name}`);
+                          router.push('/projects');
+                        }
+                      }}
+                      className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors ${activeOrganization?.id === org.id ? 'bg-[var(--accent-subtle)]' : 'hover:bg-[var(--bg-panel-hover)]'}`}
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-[var(--text-primary)]">{org.name}</div>
+                        <div className="text-xs text-[var(--text-muted)] capitalize">{org.role}</div>
+                      </div>
+                      {activeOrganization?.id === org.id && <Check size={14} className="text-[var(--accent-primary)]" />}
+                    </button>
+                  ))
+                )}
+              </div>
+
+              <div className="border-t border-[var(--border-subtle)] p-2 space-y-1">
+                <button
+                  onClick={() => {
+                    setOrgMenuOpen(false);
+                    router.push('/onboarding/create');
+                  }}
+                  className="w-full inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-panel-hover)]"
+                >
+                  <Plus size={14} /> Create company
+                </button>
+                <button
+                  onClick={() => {
+                    setOrgMenuOpen(false);
+                    router.push('/onboarding/join');
+                  }}
+                  className="w-full inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-panel-hover)]"
+                >
+                  <Building2 size={14} /> Join company
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         <Link href="/projects" className={getNavLinkClass('/projects')}>Projects</Link>
         <Link href="/" className={getNavLinkClass('/')}>Dashboards</Link>
       </nav>
-
-      {/* Create Button */}
-      <button
-        id="global-create-btn"
-        onClick={onCreateClick}
-        className="ml-2 flex min-w-fit items-center gap-1.5 rounded-[3px] bg-[#0052CC] px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-[#0065FF] active:bg-[#0747A6]"
-      >
-        <Plus size={16} strokeWidth={2.5} />
-        Create
-      </button>
 
       {/* Spacer */}
       <div className="flex-1" />

@@ -19,6 +19,8 @@ export default function ProfileSettingsPage() {
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [showEmailEditor, setShowEmailEditor] = useState(false);
   const [bio, setBio] = useState('');
   const [timezone, setTimezone] = useState('UTC');
 
@@ -42,11 +44,20 @@ export default function ProfileSettingsPage() {
     if (profile) {
       setFullName(profile.full_name || '');
       setUsername(profile.username || '');
-      setEmail(profile.email || '');
       setBio(profile.bio || '');
       setTimezone(profile.timezone || 'UTC');
     }
   }, [profile]);
+
+  useEffect(() => {
+    const loadAuthEmail = async () => {
+      const { data } = await supabase.auth.getUser();
+      const authEmail = data?.user?.email || profile?.email || '';
+      setEmail(authEmail);
+      setNewEmail(authEmail);
+    };
+    loadAuthEmail();
+  }, [profile?.email]);
 
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
@@ -203,6 +214,33 @@ export default function ProfileSettingsPage() {
     }
   };
 
+  const handleChangeEmail = async () => {
+    const targetEmail = newEmail.trim().toLowerCase();
+    if (!targetEmail) {
+      toast.error('Please enter a valid email');
+      return;
+    }
+
+    if (targetEmail === (email || '').toLowerCase()) {
+      toast('New email is same as current email');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ email: targetEmail });
+      if (error) throw error;
+
+      toast.success('Verification email sent. Confirm the new email to complete the change.');
+      setShowEmailEditor(false);
+    } catch (error) {
+      console.error('Error changing email:', error);
+      toast.error(error?.message || 'Failed to change email');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleDeleteAccount = async () => {
     if (deleteConfirmEmail !== email) {
       toast.error('Email does not match');
@@ -336,16 +374,49 @@ export default function ProfileSettingsPage() {
                 <label className="mb-2 block text-sm font-medium text-[var(--text-primary)]">
                   Email
                 </label>
-                <div className="flex items-center gap-3">
+                <div className="space-y-3">
                   <input
                     type="email"
                     value={email}
                     readOnly
                     className="flex-1 rounded-md border border-[var(--border-subtle)] bg-gray-50 px-4 py-2 text-sm text-[var(--text-secondary)] cursor-not-allowed"
                   />
-                  <button className="text-sm font-medium text-blue-600 hover:underline">
-                    Change email
-                  </button>
+                  {!showEmailEditor ? (
+                    <button
+                      onClick={() => setShowEmailEditor(true)}
+                      className="text-sm font-medium text-blue-600 hover:underline"
+                    >
+                      Change email
+                    </button>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="email"
+                        value={newEmail}
+                        onChange={(e) => setNewEmail(e.target.value)}
+                        className="flex-1 rounded-md border border-[var(--border-subtle)] bg-white px-4 py-2 text-sm text-[var(--text-primary)] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        placeholder="Enter new email"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleChangeEmail}
+                          disabled={isSaving}
+                          className="rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          {isSaving ? 'Saving...' : 'Update'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowEmailEditor(false);
+                            setNewEmail(email);
+                          }}
+                          className="rounded-md border border-[var(--border-subtle)] px-3 py-2 text-sm font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-panel-hover)]"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

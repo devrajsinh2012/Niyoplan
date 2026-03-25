@@ -37,6 +37,10 @@
   gap: 16px;
   margin-bottom: 24px;
   flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-surface) 92%, #ffffff 8%);
 }
 
 .search-input-wrapper {
@@ -85,6 +89,7 @@
   cursor: pointer;
   z-index: 2;
   overflow: hidden;
+  border-color: color-mix(in srgb, var(--bg-app) 60%, #ffffff 40%);
 }
 .avatar-filter-btn img {
   width: 100%;
@@ -159,10 +164,11 @@
 }
 
 .sprint-block {
-  background: #F4F5F7;
-  border: none;
-  border-radius: 3px;
+  background: color-mix(in srgb, var(--bg-surface) 94%, #ffffff 6%);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 3px 8px rgba(9, 30, 66, 0.05);
 }
 :root[data-theme='dark'] .sprint-block {
   background: var(--bg-panel);
@@ -171,10 +177,11 @@
 
 .sprint-block-header {
   padding: 12px 16px;
-  background: transparent;
+  background: color-mix(in srgb, var(--bg-surface) 88%, #f7f9fc 12%);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-subtle) 70%, transparent 30%);
 }
 
 .sprint-block-left {
@@ -222,11 +229,11 @@
 /* ── Dropzone & Rows ── */
 .sprint-dropzone {
   min-height: 20px;
-  padding-bottom: 8px;
+  padding: 8px;
   transition: background 0.2s;
 }
 .sprint-dropzone.dropzone-over {
-  background: #DEEBFF;
+  background: color-mix(in srgb, #deebff 70%, var(--bg-surface) 30%);
 }
 
 .backlog-items {
@@ -245,8 +252,9 @@
   cursor: grab;
   transition: all 0.2s;
   margin: 0 4px;
-  border-radius: 2px;
+  border-radius: 10px;
   box-shadow: 0 1px 1px rgba(9, 30, 66, 0.25);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 75%, transparent 25%);
 }
 :root[data-theme='dark'] .backlog-row {
   background: var(--bg-surface);
@@ -375,7 +383,7 @@
   cursor: pointer;
   transition: all 0.2s;
   margin: 4px;
-  border-radius: 3px;
+  border-radius: 8px;
 }
 .create-issue-inline:hover {
   background: rgba(9, 30, 66, 0.08);
@@ -392,7 +400,7 @@
   color: var(--text-muted);
   background: rgba(255,255,255,0.4);
   margin: 4px;
-  border-radius: 3px;
+  border-radius: 10px;
 }
 .empty-sprint-text.border-dashed {
   border: 1px dashed #C1C7D0;

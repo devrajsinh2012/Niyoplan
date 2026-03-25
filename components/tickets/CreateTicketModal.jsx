@@ -14,7 +14,7 @@ const DEFAULT_LISTS = [
   { name: 'Done', rank: 5000 }
 ];
 
-export default function CreateTicketModal({ projectId, onClose, onCreated }) {
+export default function CreateTicketModal({ projectId, defaultSprintId = null, onClose, onCreated }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [users, setUsers] = useState([]);
   const { profile } = useAuth();
@@ -25,8 +25,13 @@ export default function CreateTicketModal({ projectId, onClose, onCreated }) {
     issue_type: 'task',
     priority: 'medium',
     story_points: '',
-    assignee_id: ''
+    assignee_id: '',
+    sprint_id: defaultSprintId || ''
   });
+
+  useEffect(() => {
+    setFormData((prev) => ({ ...prev, sprint_id: defaultSprintId || '' }));
+  }, [defaultSprintId]);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -90,8 +95,9 @@ export default function CreateTicketModal({ projectId, onClose, onCreated }) {
           description: formData.description,
           issue_type: formData.issue_type,
           priority: formData.priority,
-          assignee_id: formData.assignee_id || null,
+          assignee_id: formData.assignee_id || profile.id,
           reporter_id: profile.id,
+          sprint_id: formData.sprint_id || null,
           story_points: formData.story_points ? parseInt(formData.story_points, 10) : null,
           status: 'backlog',
           list_id: backlogListId,
@@ -217,7 +223,7 @@ export default function CreateTicketModal({ projectId, onClose, onCreated }) {
                 value={formData.assignee_id}
                 onChange={handleChange}
               >
-                <option value="">Unassigned</option>
+                <option value="">Auto (Reporter)</option>
                 {users.map(u => (
                   <option key={u.id} value={u.id}>{u.full_name}</option>
                 ))}

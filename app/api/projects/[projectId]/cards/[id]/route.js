@@ -15,8 +15,8 @@ export async function GET(request, { params }) {
       .from('cards')
       .select(`
         *,
-        assignee:profiles!cards_assignee_id_fkey(full_name, avatar_url),
-        reporter:profiles!cards_reporter_id_fkey(full_name, avatar_url)
+        assignee:profiles!cards_assignee_id_fkey(id, full_name, avatar_url),
+        reporter:profiles!cards_reporter_id_fkey(id, full_name, avatar_url)
       `)
       .eq('id', id)
       .eq('project_id', projectId)
@@ -68,7 +68,11 @@ export async function PUT(request, { params }) {
       })
       .eq('id', id)
       .eq('project_id', projectId)
-      .select()
+      .select(`
+        *,
+        assignee:profiles!cards_assignee_id_fkey(id, full_name, avatar_url),
+        reporter:profiles!cards_reporter_id_fkey(id, full_name, avatar_url)
+      `)
       .single();
 
     if (cardError) throw cardError;

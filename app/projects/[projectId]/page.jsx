@@ -63,6 +63,7 @@ export default function ProjectDetailPage() {
   const [cards, setCards] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [createIssueContext, setCreateIssueContext] = useState({ sprintId: null });
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [selectedCard, setSelectedCard] = useState(null);
   const [isSavingCard, setIsSavingCard] = useState(false);
@@ -81,7 +82,7 @@ export default function ProjectDetailPage() {
   const tabs = useMemo(() => ([
     { id: 'list', name: 'List View', icon: ListIcon },
     { id: 'board', name: 'Kanban Board', icon: KanbanSquare },
-    { id: 'backlog', name: 'Sprints & Backlog', icon: Network },
+    { id: 'backlog', name: 'Sprint', icon: Network },
     { id: 'gantt', name: 'Gantt Timeline', icon: Calendar },
     { id: 'dsm', name: 'DSM Module', icon: Settings2 },
     { id: 'meetings', name: 'Meetings', icon: FileText },
@@ -127,7 +128,11 @@ export default function ProjectDetailPage() {
   }, [fetchProjectAndCards]);
 
   useEffect(() => {
-    const openModal = () => setShowModal(true);
+    const openModal = (event) => {
+      const sprintId = event?.detail?.sprintId || null;
+      setCreateIssueContext({ sprintId });
+      setShowModal(true);
+    };
     window.addEventListener('niyoplan:create-issue', openModal);
     return () => window.removeEventListener('niyoplan:create-issue', openModal);
   }, []);
@@ -148,6 +153,7 @@ export default function ProjectDetailPage() {
 
       if (event.key.toLowerCase() === 'c' && canWrite) {
         event.preventDefault();
+        setCreateIssueContext({ sprintId: null });
         setShowModal(true);
         return;
       }
@@ -166,6 +172,7 @@ export default function ProjectDetailPage() {
   }, [tabs, canWrite, id, router]);
 
   const handleCreated = useCallback(() => {
+    setCreateIssueContext({ sprintId: null });
     fetchProjectAndCards();
     setRefreshNonce((prev) => prev + 1);
   }, [fetchProjectAndCards]);
@@ -183,6 +190,7 @@ export default function ProjectDetailPage() {
       description: updates.description,
       priority: updates.priority,
       status: updates.status,
+      assignee_id: updates.assignee_id || selectedCard.reporter_id || profile?.id || null,
       story_points: updates.story_points,
       start_date: updates.start_date || null,
       due_date: updates.due_date || null,
@@ -192,7 +200,7 @@ export default function ProjectDetailPage() {
       .from('cards')
       .update(payload)
       .eq('id', selectedCard.id)
-      .select('*, assignee:profiles!cards_assignee_id_fkey(full_name, avatar_url)')
+      .select('*, assignee:profiles!cards_assignee_id_fkey(id, full_name, avatar_url), reporter:profiles!cards_reporter_id_fkey(id, full_name, avatar_url)')
       .single();
 
     setIsSavingCard(false);
@@ -206,6 +214,18 @@ export default function ProjectDetailPage() {
     setSelectedCard((prev) => (prev?.id === data.id ? data : prev));
     toast.success('Card updated');
   };
+
+  const handleBoardCardUpdated = useCallback((updatedCard) => {
+    if (!updatedCard?.id) return;
+
+    setCards((prev) => {
+      const exists = prev.some((item) => item.id === updatedCard.id);
+      if (!exists) return [updatedCard, ...prev];
+      return prev.map((item) => (item.id === updatedCard.id ? { ...item, ...updatedCard } : item));
+    });
+
+    setSelectedCard((prev) => (prev?.id === updatedCard.id ? { ...prev, ...updatedCard } : prev));
+  }, []);
 
   useEffect(() => {
     const selectedCardId = searchParams.get('cardId');
@@ -278,7 +298,10 @@ export default function ProjectDetailPage() {
           <div className="flex items-center gap-2">
             {canWrite && (
               <button
-                onClick={() => setShowModal(true)}
+                onClick={() => {
+                  setCreateIssueContext({ sprintId: null });
+                  setShowModal(true);
+                }}
                 className="flex items-center gap-2 rounded-[3px] bg-[#0052CC] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#0065FF]"
               >
                 <Plus size={18} strokeWidth={2.5} />
@@ -403,7 +426,12 @@ export default function ProjectDetailPage() {
 
         {activeTab === 'board' && (
           <div className="flex-1 animate-fade-in flex flex-col min-h-[600px] h-full">
-            <KanbanBoard projectId={id} refreshNonce={refreshNonce} />
+            <KanbanBoard
+              projectId={id}
+              refreshNonce={refreshNonce}
+              sharedCards={cards}
+              onCardUpdated={handleBoardCardUpdated}
+            />
           </div>
         )}
 
@@ -475,7 +503,15 @@ export default function ProjectDetailPage() {
       </div>
 
       {showModal && (
-        <CreateTicketModal projectId={id} onClose={() => setShowModal(false)} onCreated={handleCreated} />
+        <CreateTicketModal
+          projectId={id}
+          defaultSprintId={createIssueContext.sprintId}
+          onClose={() => {
+            setShowModal(false);
+            setCreateIssueContext({ sprintId: null });
+          }}
+          onCreated={handleCreated}
+        />
       )}
 
       {selectedCard && (

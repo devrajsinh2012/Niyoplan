@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+import { useOrganization } from '@/context/OrganizationContext';
 import { FolderKanban, Plus, Star, Activity } from 'lucide-react';
 import toast from 'react-hot-toast';
 import UserAvatar from '@/components/ui/UserAvatar';
 import BrandMark from '@/components/ui/BrandMark';
+import ProjectBadge from '@/components/ui/ProjectBadge';
 import { ProjectsPageSkeleton } from '@/components/ui/PageSkeleton';
 
 const DEFAULT_LISTS = [
@@ -25,6 +26,7 @@ export default function ProjectsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const { profile } = useAuth();
+  const { activeOrganization, loading: orgLoading } = useOrganization();
   const searchParams = useSearchParams();
   
   // New Project Form
@@ -34,10 +36,9 @@ export default function ProjectsPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [projectScope, setProjectScope] = useState('all');
-
-  useEffect(() => {
-    fetchProjects();
-  }, []);
+  const [projectRequirementLink, setProjectRequirementLink] = useState('');
+  const [designPrototypeLink, setDesignPrototypeLink] = useState('');
+  const [apiDocumentationLink, setApiDocumentationLink] = useState('');
 
   useEffect(() => {
     const incoming = searchParams.get('search') || '';
@@ -59,14 +60,21 @@ export default function ProjectsPage() {
   });
 
 
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     try {
+      const organizationId = activeOrganization?.id;
+      if (!organizationId) {
+        setProjects([]);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('projects')
         .select(`
           *,
           profiles ( full_name, avatar_url )
         `)
+        .eq('organization_id', organizationId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -77,19 +85,32 @@ export default function ProjectsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activeOrganization?.id]);
+
+  useEffect(() => {
+    if (orgLoading) return;
+    setIsLoading(true);
+    fetchProjects();
+  }, [orgLoading, fetchProjects]);
 
   const handleCreateProject = async (e) => {
     e.preventDefault();
     setIsCreating(true);
 
     try {
+      const organizationId = activeOrganization?.id;
+
+      if (!organizationId) {
+        throw new Error('No active company found. Please complete onboarding first.');
+      }
+
       const { data: project, error } = await supabase
         .from('projects')
         .insert({
           name,
           description,
           prefix: prefix.toUpperCase(),
+          organization_id: organizationId,
           created_by: profile.id
         })
         .select()
@@ -106,11 +127,32 @@ export default function ProjectsPage() {
         rank: list.rank
       })));
 
+      const docsToCreate = [
+        { title: 'Project Requirement', content: projectRequirementLink.trim() },
+        { title: 'Design Prototype', content: designPrototypeLink.trim() },
+        { title: 'API Documentation', content: apiDocumentationLink.trim() },
+      ].filter((doc) => doc.content);
+
+      if (docsToCreate.length > 0) {
+        await supabase.from('docs').insert(
+          docsToCreate.map((doc) => ({
+            project_id: project.id,
+            title: doc.title,
+            content: doc.content,
+            created_by: profile.id,
+            updated_by: profile.id,
+          }))
+        );
+      }
+
       toast.success('Project created!');
       setShowModal(false);
       setName('');
       setDescription('');
       setPrefix('');
+      setProjectRequirementLink('');
+      setDesignPrototypeLink('');
+      setApiDocumentationLink('');
       fetchProjects();
     } catch (err) {
       toast.error(err?.message || 'Failed to create project');
@@ -216,9 +258,7 @@ export default function ProjectsPage() {
             >
               <div className="mb-5 flex items-start justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#0C66E4] to-[#6554C0] text-sm font-bold text-white shadow-sm ring-1 ring-black/5">
-                    {project.prefix}
-                  </div>
+                  <ProjectBadge project={project} size={40} />
                   <div className="min-w-0">
                     <h3 className="truncate text-base font-bold text-[var(--text-heading)] group-hover:text-[#0052CC] transition-colors">
                       {project.name}
@@ -319,6 +359,33 @@ export default function ProjectsPage() {
                   placeholder="What is this project about?"
                   value={description} 
                   onChange={e => setDescription(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-3 border border-[var(--border-subtle)] rounded-[4px] p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                  Project Resources (Optional)
+                </p>
+                <input
+                  type="url"
+                  className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
+                  placeholder="Project Requirement URL (Google Drive / PDF / link)"
+                  value={projectRequirementLink}
+                  onChange={(e) => setProjectRequirementLink(e.target.value)}
+                />
+                <input
+                  type="url"
+                  className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
+                  placeholder="Design Prototype URL"
+                  value={designPrototypeLink}
+                  onChange={(e) => setDesignPrototypeLink(e.target.value)}
+                />
+                <input
+                  type="url"
+                  className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
+                  placeholder="API Documentation URL"
+                  value={apiDocumentationLink}
+                  onChange={(e) => setApiDocumentationLink(e.target.value)}
                 />
               </div>
 

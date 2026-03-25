@@ -20,9 +20,11 @@ import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import { CompanySettingsPageSkeleton } from '@/components/ui/PageSkeleton';
+import { useOrganization } from '@/context/OrganizationContext';
 
 export default function CompanySettingsPage() {
   const router = useRouter();
+  const { activeOrganization, refreshOrganizations } = useOrganization();
   const [activeTab, setActiveTab] = useState('general');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -54,23 +56,18 @@ export default function CompanySettingsPage() {
         user_id,
         profiles:user_id (
           full_name,
-          avatar_url
+          avatar_url,
+          email
         )
       `)
       .eq('organization_id', orgId)
       .order('joined_at', { ascending: false });
 
     if (allMembers) {
-      // Fetch emails for each member
-      const membersWithEmail = await Promise.all(
-        allMembers.map(async (member) => {
-          const { data: { user: authUser } } = await supabase.auth.admin.getUserById(member.user_id);
-          return {
-            ...member,
-            email: authUser?.email || 'Unknown'
-          };
-        })
-      );
+      const membersWithEmail = allMembers.map((member) => ({
+        ...member,
+        email: member.profiles?.email || 'Unknown'
+      }));
 
       setPendingMembers(membersWithEmail.filter(m => m.status === 'pending'));
       setMembers(membersWithEmail.filter(m => m.status === 'active'));
@@ -78,6 +75,7 @@ export default function CompanySettingsPage() {
   }, []);
 
   const loadData = useCallback(async () => {
+    setLoading(true);
     try {
       // Get current user
       const { data: { user: currentUser } } = await supabase.auth.getUser();
@@ -87,11 +85,17 @@ export default function CompanySettingsPage() {
       }
       setUser(currentUser);
 
-      // Get user's organization
+      if (!activeOrganization?.id) {
+        toast.error('No active company selected.');
+        router.push('/projects');
+        return;
+      }
+
       const { data: membership } = await supabase
         .from('organization_members')
         .select('organization_id, role, status')
         .eq('user_id', currentUser.id)
+        .eq('organization_id', activeOrganization.id)
         .eq('status', 'active')
         .single();
 
@@ -105,7 +109,7 @@ export default function CompanySettingsPage() {
       const { data: org } = await supabase
         .from('organizations')
         .select('*')
-        .eq('id', membership.organization_id)
+        .eq('id', activeOrganization.id)
         .single();
 
       if (org) {
@@ -119,7 +123,7 @@ export default function CompanySettingsPage() {
       }
 
       // Load members
-      await loadMembers(membership.organization_id);
+      await loadMembers(activeOrganization.id);
 
     } catch (error) {
       console.error('Error loading data:', error);
@@ -127,7 +131,7 @@ export default function CompanySettingsPage() {
     } finally {
       setLoading(false);
     }
-  }, [loadMembers, router]);
+  }, [loadMembers, router, activeOrganization?.id]);
 
   useEffect(() => {
     loadData();
@@ -157,6 +161,7 @@ export default function CompanySettingsPage() {
         }
       } else {
         toast.success('Organization updated successfully');
+        await refreshOrganizations();
         await loadData();
       }
     } catch (error) {
@@ -218,6 +223,7 @@ export default function CompanySettingsPage() {
       if (response.ok) {
         const { inviteCode } = await response.json();
         setOrganization({ ...organization, invite_code: inviteCode });
+        await refreshOrganizations();
         toast.success('New invite code generated');
         setShowRegenerateConfirm(false);
       } else {

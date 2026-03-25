@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseServer';
 import { getAuthUser } from '@/lib/auth';
 
 export async function PATCH(request, { params }) {
-  const { id, subtaskId } = params;
+  const { id, subtaskId } = await params;
   const { user, error: authError } = await getAuthUser(request);
 
   if (authError || !user) {
@@ -52,7 +52,7 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const { id, subtaskId } = params;
+  const { id, subtaskId } = await params;
   const { user, error: authError } = await getAuthUser(request);
 
   if (authError || !user) {

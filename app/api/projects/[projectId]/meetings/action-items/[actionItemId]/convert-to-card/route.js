@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import { getAuthUser } from '@/lib/auth';
 import { checkRole } from '@/lib/roles';
+import { createProjectMajorNotifications } from '@/lib/projectNotifications';
 
 export async function POST(request, { params }) {
   const { projectId, actionItemId } = await params;
@@ -79,6 +80,21 @@ export async function POST(request, { params }) {
       user_id: user.id,
       action: 'created_from_meeting_action',
       details: { action_item_id: actionItemId }
+    });
+
+    await createProjectMajorNotifications({
+      projectId,
+      actorId: user.id,
+      type: 'meeting_action_converted',
+      title: 'Action item converted to card',
+      message: `converted action item into ${card.custom_id || card.title}`,
+      metadata: {
+        action_item_id: actionItemId,
+        card_id: card.id,
+        card_title: card.title,
+        card_custom_id: card.custom_id || null,
+      },
+      includeMemberViewer: true,
     });
 
     return NextResponse.json({ card, action_item_id: actionItemId });

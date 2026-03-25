@@ -118,9 +118,9 @@ export default function LoginPage() {
                 <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
                   Password
                 </label>
-                <a href="#" style={{ fontSize: 13, color: 'var(--accent-text)', textDecoration: 'none', fontWeight: 500 }}>
+                <Link href="/forgot-password" style={{ fontSize: 13, color: 'var(--accent-text)', textDecoration: 'none', fontWeight: 500 }}>
                   Forgot?
-                </a>
+                </Link>
               </div>
               <input
                 type="password" required

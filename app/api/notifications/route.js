@@ -23,7 +23,13 @@ export async function GET(request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(data || []);
+    const enriched = (data || []).map((item) => ({
+      ...item,
+      actor_id: item?.metadata?.actor_id || null,
+      actor_name: item?.metadata?.actor_name || null,
+    }));
+
+    return NextResponse.json(enriched);
   } catch (error) {
     console.error('Notifications GET error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

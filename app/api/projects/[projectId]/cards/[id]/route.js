@@ -2,6 +2,19 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import { getAuthUser } from '@/lib/auth';
 import { checkRole } from '@/lib/roles';
+import { createProjectMajorNotifications } from '@/lib/projectNotifications';
+
+const MAJOR_UPDATE_FIELDS = [
+  'title',
+  'status',
+  'priority',
+  'assignee_id',
+  'sprint_id',
+  'list_id',
+  'start_date',
+  'due_date',
+  'is_archived',
+];
 
 export async function GET(request, { params }) {
   const { projectId, id } = await params;
@@ -48,6 +61,13 @@ export async function PUT(request, { params }) {
     const body = await request.json();
     const { title, description, issue_type, priority, status, assignee_id, story_points, list_id, sprint_id, rank, start_date, due_date, is_archived } = body;
 
+    const { data: beforeCard } = await supabaseAdmin
+      .from('cards')
+      .select('id, title, custom_id, status, priority, assignee_id, sprint_id, list_id, start_date, due_date, is_archived')
+      .eq('id', id)
+      .eq('project_id', projectId)
+      .single();
+
     const { data: card, error: cardError } = await supabaseAdmin
       .from('cards')
       .update({
@@ -85,6 +105,29 @@ export async function PUT(request, { params }) {
       details: { fields: body }
     });
 
+    const changedMajorFields = MAJOR_UPDATE_FIELDS.filter((field) => {
+      const previousValue = beforeCard?.[field] ?? null;
+      const nextValue = card?.[field] ?? null;
+      return JSON.stringify(previousValue) !== JSON.stringify(nextValue);
+    });
+
+    if (changedMajorFields.length > 0) {
+      await createProjectMajorNotifications({
+        projectId,
+        actorId: user.id,
+        type: 'card_updated',
+        title: 'Card updated',
+        message: `updated ${card.custom_id || card.title}`,
+        metadata: {
+          card_id: card.id,
+          card_title: card.title,
+          card_custom_id: card.custom_id || null,
+          changed_fields: changedMajorFields,
+        },
+        includeMemberViewer: true,
+      });
+    }
+
     return NextResponse.json(card);
   } catch (err) {
     console.error(err);
@@ -104,6 +147,13 @@ export async function DELETE(request, { params }) {
   }
 
   try {
+    const { data: existingCard } = await supabaseAdmin
+      .from('cards')
+      .select('id, title, custom_id')
+      .eq('id', id)
+      .eq('project_id', projectId)
+      .single();
+
     const { error: deleteError } = await supabaseAdmin
       .from('cards')
       .delete()
@@ -111,6 +161,23 @@ export async function DELETE(request, { params }) {
       .eq('project_id', projectId);
 
     if (deleteError) throw deleteError;
+
+    if (existingCard) {
+      await createProjectMajorNotifications({
+        projectId,
+        actorId: user.id,
+        type: 'card_deleted',
+        title: 'Card deleted',
+        message: `deleted ${existingCard.custom_id || existingCard.title}`,
+        metadata: {
+          card_id: existingCard.id,
+          card_title: existingCard.title,
+          card_custom_id: existingCard.custom_id || null,
+        },
+        includeMemberViewer: true,
+      });
+    }
+
     return new NextResponse(null, { status: 204 });
   } catch (err) {
     console.error(err);

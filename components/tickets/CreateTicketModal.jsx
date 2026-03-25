@@ -17,16 +17,20 @@ const DEFAULT_LISTS = [
 export default function CreateTicketModal({ projectId, defaultSprintId = null, onClose, onCreated }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [users, setUsers] = useState([]);
+  const [sprints, setSprints] = useState([]);
   const { profile } = useAuth();
 
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     issue_type: 'task',
+    status: 'backlog',
     priority: 'medium',
     story_points: '',
     assignee_id: '',
-    sprint_id: defaultSprintId || ''
+    sprint_id: defaultSprintId || '',
+    start_date: '',
+    due_date: ''
   });
 
   useEffect(() => {
@@ -41,11 +45,27 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
     fetchUsers();
   }, []);
 
+  useEffect(() => {
+    if (!projectId) return;
+
+    const fetchSprints = async () => {
+      const { data } = await supabase
+        .from('sprints')
+        .select('id, name, status')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false });
+
+      if (data) setSprints(data);
+    };
+
+    fetchSprints();
+  }, [projectId]);
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const getOrCreateBacklogListId = async () => {
+  const getOrCreateLists = async () => {
     const { data: existingLists, error: listFetchError } = await supabase
       .from('lists')
       .select('id, name, rank')
@@ -71,12 +91,21 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
       lists = createdLists || [];
     }
 
-    const backlogList = lists.find((list) => {
-      const normalized = (list.name || '').trim().toLowerCase();
-      return normalized === 'backlog' || normalized === 'to do' || normalized === 'todo';
+    return lists;
+  };
+
+  const resolveListIdForStatus = (lists, status) => {
+    const normalizedStatus = (status || '').trim().toLowerCase();
+    const match = lists.find((list) => {
+      const normalizedName = (list.name || '').trim().toLowerCase();
+      if (normalizedStatus === 'done') return normalizedName === 'done';
+      if (normalizedStatus === 'in_review') return normalizedName === 'in review';
+      if (normalizedStatus === 'in_progress') return normalizedName === 'in progress';
+      if (normalizedStatus === 'todo') return normalizedName === 'to do' || normalizedName === 'todo';
+      return normalizedName === 'backlog';
     });
 
-    return (backlogList || lists[0])?.id || null;
+    return match?.id || lists[0]?.id || null;
   };
 
   const handleSubmit = async (e) => {
@@ -84,8 +113,11 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
     setIsSubmitting(true);
 
     try {
-      const backlogListId = await getOrCreateBacklogListId();
+      const lists = await getOrCreateLists();
+      const targetListId = resolveListIdForStatus(lists, formData.status);
       const now = new Date();
+      const startAt = formData.start_date ? new Date(formData.start_date) : now;
+      const dueAt = formData.due_date ? new Date(formData.due_date) : startAt;
 
       const { data, error } = await supabase
         .from('cards')
@@ -99,11 +131,11 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
           reporter_id: profile.id,
           sprint_id: formData.sprint_id || null,
           story_points: formData.story_points ? parseInt(formData.story_points, 10) : null,
-          status: 'backlog',
-          list_id: backlogListId,
+          status: formData.status,
+          list_id: targetListId,
           rank: now.getTime(),
-          start_date: now.toISOString(),
-          due_date: now.toISOString()
+          start_date: startAt.toISOString(),
+          due_date: dueAt.toISOString()
         })
         .select()
         .single();
@@ -186,6 +218,22 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
               </div>
 
               <div>
+                <label className="text-gray-700 mb-2 block text-sm font-medium">Status</label>
+                <select
+                  name="status"
+                  className="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                  value={formData.status}
+                  onChange={handleChange}
+                >
+                  <option value="backlog">Backlog</option>
+                  <option value="todo">To Do</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="in_review">In Review</option>
+                  <option value="done">Done</option>
+                </select>
+              </div>
+
+              <div>
                 <label className="text-gray-700 mb-2 block text-sm font-medium">Priority</label>
                 <select
                   name="priority"
@@ -212,6 +260,47 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
                   value={formData.story_points}
                   onChange={handleChange}
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <div>
+                <label className="text-gray-700 mb-2 block text-sm font-medium">Start Date</label>
+                <input
+                  name="start_date"
+                  type="date"
+                  className="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                  value={formData.start_date}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div>
+                <label className="text-gray-700 mb-2 block text-sm font-medium">Due Date</label>
+                <input
+                  name="due_date"
+                  type="date"
+                  className="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                  value={formData.due_date}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div>
+                <label className="text-gray-700 mb-2 block text-sm font-medium">Sprint</label>
+                <select
+                  name="sprint_id"
+                  className="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                  value={formData.sprint_id}
+                  onChange={handleChange}
+                >
+                  <option value="">Unplanned</option>
+                  {sprints.map((sprint) => (
+                    <option key={sprint.id} value={sprint.id}>
+                      {sprint.name}{sprint.status ? ` (${sprint.status})` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 

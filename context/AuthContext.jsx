@@ -66,13 +66,19 @@ export const AuthProvider = ({ children }) => {
   }, [fetchProfile]);
 
   const signUp = async (email, password, fullName) => {
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      (typeof window !== 'undefined' ? window.location.origin : null);
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           full_name: fullName,
-        }
+        },
+        ...(appUrl ? { emailRedirectTo: `${appUrl}/login` } : {}),
       }
     });
     return { data, error };

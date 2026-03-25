@@ -19,7 +19,14 @@ export async function GET(request, { params }) {
       .order('created_at', { ascending: false });
 
     if (fetchError) throw fetchError;
-    return NextResponse.json(data || []);
+
+    const enriched = (data || []).map((item) => ({
+      ...item,
+      actor_id: item?.metadata?.actor_id || null,
+      actor_name: item?.metadata?.actor_name || null,
+    }));
+
+    return NextResponse.json(enriched);
   } catch (err) {
     console.error(err);
     return NextResponse.json({ error: 'Failed to fetch notifications' }, { status: 500 });

@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+import { ScheduleStoreProvider } from '@/context/ScheduleStore';
 import { 
   ChevronLeft, Plus, Settings2, Search, List as ListIcon, 
   KanbanSquare, Network, Calendar, Target, FileText, Sparkles, LayoutGrid 
@@ -17,6 +18,7 @@ import KanbanBoard from '@/components/kanban/KanbanBoard';
 import CardDetail from '@/components/kanban/CardDetail';
 import SprintManager from '@/components/sprints/SprintManager';
 import GanttChart from '@/components/gantt/GanttChart';
+import CalendarGrid from '@/components/calendar/CalendarGrid';
 import DSMPanel from '@/components/dsm/DSMPanel';
 import MeetingReviewsPanel from '@/components/meetings/MeetingReviewsPanel';
 import GoalsPanel from '@/components/goals/GoalsPanel';
@@ -84,6 +86,7 @@ export default function ProjectDetailPage() {
     { id: 'board', name: 'Kanban Board', icon: KanbanSquare },
     { id: 'backlog', name: 'Sprint', icon: Network },
     { id: 'gantt', name: 'Gantt Timeline', icon: Calendar },
+    { id: 'calendar', name: 'Calendar', icon: Calendar },
     { id: 'dsm', name: 'DSM Module', icon: Settings2 },
     { id: 'meetings', name: 'Meetings', icon: FileText },
     { id: 'goals', name: 'Goals & OKRs', icon: Target },
@@ -273,7 +276,8 @@ export default function ProjectDetailPage() {
   if (!project) return <div className="text-center py-20"><h2 className="text-2xl font-bold text-[var(--text-heading)] mb-4" >Project Not Found</h2><Link href="/projects" className="text-[var(--accent-primary)] hover:underline">Return to Projects</Link></div>;
 
   return (
-    <div className="max-w-screen-2xl mx-auto w-full animate-fade-in pb-10 flex flex-col min-h-full text-primary">
+    <ScheduleStoreProvider projectId={id}>
+      <div className="max-w-screen-2xl mx-auto w-full animate-fade-in pb-10 flex flex-col min-h-full text-primary">
       
       <header className="mb-6 shrink-0">
         <Link href="/projects" className="text-[var(--text-secondary)] hover:text-[var(--accent-primary)] flex items-center gap-1 w-fit mb-4 transition-colors text-sm font-medium">
@@ -449,6 +453,14 @@ export default function ProjectDetailPage() {
           </div>
         )}
 
+        {activeTab === 'calendar' && (
+          <TabErrorBoundary>
+            <div className="flex-1 animate-fade-in flex flex-col">
+              <CalendarGrid projectId={id} onItemSelect={setSelectedCard} />
+            </div>
+          </TabErrorBoundary>
+        )}
+
         {activeTab === 'dsm' && (
           <div className="flex-1 animate-fade-in flex flex-col">
             <DSMPanel projectId={id} />
@@ -524,6 +536,8 @@ export default function ProjectDetailPage() {
         />
       )}
 
-    </div>
+      </div>
+    </ScheduleStoreProvider>
   );
 }
+

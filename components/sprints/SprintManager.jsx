@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import './SprintManager.css';
 import { supabase } from '@/lib/supabase';
@@ -92,6 +92,22 @@ function DropZone({ id, children }) {
   );
 }
 
+function DragIssueOverlay({ issue }) {
+  if (!issue) return null;
+  const typeData = issueTypeIcon(issue.issue_type);
+  return (
+    <div className="backlog-row drag-overlay-row">
+      <div className="backlog-row-left">
+        <div style={{ width: 24, height: 24, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: typeData.bg, fontSize: 13, flexShrink: 0 }}>
+          {typeData.icon}
+        </div>
+        <span className="backlog-prefix">{issue.prefix || issue.custom_id}</span>
+        <span className="backlog-title">{issue.title}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function SprintManager({ projectId, refreshNonce = 0 }) {
   const { profile } = useAuth();
   const [sprints, setSprints] = useState([]);
@@ -107,6 +123,7 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
   const [openMenuSprintId, setOpenMenuSprintId] = useState(null);
   const [editingSprint, setEditingSprint] = useState(null);
   const [editForm, setEditForm] = useState({ name: '', goal: '', start_date: '', end_date: '' });
+  const [activeIssue, setActiveIssue] = useState(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -336,6 +353,7 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
 
   const handleDragEnd = async (event) => {
     const { active, over } = event;
+    setActiveIssue(null);
     if (!active?.id || !over?.id) return;
 
     const activeId = String(active.id);
@@ -353,6 +371,14 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
     const currentCard = cards.find((card) => card.id === cardId);
     if (!currentCard || currentCard.sprint_id === targetSprintId) return;
     await assignCardToSprint(cardId, targetSprintId);
+  };
+
+  const handleDragStart = (event) => {
+    const activeId = String(event?.active?.id || '');
+    if (!activeId.startsWith('card-')) return;
+    const cardId = activeId.replace('card-', '');
+    const issue = cards.find((card) => card.id === cardId) || null;
+    setActiveIssue(issue);
   };
 
   if (isLoading) {
@@ -416,7 +442,7 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
         </div>
       </div>
 
-      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="sprint-list">
           {sprints.map(sprint => {
             const sprintIssues = cardsBySprint.get(sprint.id) || [];
@@ -496,6 +522,9 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
             </DropZone>
           )}
         </div>
+        <DragOverlay dropAnimation={null}>
+          <DragIssueOverlay issue={activeIssue} />
+        </DragOverlay>
       </DndContext>
 
       {editingSprint && (

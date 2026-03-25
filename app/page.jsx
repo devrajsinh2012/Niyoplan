@@ -20,6 +20,8 @@ export default function DashboardPage() {
   const [recentIssues, setRecentIssues] = useState([]);
   const [workload, setWorkload] = useState([]);
   const [activeSprint, setActiveSprint] = useState(null);
+  const [activeSprintCount, setActiveSprintCount] = useState(0);
+  const [activeSprints, setActiveSprints] = useState([]);
   const [resourceProjectId, setResourceProjectId] = useState(null);
   const [resourceLinks, setResourceLinks] = useState({
     projectRequirement: '',
@@ -36,6 +38,8 @@ export default function DashboardPage() {
       if (!organizationId) {
         setStats({ resolved: 0, open: 0, storyPoints: 0, velocity: 0 });
         setActiveSprint(null);
+        setActiveSprintCount(0);
+        setActiveSprints([]);
         setActivities([]);
         setRecentIssues([]);
         setWorkload([]);
@@ -46,7 +50,7 @@ export default function DashboardPage() {
 
       const { data: orgProjects } = await supabase
         .from('projects')
-        .select('id')
+        .select('id, name, prefix')
         .eq('organization_id', organizationId);
 
       const projectIds = (orgProjects || []).map((p) => p.id);
@@ -54,6 +58,8 @@ export default function DashboardPage() {
       if (projectIds.length === 0) {
         setStats({ resolved: 0, open: 0, storyPoints: 0, velocity: 0 });
         setActiveSprint(null);
+        setActiveSprintCount(0);
+        setActiveSprints([]);
         setActivities([]);
         setRecentIssues([]);
         setWorkload([]);
@@ -83,9 +89,11 @@ export default function DashboardPage() {
           .select('*')
           .eq('status', 'active')
           .in('project_id', projectIds)
-          .limit(1),
+          .order('start_date', { ascending: false, nullsFirst: false })
+          .order('created_at', { ascending: false })
+          .limit(25),
         supabase.from('cards')
-          .select('assignee_id, story_points, profiles:assignee_id(full_name, avatar_url)')
+          .select('assignee_id, sprint_id, status, story_points, profiles:assignee_id(full_name, avatar_url)')
           .in('project_id', projectIds)
           .not('assignee_id', 'is', null),
       ]);
@@ -105,6 +113,64 @@ export default function DashboardPage() {
         velocity: (totalCards && totalCards > 0) ? Math.round(((doneCards || 0) / totalCards) * 100) : 0,
       });
       setActiveSprint(sprint);
+      setActiveSprintCount((sprintData || []).length);
+
+      const sprintProgressMap = (cardData || []).reduce((acc, card) => {
+        if (!card.sprint_id) return acc;
+        if (!acc[card.sprint_id]) {
+          acc[card.sprint_id] = { total: 0, done: 0 };
+        }
+        acc[card.sprint_id].total += 1;
+        if (card.status === 'done') {
+          acc[card.sprint_id].done += 1;
+        }
+        return acc;
+      }, {});
+
+      const sprintPortfolio = (sprintData || []).slice(0, 4).map((entry) => {
+        const projectMeta = (orgProjects || []).find((project) => project.id === entry.project_id);
+        const progress = sprintProgressMap[entry.id] || { total: 0, done: 0 };
+        const completionPercent = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
+
+        const now = new Date();
+        const endDate = entry?.end_date ? new Date(entry.end_date) : null;
+        const daysLeft = endDate ? Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
+
+        let riskLabel = 'On track';
+        let riskTone = 'low';
+        let riskScore = 1;
+
+        if (!endDate) {
+          riskLabel = 'No deadline';
+          riskTone = 'neutral';
+          riskScore = 0;
+        } else if (daysLeft < 0 && completionPercent < 100) {
+          riskLabel = 'Overdue';
+          riskTone = 'high';
+          riskScore = 3;
+        } else if (daysLeft <= 2 && completionPercent < 70) {
+          riskLabel = 'At risk';
+          riskTone = 'high';
+          riskScore = 3;
+        } else if (daysLeft <= 5 && completionPercent < 50) {
+          riskLabel = 'Watch';
+          riskTone = 'medium';
+          riskScore = 2;
+        }
+
+        return {
+          ...entry,
+          completionPercent,
+          daysLeft,
+          riskLabel,
+          riskTone,
+          riskScore,
+          projectName: projectMeta?.name || 'Project',
+          projectPrefix: projectMeta?.prefix || '',
+        };
+      });
+
+      setActiveSprints(sprintPortfolio);
       setActivities(activityLogs || []);
       setRecentIssues(recent || []);
 
@@ -228,6 +294,15 @@ export default function DashboardPage() {
 
   const closeViewer = () => setViewerState({ open: false, title: '', url: '' });
 
+  const topRiskSprint = activeSprints
+    .slice()
+    .sort((a, b) => {
+      if ((b.riskScore || 0) !== (a.riskScore || 0)) return (b.riskScore || 0) - (a.riskScore || 0);
+      const aDays = typeof a.daysLeft === 'number' ? a.daysLeft : 9999;
+      const bDays = typeof b.daysLeft === 'number' ? b.daysLeft : 9999;
+      return aDays - bDays;
+    })[0];
+
   if (isLoading) {
     return <DashboardPageSkeleton />;
   }
@@ -274,14 +349,16 @@ export default function DashboardPage() {
                   </h2>
                 </div>
                 <h3 className="text-2xl font-bold text-[var(--text-heading)] leading-tight">
-                  {activeSprint?.name || 'Alpha Release V1.2'}
+                  {activeSprint?.name || 'No active sprint'}
                 </h3>
                 <p className="mt-2 text-xs font-medium text-[var(--text-muted)]">
-                  {activeSprint ? getSprintTimelineText(activeSprint) : 'No active sprint'}
+                  {activeSprint
+                    ? `${getSprintTimelineText(activeSprint)}${activeSprintCount > 1 ? ` • ${activeSprintCount} active sprints in workspace` : ''}`
+                    : 'Create and start a sprint in any project to see it here'}
                 </p>
               </div>
-              <span className="rounded-[3px] bg-[#E3FCEF] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#006644] border border-[#006644]/15">
-                Active
+              <span className={`rounded-[3px] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider border ${activeSprint ? 'bg-[#E3FCEF] text-[#006644] border-[#006644]/15' : 'bg-[var(--bg-panel-hover)] text-[var(--text-muted)] border-[var(--border-subtle)]'}`}>
+                {activeSprint ? 'Active' : 'No Sprint'}
               </span>
             </div>
 
@@ -315,6 +392,88 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+
+          {/* Workspace Active Sprints */}
+          <div className="overflow-hidden rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-sm">
+            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] px-6 py-5 bg-[var(--bg-panel)]">
+              <h3 className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-[0.15em]">
+                Workspace Active Sprints
+              </h3>
+              <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.15em]">
+                {activeSprintCount} Total
+              </span>
+            </div>
+            <div className="divide-y divide-[var(--border-subtle)]">
+              {activeSprints.length === 0 ? (
+                <div className="py-12 text-center text-sm text-[var(--text-muted)] opacity-70">
+                  No active sprints across this company yet
+                </div>
+              ) : (
+                activeSprints.map((sprint) => (
+                  <button
+                    key={sprint.id}
+                    onClick={() => router.push(`/projects/${sprint.project_id}?tab=backlog`)}
+                    className="w-full px-6 py-5 text-left transition-colors hover:bg-[var(--bg-panel-hover)]"
+                  >
+                    <div className="mb-3 flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-bold text-[var(--text-heading)]">{sprint.name}</p>
+                        <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)]">
+                          {sprint.projectPrefix ? `${sprint.projectPrefix} • ` : ''}{sprint.projectName}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`rounded-[3px] border px-2 py-1 text-[10px] font-black uppercase tracking-wider ${
+                          sprint.riskTone === 'high'
+                            ? 'border-[#FF5630]/30 bg-[#FF5630]/10 text-[#BF2600]'
+                            : sprint.riskTone === 'medium'
+                            ? 'border-[#FFAB00]/30 bg-[#FFAB00]/10 text-[#974F0C]'
+                            : sprint.riskTone === 'neutral'
+                            ? 'border-[var(--border-subtle)] bg-[var(--bg-panel-hover)] text-[var(--text-muted)]'
+                            : 'border-[#36B37E]/30 bg-[#36B37E]/10 text-[#006644]'
+                        }`}>
+                          {sprint.riskLabel}
+                        </span>
+                        <span className="rounded-[3px] border border-[var(--border-subtle)] px-2 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--text-secondary)]">
+                          {sprint.completionPercent}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-panel-hover)]">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-[#0052CC] to-[#2684FF] transition-all duration-500"
+                        style={{ width: `${Math.min(sprint.completionPercent, 100)}%` }}
+                      />
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+
+          {topRiskSprint && (
+            <div className="rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-4 shadow-sm">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">Priority Attention</p>
+                  <p className="mt-1 text-sm font-bold text-[var(--text-heading)]">
+                    {topRiskSprint.projectName} • {topRiskSprint.name}
+                  </p>
+                </div>
+                <span className={`rounded-[3px] border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${
+                  topRiskSprint.riskTone === 'high'
+                    ? 'border-[#FF5630]/30 bg-[#FF5630]/10 text-[#BF2600]'
+                    : topRiskSprint.riskTone === 'medium'
+                    ? 'border-[#FFAB00]/30 bg-[#FFAB00]/10 text-[#974F0C]'
+                    : topRiskSprint.riskTone === 'neutral'
+                    ? 'border-[var(--border-subtle)] bg-[var(--bg-panel-hover)] text-[var(--text-muted)]'
+                    : 'border-[#36B37E]/30 bg-[#36B37E]/10 text-[#006644]'
+                }`}>
+                  {topRiskSprint.riskLabel}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Team Activity */}
           <div className="overflow-hidden rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-sm">

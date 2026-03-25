@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import { getAuthUser } from '@/lib/auth';
 import { checkRole } from '@/lib/roles';
+import { createProjectMajorNotifications } from '@/lib/projectNotifications';
 
 export async function GET(request, { params }) {
   const { projectId } = await params;
@@ -84,6 +85,20 @@ export async function POST(request, { params }) {
       user_id: user.id,
       action: 'created',
       details: { title }
+    });
+
+    await createProjectMajorNotifications({
+      projectId,
+      actorId: user.id,
+      type: 'card_created',
+      title: 'New card created',
+      message: `created card ${card.custom_id || title}`,
+      metadata: {
+        card_id: card.id,
+        card_title: card.title,
+        card_custom_id: card.custom_id || null,
+      },
+      includeMemberViewer: true,
     });
 
     return NextResponse.json(card, { status: 201 });

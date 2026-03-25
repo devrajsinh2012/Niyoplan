@@ -9,6 +9,7 @@ import KanbanCard from './KanbanCard';
 import CardDetail from './CardDetail';
 import './KanbanBoard.css';
 import { supabase } from '@/lib/supabase';
+import { useScheduleStore } from '@/context/ScheduleStore';
 import toast from 'react-hot-toast';
 import { Plus, LayoutGrid } from 'lucide-react';
 import InputModal from '@/components/ui/InputModal';
@@ -23,6 +24,7 @@ const DEFAULT_LISTS = [
 ];
 
 export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards = null, onCardUpdated = null }) {
+  const { scheduleItems: storeItems, updateScheduleItem } = useScheduleStore();
   const [lists, setLists] = useState([]);
   const [cards, setCards] = useState([]);
   const [activeCard, setActiveCard] = useState(null);
@@ -146,7 +148,10 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
   }, [cards, searchParams]);
 
   useEffect(() => {
-    if (!Array.isArray(sharedCards)) return;
+    const isTaskLike = (card) => {
+      const type = (card?.item_type || card?.type || card?.issue_type || '').toString().toLowerCase();
+      return type !== 'meeting';
+    };
 
     const backlogList = lists.find((list) => {
       const normalized = (list.name || '').trim().toLowerCase();
@@ -154,14 +159,20 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
     });
     const fallbackListId = (backlogList || lists[0])?.id;
 
-    const normalizedCards = sharedCards.map((card) => ({
+    const sourceCards = Array.isArray(storeItems) && storeItems.length > 0
+      ? storeItems.filter(isTaskLike)
+      : (Array.isArray(sharedCards) ? sharedCards : []);
+
+    if (sourceCards.length === 0) return;
+
+    const normalizedCards = sourceCards.map((card) => ({
       ...card,
       prefix: card.custom_id,
       listId: card.list_id || getListIdFromStatus(card.status) || fallbackListId || card.listId
     }));
 
     setCards(normalizedCards);
-  }, [sharedCards, lists, getListIdFromStatus]);
+  }, [storeItems, sharedCards, lists, getListIdFromStatus]);
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
@@ -300,13 +311,20 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
        if (error) {
          toast.error('Failed to save card position');
          await fetchBoardData();
-      } else if (typeof onCardUpdated === 'function') {
-        onCardUpdated({
-          ...card,
+      } else {
+        await updateScheduleItem(activeId, {
           list_id: card.listId,
           status: getStatusFromList(card.listId),
           rank: newRank
-        });
+        }, { silent: true });
+        if (typeof onCardUpdated === 'function') {
+          onCardUpdated({
+            ...card,
+            list_id: card.listId,
+            status: getStatusFromList(card.listId),
+            rank: newRank
+          });
+        }
        }
     }
   };
@@ -340,6 +358,13 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
     }
 
     setCards((prev) => [...prev, { ...data, prefix: data.custom_id, listId: data.list_id }]);
+    await updateScheduleItem(data.id, {
+      list_id: data.list_id,
+      status: data.status,
+      rank: data.rank,
+      start_date: data.start_date,
+      due_date: data.due_date
+    }, { silent: true });
     if (typeof onCardUpdated === 'function') {
       onCardUpdated({ ...data, list_id: data.list_id });
     }
@@ -389,6 +414,17 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
       };
     }));
     setSelectedCard((prev) => (prev && prev.id === data.id ? { ...prev, ...data } : prev));
+    await updateScheduleItem(data.id, {
+      title: data.title,
+      description: data.description,
+      priority: data.priority,
+      status: data.status,
+      assignee_id: data.assignee_id,
+      story_points: data.story_points,
+      start_date: data.start_date,
+      due_date: data.due_date,
+      list_id: data.list_id
+    }, { silent: true });
     if (typeof onCardUpdated === 'function') {
       onCardUpdated({ ...data, list_id: data.list_id });
     }

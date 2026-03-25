@@ -24,10 +24,10 @@ export default function RegisterPage() {
       const { error } = await signUp(email, password, fullName);
       if (error) throw error;
       
-      toast.success('Registration successful! Please sign in.');
+      toast.success('Check your email to confirm your account before signing in.');
       router.push('/login');
     } catch (error) {
-      toast.error(error?.message || 'Failed to register');
+      toast.error(error?.message || 'Could not create account. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

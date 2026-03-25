@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseServer';
 import { getAuthUser } from '@/lib/auth';
 
 export async function GET(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
 
   try {
     const { data: subtasks, error } = await supabaseAdmin
@@ -21,7 +21,7 @@ export async function GET(request, { params }) {
 }
 
 export async function POST(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   const { user, error: authError } = await getAuthUser(request);
 
   if (authError || !user) {

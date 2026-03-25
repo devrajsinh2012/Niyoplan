@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import { getAuthUser } from '@/lib/auth';
 import { checkRole } from '@/lib/roles';
+import { createProjectMajorNotifications } from '@/lib/projectNotifications';
 
 export async function POST(request, { params }) {
-  const { id: goalId } = await params;
+  const { projectId, id: goalId } = await params;
   const { user, error } = await getAuthUser(request);
   if (error || !user) {
     return NextResponse.json({ error: error || 'Unauthorized' }, { status: 401 });
@@ -33,6 +34,29 @@ export async function POST(request, { params }) {
       .single();
 
     if (insertError) throw insertError;
+
+    const { data: goal } = await supabaseAdmin
+      .from('goals')
+      .select('id, title')
+      .eq('id', goalId)
+      .eq('project_id', projectId)
+      .single();
+
+    await createProjectMajorNotifications({
+      projectId,
+      actorId: user.id,
+      type: 'key_result_created',
+      title: 'Key result added',
+      message: `added key result ${data.title}`,
+      metadata: {
+        goal_id: goal?.id || goalId,
+        goal_title: goal?.title || null,
+        key_result_id: data.id,
+        key_result_title: data.title,
+      },
+      includeMemberViewer: true,
+    });
+
     return NextResponse.json(data, { status: 201 });
   } catch (err) {
     console.error(err);

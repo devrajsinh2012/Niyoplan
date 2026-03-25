@@ -55,7 +55,7 @@ const SideNavItem = ({ href, icon: Icon, label, isActive, expanded }) => {
 
 export default function Sidebar({ project, expanded, onExpandedChange }) {
   const { profile, signOut } = useAuth();
-  const { activeOrganization } = useOrganization();
+  const { activeOrganization, loading: orgLoading } = useOrganization();
   const { projectId: paramsId } = useParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -81,7 +81,7 @@ export default function Sidebar({ project, expanded, onExpandedChange }) {
       className={`fixed left-0 top-[var(--topnav-height)] h-[calc(100vh-var(--topnav-height))] z-40 flex flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-panel)] transition-all duration-200 ${expanded ? 'w-60' : 'w-16'}`}
     >
       {/* Project/App Header */}
-      {(projectId || !organization) && (
+      {(projectId || (!orgLoading && !organization)) && (
         <div className="shrink-0 border-b border-[var(--border-subtle)] p-3">
           <div
             className={`group flex cursor-pointer items-center rounded-lg p-2 hover:bg-[var(--bg-panel-hover)] ${expanded ? 'gap-3' : 'justify-center'}`}

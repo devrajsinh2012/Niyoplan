@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import { getAuthUser } from '@/lib/auth';
 import { checkRole } from '@/lib/roles';
+import { createProjectMajorNotifications } from '@/lib/projectNotifications';
 
 export async function GET(request, { params }) {
   const { projectId } = await params;
@@ -55,6 +56,21 @@ export async function POST(request, { params }) {
       .single();
 
     if (sprintError) throw sprintError;
+
+    await createProjectMajorNotifications({
+      projectId,
+      actorId: user.id,
+      type: 'sprint_created',
+      title: 'Sprint created',
+      message: `created sprint ${sprint.name}`,
+      metadata: {
+        sprint_id: sprint.id,
+        sprint_name: sprint.name,
+        sprint_status: sprint.status,
+      },
+      includeMemberViewer: true,
+    });
+
     return NextResponse.json(sprint, { status: 201 });
   } catch (err) {
     console.error(err);

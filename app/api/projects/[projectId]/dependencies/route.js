@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import { getAuthUser } from '@/lib/auth';
 import { checkRole } from '@/lib/roles';
+import { createProjectMajorNotifications } from '@/lib/projectNotifications';
 
 const VALID_DEPENDENCY_TYPES = ['finish_start', 'finish_finish', 'start_start', 'start_finish'];
 
@@ -146,6 +147,22 @@ export async function POST(request, { params }) {
       }
       throw insertError;
     }
+
+    await createProjectMajorNotifications({
+      projectId,
+      actorId: user.id,
+      type: 'dependency_created',
+      title: 'Dependency created',
+      message: 'added a task dependency',
+      metadata: {
+        dependency_id: dependency.id,
+        predecessor_id: dependency.predecessor_id,
+        successor_id: dependency.successor_id,
+        dependency_type: dependency.type,
+        lead_or_lag_days: dependency.lead_or_lag_days,
+      },
+      includeMemberViewer: true,
+    });
 
     return NextResponse.json(dependency, { status: 201 });
   } catch (err) {

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import { getAuthUser } from '@/lib/auth';
 import { checkRole } from '@/lib/roles';
+import { createProjectMajorNotifications } from '@/lib/projectNotifications';
 
 export async function PUT(request, { params }) {
   const { projectId, id } = await params;
@@ -16,6 +17,13 @@ export async function PUT(request, { params }) {
 
   try {
     const { name, start_date, end_date, goal, status } = await request.json();
+
+    const { data: existingSprint } = await supabaseAdmin
+      .from('sprints')
+      .select('id, name, status')
+      .eq('id', id)
+      .eq('project_id', projectId)
+      .single();
 
     const { data: sprint, error: sprintError } = await supabaseAdmin
       .from('sprints')
@@ -33,6 +41,22 @@ export async function PUT(request, { params }) {
       .single();
 
     if (sprintError) throw sprintError;
+
+    await createProjectMajorNotifications({
+      projectId,
+      actorId: user.id,
+      type: 'sprint_updated',
+      title: 'Sprint updated',
+      message: `updated sprint ${sprint.name}`,
+      metadata: {
+        sprint_id: sprint.id,
+        sprint_name: sprint.name,
+        previous_status: existingSprint?.status || null,
+        sprint_status: sprint.status,
+      },
+      includeMemberViewer: true,
+    });
+
     return NextResponse.json(sprint);
   } catch (err) {
     console.error(err);
@@ -52,6 +76,13 @@ export async function DELETE(request, { params }) {
   }
 
   try {
+    const { data: existingSprint } = await supabaseAdmin
+      .from('sprints')
+      .select('id, name, status')
+      .eq('id', id)
+      .eq('project_id', projectId)
+      .single();
+
     const { error: deleteError } = await supabaseAdmin
       .from('sprints')
       .delete()
@@ -59,6 +90,23 @@ export async function DELETE(request, { params }) {
       .eq('project_id', projectId);
 
     if (deleteError) throw deleteError;
+
+    if (existingSprint) {
+      await createProjectMajorNotifications({
+        projectId,
+        actorId: user.id,
+        type: 'sprint_deleted',
+        title: 'Sprint deleted',
+        message: `deleted sprint ${existingSprint.name}`,
+        metadata: {
+          sprint_id: existingSprint.id,
+          sprint_name: existingSprint.name,
+          sprint_status: existingSprint.status,
+        },
+        includeMemberViewer: true,
+      });
+    }
+
     return new NextResponse(null, { status: 204 });
   } catch (err) {
     console.error(err);

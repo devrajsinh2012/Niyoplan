@@ -12,7 +12,7 @@ import BrandMark from '@/components/ui/BrandMark';
 
 export default function TopNav({ theme, onToggleTheme }) {
   const { profile, signOut } = useAuth();
-  const { activeOrganization, userOrganizations, switchOrganization, loading: orgLoading } = useOrganization();
+  const { activeOrganization, loading: orgLoading } = useOrganization();
   const router = useRouter();
   const pathname = usePathname();
   const [orgMenuOpen, setOrgMenuOpen] = useState(false);
@@ -134,7 +134,7 @@ export default function TopNav({ theme, onToggleTheme }) {
           <button
             onClick={() => setOrgMenuOpen((prev) => !prev)}
             className="inline-flex items-center gap-2 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--bg-panel-hover)]"
-            title="Switch organization"
+            title="Organization menu"
           >
             <Building2 size={14} className="text-[var(--text-muted)]" />
             <span className="max-w-[160px] truncate">
@@ -150,30 +150,16 @@ export default function TopNav({ theme, onToggleTheme }) {
               </div>
 
               <div className="max-h-[280px] overflow-y-auto">
-                {userOrganizations.length === 0 ? (
-                  <div className="px-4 py-8 text-sm text-[var(--text-muted)] text-center">No organizations found</div>
+                {activeOrganization ? (
+                  <div className="w-full flex items-center justify-between px-4 py-2.5 text-left bg-[var(--accent-subtle)]">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-[var(--text-primary)]">{activeOrganization.name}</div>
+                      <div className="text-xs text-[var(--text-muted)] capitalize">{activeOrganization.role}</div>
+                    </div>
+                    <Check size={14} className="text-[var(--accent-primary)]" />
+                  </div>
                 ) : (
-                  userOrganizations.map((org) => (
-                    <button
-                      key={org.id}
-                      onClick={async () => {
-                        const changed = activeOrganization?.id !== org.id;
-                        await switchOrganization(org.id);
-                        setOrgMenuOpen(false);
-                        if (changed) {
-                          toast.success(`Switched to ${org.name}`);
-                          router.push('/projects');
-                        }
-                      }}
-                      className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors ${activeOrganization?.id === org.id ? 'bg-[var(--accent-subtle)]' : 'hover:bg-[var(--bg-panel-hover)]'}`}
-                    >
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-[var(--text-primary)]">{org.name}</div>
-                        <div className="text-xs text-[var(--text-muted)] capitalize">{org.role}</div>
-                      </div>
-                      {activeOrganization?.id === org.id && <Check size={14} className="text-[var(--accent-primary)]" />}
-                    </button>
-                  ))
+                  <div className="px-4 py-8 text-sm text-[var(--text-muted)] text-center">No organization selected</div>
                 )}
               </div>
 
@@ -181,20 +167,11 @@ export default function TopNav({ theme, onToggleTheme }) {
                 <button
                   onClick={() => {
                     setOrgMenuOpen(false);
-                    router.push('/onboarding/create');
+                    router.push('/onboarding');
                   }}
                   className="w-full inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-panel-hover)]"
                 >
-                  <Plus size={14} /> Create company
-                </button>
-                <button
-                  onClick={() => {
-                    setOrgMenuOpen(false);
-                    router.push('/onboarding/join');
-                  }}
-                  className="w-full inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-panel-hover)]"
-                >
-                  <Building2 size={14} /> Join company
+                  <Plus size={14} /> New organization
                 </button>
               </div>
             </div>
@@ -202,7 +179,7 @@ export default function TopNav({ theme, onToggleTheme }) {
         </div>
 
         <Link href="/projects" className={getNavLinkClass('/projects')}>Projects</Link>
-        <Link href="/" className={getNavLinkClass('/')}>Dashboards</Link>
+        <Link href="/" className={getNavLinkClass('/')}>Dashboard</Link>
       </nav>
 
       {/* Spacer */}

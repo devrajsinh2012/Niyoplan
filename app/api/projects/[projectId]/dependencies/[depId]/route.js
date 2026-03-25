@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import { getAuthUser } from '@/lib/auth';
 import { checkRole } from '@/lib/roles';
+import { createProjectMajorNotifications } from '@/lib/projectNotifications';
 
 const VALID_DEPENDENCY_TYPES = ['finish_start', 'finish_finish', 'start_start', 'start_finish'];
 
@@ -63,6 +64,24 @@ export async function PUT(request, { params }) {
 
     if (updateErr) throw updateErr;
 
+    await createProjectMajorNotifications({
+      projectId,
+      actorId: user.id,
+      type: 'dependency_updated',
+      title: 'Dependency updated',
+      message: 'updated a task dependency',
+      metadata: {
+        dependency_id: updated.id,
+        predecessor_id: updated.predecessor_id,
+        successor_id: updated.successor_id,
+        previous_type: existing.type,
+        dependency_type: updated.type,
+        previous_lead_or_lag_days: existing.lead_or_lag_days,
+        lead_or_lag_days: updated.lead_or_lag_days,
+      },
+      includeMemberViewer: true,
+    });
+
     return NextResponse.json(updated);
   } catch (err) {
     console.error('Dependency PUT error:', err);
@@ -103,6 +122,18 @@ export async function DELETE(request, { params }) {
       .eq('project_id', projectId);
 
     if (deleteErr) throw deleteErr;
+
+    await createProjectMajorNotifications({
+      projectId,
+      actorId: user.id,
+      type: 'dependency_deleted',
+      title: 'Dependency deleted',
+      message: 'removed a task dependency',
+      metadata: {
+        dependency_id: existing.id,
+      },
+      includeMemberViewer: true,
+    });
 
     return NextResponse.json({ message: 'Dependency deleted successfully' }, { status: 200 });
   } catch (err) {

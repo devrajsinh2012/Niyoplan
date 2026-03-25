@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import { getAuthUser } from '@/lib/auth';
 import { checkRole } from '@/lib/roles';
+import { createProjectMajorNotifications } from '@/lib/projectNotifications';
 
 export async function GET(request, { params }) {
   const { projectId } = await params;
@@ -109,6 +110,20 @@ export async function POST(request, { params }) {
         if (krErr) throw krErr;
       }
     }
+
+    await createProjectMajorNotifications({
+      projectId,
+      actorId: user.id,
+      type: 'goal_created',
+      title: 'Goal created',
+      message: `created goal ${goal.title}`,
+      metadata: {
+        goal_id: goal.id,
+        goal_title: goal.title,
+        goal_status: goal.status,
+      },
+      includeMemberViewer: true,
+    });
 
     return NextResponse.json(goal, { status: 201 });
   } catch (err) {

@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   X, MoreHorizontal, Paperclip, CheckSquare, Link, ChevronDown,
-  AlignLeft, Activity, List, Clock, Send, Eye, Loader, Trash2
+  AlignLeft, Activity, List, Clock, Send, Eye, Loader, Trash2, Copy
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import UserAvatar from '@/components/ui/UserAvatar';
+import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 
@@ -20,6 +21,10 @@ const toDateInput = (value) => {
 export default function CardDetail({ card, onClose, onSave, isSaving = false }) {
   const { profile } = useAuth();
   const [users, setUsers] = useState([]);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const menuRef = useRef(null);
   
   const [form, setForm] = useState({
     title: card?.title || '',
@@ -98,6 +103,16 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
       fetchUsers();
     }
   }, [card?.id, fetchComments, fetchSubtasks, fetchUsers]);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setShowMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     setForm({
@@ -237,6 +252,29 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
   const completedSubtasks = subtasks.filter(s => s.completed).length;
   const subtaskProgress = subtasks.length > 0 ? Math.round((completedSubtasks / subtasks.length) * 100) : 0;
 
+  const handleCopyLink = () => {
+    const url = `${window.location.origin}/projects/${card.project_id}?cardId=${card.id}`;
+    navigator.clipboard.writeText(url);
+    toast.success('Link copied to clipboard');
+    setShowMenu(false);
+  };
+
+  const handleDeleteCard = async () => {
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/cards/${card.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete card');
+      toast.success('Card deleted');
+      setShowDeleteConfirm(false);
+      onClose();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete card');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-[#091E42]/60 p-4 md:p-10 backdrop-blur-[2px]" onClick={onClose}>
       <div className="relative max-h-[90vh] min-h-[500px] w-full max-w-6xl animate-fade-in flex flex-col overflow-hidden rounded-lg bg-white shadow-2xl ring-1 ring-black/5" onClick={(e) => e.stopPropagation()}>
@@ -252,7 +290,19 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
           </div>
           <div className="flex items-center gap-1.5">
             <button className="flex items-center justify-center p-2 rounded-[3px] text-[var(--text-secondary)] hover:bg-[#F4F5F7] transition-colors" title="Watch" onClick={() => toast('Watch feature coming soon', { icon: '👀' })}><Eye size={16} /></button>
-            <button className="flex items-center justify-center p-2 rounded-[3px] text-[var(--text-secondary)] hover:bg-[#F4F5F7] transition-colors" onClick={() => toast('Actions menu coming soon')}><MoreHorizontal size={16} /></button>
+            <div className="relative" ref={menuRef}>
+              <button className="flex items-center justify-center p-2 rounded-[3px] text-[var(--text-secondary)] hover:bg-[#F4F5F7] transition-colors" onClick={() => setShowMenu(!showMenu)}><MoreHorizontal size={16} /></button>
+              {showMenu && (
+                <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-[var(--border-subtle)] z-50">
+                  <button className="w-full text-left px-4 py-2 hover:bg-[#F4F5F7] transition-colors flex items-center gap-2 text-sm text-[var(--text-secondary)] first:rounded-t-lg" onClick={handleCopyLink}>
+                    <Copy size={14} /> Copy link
+                  </button>
+                  <button className="w-full text-left px-4 py-2 hover:bg-[#F4F5F7] transition-colors flex items-center gap-2 text-sm text-red-600 last:rounded-b-lg" onClick={() => { setShowMenu(false); setShowDeleteConfirm(true); }}>
+                    <Trash2 size={14} /> Delete card
+                  </button>
+                </div>
+              )}
+            </div>
             <button className="ml-2 flex items-center justify-center p-2 rounded-[3px] text-[var(--text-secondary)] hover:bg-[#F4F5F7] transition-colors" onClick={onClose}><X size={18} /></button>
           </div>
         </header>
@@ -632,6 +682,15 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
           </div>
         </div>
       </div>
+
+      <ConfirmDeleteModal
+        isOpen={showDeleteConfirm}
+        title="Delete Card"
+        message={`Are you sure you want to delete ${card.custom_id}? This action cannot be undone.`}
+        onConfirm={handleDeleteCard}
+        onCancel={() => setShowDeleteConfirm(false)}
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { ChevronDown, ChevronRight, MoreHorizontal, Search, Zap } from 'lucide-react';
 import UserAvatar from '@/components/ui/UserAvatar';
 import InputModal from '@/components/ui/InputModal';
+import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
 import SprintInsightsModal from '@/components/sprints/SprintInsightsModal';
 
 const issueTypeIcon = (type) => {
@@ -126,6 +127,8 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
   const [activeIssue, setActiveIssue] = useState(null);
   const [showCompleteSprintModal, setShowCompleteSprintModal] = useState(false);
   const [pendingCompleteSprint, setPendingCompleteSprint] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -300,45 +303,51 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
   };
 
   const deleteSprint = async (sprint) => {
+    setOpenMenuSprintId(null);
     const sprintIssues = cardsBySprint.get(sprint.id) || [];
     const warning = sprintIssues.length > 0
-      ? `This sprint has ${sprintIssues.length} issue(s). They will move to Unplanned. Delete sprint?`
-      : 'Delete this sprint?';
+      ? `This sprint has ${sprintIssues.length} issue(s). They will move to Unplanned.`
+      : 'Are you sure?';
+    setShowDeleteConfirm({ sprint, message: warning });
+  };
 
-    if (!window.confirm(warning)) {
-      setOpenMenuSprintId(null);
-      return;
-    }
+  const confirmDeleteSprint = async () => {
+    if (!showDeleteConfirm?.sprint) return;
+    const sprint = showDeleteConfirm.sprint;
+    const sprintIssues = cardsBySprint.get(sprint.id) || [];
+    
+    setIsDeleting(true);
+    try {
+      if (sprintIssues.length > 0) {
+        const ids = sprintIssues.map((issue) => issue.id);
+        const { error: moveError } = await supabase
+          .from('cards')
+          .update({ sprint_id: null })
+          .in('id', ids);
 
-    if (sprintIssues.length > 0) {
-      const ids = sprintIssues.map((issue) => issue.id);
-      const { error: moveError } = await supabase
-        .from('cards')
-        .update({ sprint_id: null })
-        .in('id', ids);
+        if (moveError) {
+          toast.error('Failed to move sprint issues');
+          return;
+        }
 
-      if (moveError) {
-        toast.error('Failed to move sprint issues');
-        return;
+        setCards((prev) => prev.map((card) => ids.includes(card.id) ? { ...card, sprint_id: null } : card));
       }
 
-      setCards((prev) => prev.map((card) => ids.includes(card.id) ? { ...card, sprint_id: null } : card));
-    }
+      const { error } = await supabase
+        .from('sprints')
+        .delete()
+        .eq('id', sprint.id);
 
-    const { error } = await supabase
-      .from('sprints')
-      .delete()
-      .eq('id', sprint.id)
-      .eq('project_id', projectId);
-
-    if (error) {
+      if (error) throw error;
+      setSprints((prev) => prev.filter((s) => s.id !== sprint.id));
+      toast.success('Sprint deleted');
+      setShowDeleteConfirm(null);
+    } catch (err) {
+      console.error(err);
       toast.error('Failed to delete sprint');
-      return;
+    } finally {
+      setIsDeleting(false);
     }
-
-    setSprints((prev) => prev.filter((item) => item.id !== sprint.id));
-    setOpenMenuSprintId(null);
-    toast.success('Sprint deleted');
   };
 
   const assignCardToSprint = async (cardId, sprintId) => {
@@ -598,6 +607,13 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
         submitLabel="Create Sprint"
         maxLength={50}
       />
-    </div>
+      <ConfirmDeleteModal
+        isOpen={showDeleteConfirm !== null}
+        title="Delete Sprint"
+        message={showDeleteConfirm?.message || 'Are you sure you want to delete this sprint?'}
+        onConfirm={confirmDeleteSprint}
+        onCancel={() => setShowDeleteConfirm(null)}
+        isLoading={isDeleting}
+      />    </div>
   );
 }

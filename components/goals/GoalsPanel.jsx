@@ -3,11 +3,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { GoalsPanelSkeleton } from '@/components/ui/PageSkeleton';
+import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
 
 export default function GoalsPanel({ projectId }) {
   const [goals, setGoals] = useState([]);
   const [narrative, setNarrative] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [goalForm, setGoalForm] = useState({
     title: '',
     description: '',
@@ -99,17 +102,20 @@ export default function GoalsPanel({ projectId }) {
   };
 
   const deleteGoal = async (goalId) => {
-    if (!window.confirm('Are you sure you want to delete this goal?')) return;
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/projects/${projectId}/goals/${goalId}`, {
         method: 'DELETE'
       });
       if (!res.ok) throw new Error('Failed to delete goal');
       toast.success('Goal deleted');
+      setShowDeleteConfirm(null);
       loadGoals();
     } catch (error) {
       console.error(error);
       toast.error(error.message || 'Failed to delete goal');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -234,7 +240,7 @@ export default function GoalsPanel({ projectId }) {
               </button>
               <button
                 className="bg-rose-100 hover:bg-rose-200 text-rose-600 border border-rose-200 rounded-xl px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider transition-colors"
-                onClick={() => deleteGoal(goal.id)}
+                onClick={() => setShowDeleteConfirm(goal.id)}
               >
                 Delete
               </button>
@@ -254,6 +260,15 @@ export default function GoalsPanel({ projectId }) {
           {narrative || 'Generate a narrative from any goal card to see stakeholder-ready text here.'}
         </div>
       </section>
+
+      <ConfirmDeleteModal
+        isOpen={showDeleteConfirm !== null}
+        title="Delete Goal"
+        message="Are you sure you want to delete this goal? This action cannot be undone."
+        onConfirm={() => showDeleteConfirm && deleteGoal(showDeleteConfirm)}
+        onCancel={() => setShowDeleteConfirm(null)}
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

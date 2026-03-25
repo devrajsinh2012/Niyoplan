@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X, Link as LinkIcon, Trash2, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
+import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
 import './DependencyManager.css';
 
 const DEPENDENCY_TYPES = [
@@ -33,6 +34,7 @@ export default function DependencyManager({
   const [depType, setDepType] = useState('finish_start');
   const [leadLagDays, setLeadLagDays] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const getAuthHeaders = async () => {
     const { data: sessionData } = await supabase.auth.getSession();
@@ -135,8 +137,11 @@ export default function DependencyManager({
 
   const handleDelete = async () => {
     if (!selectedDependency) return;
+    setShowDeleteConfirm(true);
+  };
 
-    if (!confirm('Delete this dependency? This cannot be undone.')) return;
+  const confirmDelete = async () => {
+    if (!selectedDependency) return;
 
     setIsSubmitting(true);
     try {
@@ -156,6 +161,7 @@ export default function DependencyManager({
       if (!res.ok) throw new Error('Failed to delete dependency');
 
       toast.success('Dependency deleted');
+      setShowDeleteConfirm(false);
       onDeleteDependency?.();
       handleClose();
     } catch (err) {
@@ -332,6 +338,15 @@ export default function DependencyManager({
           </div>
         </div>
       </div>
+
+      <ConfirmDeleteModal
+        isOpen={showDeleteConfirm}
+        title="Delete Dependency"
+        message="Are you sure you want to delete this dependency? This action cannot be undone."
+        onConfirm={confirmDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+        isLoading={isSubmitting}
+      />
     </div>
   );
 }

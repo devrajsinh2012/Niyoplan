@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
 import { MeetingsPanelSkeleton } from '@/components/ui/PageSkeleton';
 
 export default function MeetingReviewsPanel({ projectId }) {
@@ -10,6 +11,8 @@ export default function MeetingReviewsPanel({ projectId }) {
   const [calendarRows, setCalendarRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionDraft, setActionDraft] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [pmForm, setPmForm] = useState({
     meeting_date: new Date().toISOString().slice(0, 10),
     rag_status: 'amber',
@@ -113,17 +116,20 @@ export default function MeetingReviewsPanel({ projectId }) {
   };
 
   const deleteReview = async (type, id) => {
-    if (!window.confirm(`Are you sure you want to delete this ${type} review?`)) return;
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/projects/${projectId}/meetings/${type}/${id}`, {
         method: 'DELETE'
       });
       if (!res.ok) throw new Error(`Failed to delete ${type} review`);
       toast.success(`${type.toUpperCase()} review deleted`);
+      setShowDeleteConfirm(null);
       loadData();
     } catch (error) {
       console.error(error);
       toast.error(error.message || 'Failed to delete review');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -232,7 +238,7 @@ export default function MeetingReviewsPanel({ projectId }) {
               <article key={review.id} className="border border-gray-200 rounded-xl p-4 bg-gray-50 hover:border-gray-300 transition-colors relative group/item">
                 <button 
                   className="absolute top-3 right-3 text-gray-400 hover:text-rose-500 opacity-0 group-item-hover:opacity-100 transition-all p-1"
-                  onClick={() => deleteReview('pm', review.id)}
+                  onClick={() => setShowDeleteConfirm({ type: 'pm', id: review.id })}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                 </button>
@@ -291,7 +297,7 @@ export default function MeetingReviewsPanel({ projectId }) {
             <article key={review.id} className="border border-gray-200 rounded-xl p-4 bg-gray-50 hover:border-gray-300 transition-colors relative group/item">
               <button 
                 className="absolute top-3 right-3 text-gray-400 hover:text-rose-500 opacity-0 group-item-hover:opacity-100 transition-all p-1"
-                onClick={() => deleteReview('hr', review.id)}
+                onClick={() => setShowDeleteConfirm({ type: 'hr', id: review.id })}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
               </button>
@@ -302,6 +308,15 @@ export default function MeetingReviewsPanel({ projectId }) {
           {!hrReviews.length && <div className="text-gray-400 text-sm font-medium py-10 text-center">No HR reviews yet.</div>}
         </div>
       </section>
+
+      <ConfirmDeleteModal
+        isOpen={showDeleteConfirm !== null}
+        title="Delete Review"
+        message={`Are you sure you want to delete this ${showDeleteConfirm?.type?.toUpperCase()} review? This action cannot be undone.`}
+        onConfirm={() => showDeleteConfirm && deleteReview(showDeleteConfirm.type, showDeleteConfirm.id)}
+        onCancel={() => setShowDeleteConfirm(null)}
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

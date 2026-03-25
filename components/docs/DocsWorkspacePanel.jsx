@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import InputModal from '@/components/ui/InputModal';
+import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
 import { FolderPlus, FilePlus2, Layers3 } from 'lucide-react';
 import { DocsPanelSkeleton } from '@/components/ui/PageSkeleton';
 
@@ -14,6 +15,8 @@ export default function DocsWorkspacePanel({ projectId }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [createModal, setCreateModal] = useState({ isOpen: false, type: null });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const selectedDoc = useMemo(() => docs.find((doc) => doc.id === selectedDocId) || null, [docs, selectedDocId]);
 
@@ -118,18 +121,22 @@ export default function DocsWorkspacePanel({ projectId }) {
   };
 
   const deleteDoc = async () => {
-    if (!selectedDoc || !window.confirm('Are you sure you want to delete this document?')) return;
+    if (!selectedDoc) return;
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/projects/${projectId}/docs/${selectedDoc.id}`, {
         method: 'DELETE'
       });
       if (!res.ok) throw new Error('Failed to delete doc');
       toast.success('Doc deleted');
+      setShowDeleteConfirm(false);
       setSelectedDocId(null);
       loadData();
     } catch (error) {
       console.error(error);
       toast.error(error.message || 'Failed to delete doc');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -244,7 +251,7 @@ export default function DocsWorkspacePanel({ projectId }) {
             <div className="flex justify-end pt-2 gap-3">
               <button
                 className="bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-xl px-4 py-2 text-sm font-bold transition-all active:scale-95"
-                onClick={deleteDoc}
+                onClick={() => setShowDeleteConfirm(true)}
               >
                 Delete
               </button>
@@ -305,6 +312,15 @@ export default function DocsWorkspacePanel({ projectId }) {
               : 'Create Doc'
         }
         maxLength={80}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={showDeleteConfirm}
+        title="Delete Document"
+        message="Are you sure you want to delete this document? This action cannot be undone."
+        onConfirm={deleteDoc}
+        onCancel={() => setShowDeleteConfirm(false)}
+        isLoading={isDeleting}
       />
     </div>
   );

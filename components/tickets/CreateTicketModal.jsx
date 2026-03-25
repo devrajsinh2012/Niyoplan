@@ -56,6 +56,7 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
         .from('sprints')
         .select('id, name, status')
         .eq('project_id', projectId)
+        .in('status', ['active', 'planning', 'upcoming']) // Only show active/upcoming sprints
         .order('created_at', { ascending: false });
 
       if (data) setSprints(data);
@@ -164,9 +165,9 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
 
   return (
     <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-2xl rounded-2xl border border-gray-200 shadow-2xl flex flex-col max-h-[90vh] bg-white">
+      <div className="w-full max-w-3xl rounded-xl border border-gray-200 shadow-2xl flex flex-col max-h-[95vh] bg-white">
 
-        <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+        <div className="p-6 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white rounded-t-xl">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <AlertCircle className="text-blue-600" size={24} />
             Create Issue
@@ -203,9 +204,8 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-
-              <div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
                 <label className="text-gray-700 mb-2 block text-sm font-medium">Issue Type</label>
                 <select
                   name="issue_type"
@@ -264,9 +264,49 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
                   onChange={handleChange}
                 />
               </div>
+
+              <div>
+                <label className="text-gray-700 mb-2 block text-sm font-medium">Assignee</label>
+                <select
+                  name="assignee_id"
+                  className="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                  value={formData.assignee_id}
+                  onChange={handleChange}
+                >
+                  <option value="">Auto (Reporter)</option>
+                  {users.length === 0 ? (
+                    <option disabled>No team members available</option>
+                  ) : (
+                    users.map(u => (
+                      <option key={u.id} value={u.id}>{u.full_name}</option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-gray-700 mb-2 block text-sm font-medium">Sprint</label>
+                <select
+                  name="sprint_id"
+                  className="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                  value={formData.sprint_id}
+                  onChange={handleChange}
+                >
+                  <option value="">Unplanned</option>
+                  {sprints.length === 0 ? (
+                    <option disabled>No active sprints</option>
+                  ) : (
+                    sprints.map((sprint) => (
+                      <option key={sprint.id} value={sprint.id}>
+                        {sprint.name}{sprint.status ? ` (${sprint.status})` : ''}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="text-gray-700 mb-2 block text-sm font-medium">Start Date</label>
                 <input
@@ -288,44 +328,12 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
                   onChange={handleChange}
                 />
               </div>
-
-              <div>
-                <label className="text-gray-700 mb-2 block text-sm font-medium">Sprint</label>
-                <select
-                  name="sprint_id"
-                  className="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-                  value={formData.sprint_id}
-                  onChange={handleChange}
-                >
-                  <option value="">Unplanned</option>
-                  {sprints.map((sprint) => (
-                    <option key={sprint.id} value={sprint.id}>
-                      {sprint.name}{sprint.status ? ` (${sprint.status})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-gray-700 mb-2 block text-sm font-medium">Assignee</label>
-              <select
-                name="assignee_id"
-                className="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-                value={formData.assignee_id}
-                onChange={handleChange}
-              >
-                <option value="">Auto (Reporter)</option>
-                {users.map(u => (
-                  <option key={u.id} value={u.id}>{u.full_name}</option>
-                ))}
-              </select>
             </div>
 
           </form>
         </div>
 
-        <div className="p-6 border-t border-gray-200 flex justify-end gap-3 bg-gray-50 rounded-b-2xl">
+        <div className="p-6 border-t border-gray-200 flex justify-end gap-3 bg-gray-50 rounded-b-xl sticky bottom-0">
           <button
             type="button"
             onClick={onClose}

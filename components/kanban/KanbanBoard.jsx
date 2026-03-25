@@ -461,22 +461,17 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
   return (
     <div className="kanban-wrapper">
       <header className="kanban-header">
-        <h2 className="kanban-title">Alpha Board</h2>
-        <div className="kanban-filters">
-          <button className="kanban-filter-chip" title="Filter by type">
+        <div className="kanban-filters flex-1 pt-1">
+          <button className="kanban-filter-chip" title="Filter by type" onClick={() => toast('Type filter coming soon')}>
             <span>Type ▾</span>
           </button>
-          <button className="kanban-filter-chip" title="Filter by priority">
+          <button className="kanban-filter-chip" title="Filter by priority" onClick={() => toast('Priority filter coming soon')}>
             <span>Priority ▾</span>
           </button>
-          <button className="kanban-filter-chip" title="Filter by label">
+          <button className="kanban-filter-chip" title="Filter by label" onClick={() => toast('Label filter coming soon')}>
             <span>Label ▾</span>
           </button>
           <button className="kanban-filter-clear">Clear all</button>
-        </div>
-        <div className="kanban-view-toggle">
-          <button className="active">Board</button>
-          <button>List</button>
         </div>
       </header>
       

@@ -124,6 +124,8 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
   const [editingSprint, setEditingSprint] = useState(null);
   const [editForm, setEditForm] = useState({ name: '', goal: '', start_date: '', end_date: '' });
   const [activeIssue, setActiveIssue] = useState(null);
+  const [showCompleteSprintModal, setShowCompleteSprintModal] = useState(false);
+  const [pendingCompleteSprint, setPendingCompleteSprint] = useState(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -169,14 +171,15 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
     }
   };
 
-  const updateSprintStatus = async (sprint, status, sprintIssues = []) => {
+  const updateSprintStatus = async (sprint, status, sprintIssues = [], skipConfirm = false) => {
     if (!sprint?.id) return;
 
-    if (status === 'completed') {
+    if (status === 'completed' && !skipConfirm) {
       const openIssues = sprintIssues.filter((issue) => issue.status !== 'done').length;
       if (openIssues > 0) {
-        const shouldContinue = window.confirm(`${openIssues} issue(s) are not done yet. Complete sprint anyway?`);
-        if (!shouldContinue) return;
+        setPendingCompleteSprint({ sprint, issues: sprintIssues, openIssues });
+        setShowCompleteSprintModal(true);
+        return;
       }
     }
 
@@ -553,6 +556,34 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
           sprintId={insightsSprintId}
           onClose={() => setShowInsights(false)}
         />
+      )}
+
+      {showCompleteSprintModal && pendingCompleteSprint && (
+        <div className="fixed inset-0 z-[2150] flex items-center justify-center bg-[#091E42]/60 p-4" onClick={() => setShowCompleteSprintModal(false)}>
+          <div className="w-full max-w-md animate-fade-in rounded-[3px] bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="mb-4 text-xl font-medium text-[#172B4D]">Complete Sprint</h3>
+            <p className="mb-6 text-sm text-[#42526E] leading-relaxed">
+              <span className="font-bold">{pendingCompleteSprint.openIssues} issue(s)</span> are not done yet. Complete sprint anyway?
+            </p>
+            <div className="flex justify-end gap-2">
+              <button 
+                className="rounded-[3px] px-4 py-2 text-sm font-semibold text-[#42526E] hover:bg-[#F4F5F7] transition-colors" 
+                onClick={() => setShowCompleteSprintModal(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                className="rounded-[3px] bg-[#0052CC] px-4 py-2 text-sm font-semibold text-white hover:bg-[#003D99] transition-colors"
+                onClick={() => {
+                  setShowCompleteSprintModal(false);
+                  updateSprintStatus(pendingCompleteSprint.sprint, 'completed', pendingCompleteSprint.issues, true);
+                }}
+              >
+                Complete sprint
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Create Sprint Modal */}

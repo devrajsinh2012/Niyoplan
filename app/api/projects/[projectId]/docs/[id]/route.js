@@ -39,3 +39,30 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ error: 'Failed to update doc' }, { status: 500 });
   }
 }
+
+export async function DELETE(request, { params }) {
+  const { projectId, id: docId } = await params;
+  const { user, error: authError } = await getAuthUser(request);
+  if (authError || !user) {
+    return NextResponse.json({ error: authError || 'Unauthorized' }, { status: 401 });
+  }
+
+  if (!checkRole(user, 'admin', 'pm', 'member')) {
+    return NextResponse.json({ error: 'Forbidden. Insufficient role.' }, { status: 403 });
+  }
+
+  try {
+    const { error } = await supabaseAdmin
+      .from('docs')
+      .delete()
+      .eq('id', docId)
+      .eq('project_id', projectId);
+
+    if (error) throw error;
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: 'Failed to delete doc' }, { status: 500 });
+  }
+}
+

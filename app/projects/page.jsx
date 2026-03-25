@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { useOrganization } from '@/context/OrganizationContext';
-import { FolderKanban, Plus, Star, Activity } from 'lucide-react';
+import { FolderKanban, Plus, Star, Activity, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 import UserAvatar from '@/components/ui/UserAvatar';
 import BrandMark from '@/components/ui/BrandMark';
@@ -186,7 +186,6 @@ export default function ProjectsPage() {
       {/* ── Header ── */}
       <header className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
-          <BrandMark size={40} />
           <div>
             <h1 className="text-2xl font-bold text-[var(--text-heading)] tracking-tight">
               Projects
@@ -288,13 +287,41 @@ export default function ProjectsPage() {
                   <div className="relative z-20 border-2 border-[var(--bg-surface)] rounded-full shadow-sm" title={project.profiles?.full_name}>
                     <UserAvatar user={project.profiles} size={24} />
                   </div>
-                  <div className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-[var(--bg-surface)] bg-[#F4F5F7] text-[10px] font-bold text-[#42526E] shadow-sm">
-                    +4
-                  </div>
                 </div>
                 
-                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[#006644]">
-                  <Activity size={10} className="text-[#006644]" /> Active
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[#006644]">
+                    <Activity size={10} className="text-[#006644]" /> Active
+                  </div>
+                  
+                  <div className="relative group/info">
+                    <button 
+                      className="text-gray-400 hover:text-blue-600 transition-colors p-1 rounded-full hover:bg-blue-50"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    >
+                      <Info size={14} />
+                    </button>
+                    
+                    {/* Tooltip Content */}
+                    <div className="invisible group-hover/info:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 p-3 bg-white border border-gray-200 rounded-xl shadow-xl z-[100] animate-in fade-in slide-in-from-bottom-2 duration-200">
+                      <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-2">Project Info</div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center bg-gray-50 p-1.5 rounded-lg border border-gray-100">
+                          <span className="text-[10px] text-gray-500 font-bold">Manager</span>
+                          <span className="text-[10px] text-gray-900 font-bold">{project.profiles?.full_name || 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between items-center bg-gray-50 p-1.5 rounded-lg border border-gray-100">
+                          <span className="text-[10px] text-gray-500 font-bold">Created</span>
+                          <span className="text-[10px] text-gray-900 font-bold">{new Date(project.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex justify-between items-center bg-gray-50 p-1.5 rounded-lg border border-gray-100">
+                          <span className="text-[10px] text-gray-500 font-bold">Organization</span>
+                          <span className="text-[10px] text-[#0052CC] font-bold">{activeOrganization?.name || 'Niyoplan'}</span>
+                        </div>
+                      </div>
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-white border-b border-r border-gray-200 rotate-45" />
+                    </div>
+                  </div>
                 </div>
               </div>
             </Link>

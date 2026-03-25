@@ -117,6 +117,22 @@ export default function DocsWorkspacePanel({ projectId }) {
     setDocs((prev) => prev.map((doc) => (doc.id === selectedDocId ? { ...doc, [field]: value } : doc)));
   };
 
+  const deleteDoc = async () => {
+    if (!selectedDoc || !window.confirm('Are you sure you want to delete this document?')) return;
+    try {
+      const res = await fetch(`/api/projects/${projectId}/docs/${selectedDoc.id}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) throw new Error('Failed to delete doc');
+      toast.success('Doc deleted');
+      setSelectedDocId(null);
+      loadData();
+    } catch (error) {
+      console.error(error);
+      toast.error(error.message || 'Failed to delete doc');
+    }
+  };
+
   const saveDoc = async () => {
     if (!selectedDoc) return;
     setSaving(true);
@@ -180,9 +196,15 @@ export default function DocsWorkspacePanel({ projectId }) {
           <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest px-2 mb-2">Spaces</div>
           <div className="space-y-1">
             {spaces.map((space) => (
-              <div key={space.id} className="text-xs text-gray-700 border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 font-medium">{space.name}</div>
+              <div key={space.id} className="text-xs text-gray-700 border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 font-medium flex items-center justify-between group">
+                {space.name}
+              </div>
             ))}
-            {!spaces.length && <div className="text-[11px] text-gray-400 px-2 font-medium">No spaces yet</div>}
+            {!spaces.length && (
+              <div className="text-[11px] text-gray-400 px-2 py-4 bg-gray-50 rounded-xl border border-dashed border-gray-200 text-center font-medium">
+                No spaces defined. Click &quot;+ Space&quot; to organize your docs.
+              </div>
+            )}
           </div>
         </div>
 
@@ -219,7 +241,13 @@ export default function DocsWorkspacePanel({ projectId }) {
               value={selectedDoc.content || ''}
               onChange={(e) => updateSelectedDoc('content', e.target.value)}
             />
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-end pt-2 gap-3">
+              <button
+                className="bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-xl px-4 py-2 text-sm font-bold transition-all active:scale-95"
+                onClick={deleteDoc}
+              >
+                Delete
+              </button>
               <button
                 className="bg-blue-600 hover:bg-blue-500 text-white rounded-xl px-8 py-3 text-sm font-bold shadow-lg transition-all active:scale-95 flex items-center gap-2"
                 onClick={saveDoc}

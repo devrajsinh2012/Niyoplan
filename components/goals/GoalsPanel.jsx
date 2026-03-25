@@ -98,6 +98,21 @@ export default function GoalsPanel({ projectId }) {
     }));
   };
 
+  const deleteGoal = async (goalId) => {
+    if (!window.confirm('Are you sure you want to delete this goal?')) return;
+    try {
+      const res = await fetch(`/api/projects/${projectId}/goals/${goalId}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) throw new Error('Failed to delete goal');
+      toast.success('Goal deleted');
+      loadGoals();
+    } catch (error) {
+      console.error(error);
+      toast.error(error.message || 'Failed to delete goal');
+    }
+  };
+
   const generateNarrative = async (goal) => {
     try {
       const res = await fetch('/api/ai/goal-narrative', {
@@ -107,7 +122,7 @@ export default function GoalsPanel({ projectId }) {
       });
       const data = await res.json();
       setNarrative(data.narrative || 'No narrative returned');
-      toast.success('Narrative generated');
+      toast.success('Stakeholder narrative generated');
     } catch (error) {
       console.error(error);
       toast.error(error.message || 'Failed to generate narrative');
@@ -199,22 +214,38 @@ export default function GoalsPanel({ projectId }) {
                   <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{kr.current_value} / {kr.target_value} {kr.unit}</div>
                   <div className="w-full bg-gray-200 h-1.5 rounded-full mt-2.5 overflow-hidden">
                     <div
-                      className="h-full bg-blue-500 rounded-full"
-                      style={{ width: `${Math.min(100, (kr.current_value / kr.target_value) * 100)}%` }}
+                      className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                      style={{ 
+                        width: `${Math.max(0, Math.min(100, 
+                          ((kr.current_value - kr.start_value) / (kr.target_value - kr.start_value || 1)) * 100
+                        ))}%` 
+                      }}
                     />
                   </div>
                 </div>
               ))}
             </div>
-            <button
-              className="w-full bg-gray-100 border border-gray-200 hover:bg-gray-200 text-gray-700 rounded-xl py-2.5 text-[11px] font-bold uppercase tracking-wider transition-colors"
-              onClick={() => generateNarrative(goal)}
-            >
-              Generate Goal Narrative
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                className="flex-1 bg-gray-100 border border-gray-200 hover:bg-gray-200 text-gray-700 rounded-xl py-2.5 text-[11px] font-bold uppercase tracking-wider transition-colors"
+                onClick={() => generateNarrative(goal)}
+              >
+                Generate Narrative
+              </button>
+              <button
+                className="bg-rose-100 hover:bg-rose-200 text-rose-600 border border-rose-200 rounded-xl px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider transition-colors"
+                onClick={() => deleteGoal(goal.id)}
+              >
+                Delete
+              </button>
+            </div>
           </article>
         ))}
-        {!goals.length && <div className="text-gray-400 text-sm font-medium py-10 text-center col-span-full">No goals created yet.</div>}
+        {!goals.length && (
+          <div className="text-gray-400 text-sm font-medium py-20 text-center col-span-full border-2 border-dashed border-gray-100 rounded-2xl">
+            No goals created yet. Use the form above to define your first strategic OKR.
+          </div>
+        )}
       </section>
 
       <section className="rounded-2xl p-6 bg-white border border-gray-200 shadow-sm">

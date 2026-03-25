@@ -26,13 +26,15 @@ export default function AIToolsPanel({ projectId }) {
       const loadCards = () => safeArray(`/api/projects/${projectId}/cards`);
       const loadSprints = () => safeArray(`/api/projects/${projectId}/sprints`);
       const loadMeetings = () => safeArray(`/api/projects/${projectId}/meetings/calendar`);
+      const loadPMReviews = () => safeArray(`/api/projects/${projectId}/meetings/pm`);
+      const loadHRReviews = () => safeArray(`/api/projects/${projectId}/meetings/hr`);
 
-      const [cardsRes, sprintsRes, meetingsRes] = await Promise.all([
-        loadCards(), loadSprints(), loadMeetings()
+      const [cardsRes, sprintsRes, meetingsRes, pmRes, hrRes] = await Promise.all([
+        loadCards(), loadSprints(), loadMeetings(), loadPMReviews(), loadHRReviews()
       ]);
       setCards(cardsRes);
       setSprints(sprintsRes);
-      setMeetings(meetingsRes);
+      setMeetings([...meetingsRes, ...pmRes.map(r => ({ ...r, type: 'pm_review', title: `PM Review - ${r.meeting_date}` }))]);
     } catch (error) {
       console.error(error);
       toast.error('Failed to load AI context data');
@@ -99,9 +101,9 @@ export default function AIToolsPanel({ projectId }) {
           <button className="bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200 rounded-xl px-4 py-3 text-[11px] font-bold uppercase tracking-wider transition-all active:scale-95 disabled:opacity-50" disabled={loading} onClick={() => runTool('/api/ai/improve-description', { description }, 'description')}>Improve Description</button>
           <button className="bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200 rounded-xl px-4 py-3 text-[11px] font-bold uppercase tracking-wider transition-all active:scale-95 disabled:opacity-50" disabled={loading} onClick={() => runTool('/api/ai/suggest-priority', { title, description }, 'suggestion')}>Suggest Priority</button>
           <button className="bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200 rounded-xl px-4 py-3 text-[11px] font-bold uppercase tracking-wider transition-all active:scale-95 disabled:opacity-50" disabled={loading} onClick={() => runTool('/api/ai/sprint-summary', { sprint: sprints.find((s) => s.status === 'active') || sprints[0] || { name: 'No sprint found' }, cards }, 'summary')}>Sprint Summary</button>
-          <button className="bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200 rounded-xl px-4 py-3 text-[11px] font-bold uppercase tracking-wider transition-all active:scale-95 disabled:opacity-50" disabled={loading} onClick={() => runTool('/api/ai/meeting-summary', { meeting: meetings[0] || { title: title || 'Meeting Notes', notes: description } }, 'summary')}>Meeting Summary</button>
+          <button className="bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200 rounded-xl px-4 py-3 text-[11px] font-bold uppercase tracking-wider transition-all active:scale-95 disabled:opacity-50" disabled={loading} onClick={() => runTool('/api/ai/meeting-summary', { meeting: meetings.find(m => m.type === 'pm_review') || meetings[0] || { title: title || 'Meeting Notes', notes: description } }, 'summary')}>Meeting Summary</button>
           <button className="bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200 rounded-xl px-4 py-3 text-[11px] font-bold uppercase tracking-wider transition-all active:scale-95 disabled:opacity-50" disabled={loading} onClick={() => runTool('/api/ai/risk-helper', { risk: riskText || description }, 'result')}>Risk Helper</button>
-          <button className="bg-blue-600 hover:bg-blue-500 text-white rounded-xl px-4 py-3 text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50 md:col-span-2 xl:col-span-3 transition-colors shadow-lg" disabled={loading} onClick={() => runTool('/api/ai/goal-narrative', { goal: { title, description }, keyResults: cards.slice(0, 5).map((card) => ({ title: card.title, target_value: card.story_points || 1 })) }, 'narrative')}>Create Goal Narrative</button>
+          <button className="bg-blue-600 hover:bg-blue-500 text-white rounded-xl px-4 py-3 text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50 md:col-span-2 xl:col-span-3 transition-colors shadow-lg" disabled={loading} onClick={() => runTool('/api/ai/goal-narrative', { goal: { title: title || 'Strategic Objective', description: description || 'No description provided' }, keyResults: cards.filter(c => c.status === 'done').slice(0, 5).map((card) => ({ title: card.title, target_value: card.story_points || 1, current_value: card.story_points || 1, unit: 'points' })) }, 'narrative')}>Create Goal Narrative</button>
         </div>
       </section>
 

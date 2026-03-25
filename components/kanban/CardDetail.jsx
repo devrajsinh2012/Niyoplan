@@ -238,8 +238,8 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
   const subtaskProgress = subtasks.length > 0 ? Math.round((completedSubtasks / subtasks.length) * 100) : 0;
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-start justify-center overflow-y-auto bg-[#091E42]/60 p-4 md:p-10 backdrop-blur-[2px]" onClick={onClose}>
-      <div className="relative mb-10 min-h-[500px] w-full max-w-6xl animate-fade-in rounded-lg bg-white shadow-2xl ring-1 ring-black/5 flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-[#091E42]/60 p-4 md:p-10 backdrop-blur-[2px]" onClick={onClose}>
+      <div className="relative max-h-[90vh] min-h-[500px] w-full max-w-6xl animate-fade-in flex flex-col overflow-hidden rounded-lg bg-white shadow-2xl ring-1 ring-black/5" onClick={(e) => e.stopPropagation()}>
         
         {/* Header - Breadcrumb & Actions */}
         <header className="flex items-center justify-between border-b border-[var(--border-subtle)] px-6 py-4 bg-[#fdfdfd] rounded-t-lg">
@@ -251,8 +251,8 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
             <span className="font-mono text-[var(--text-primary)] font-bold tracking-tight">{card.prefix || card.custom_id}</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <button className="flex items-center justify-center p-2 rounded-[3px] text-[var(--text-secondary)] hover:bg-[#F4F5F7] transition-colors" title="Watch"><Eye size={16} /></button>
-            <button className="flex items-center justify-center p-2 rounded-[3px] text-[var(--text-secondary)] hover:bg-[#F4F5F7] transition-colors"><MoreHorizontal size={16} /></button>
+            <button className="flex items-center justify-center p-2 rounded-[3px] text-[var(--text-secondary)] hover:bg-[#F4F5F7] transition-colors" title="Watch" onClick={() => toast('Watch feature coming soon', { icon: '👀' })}><Eye size={16} /></button>
+            <button className="flex items-center justify-center p-2 rounded-[3px] text-[var(--text-secondary)] hover:bg-[#F4F5F7] transition-colors" onClick={() => toast('Actions menu coming soon')}><MoreHorizontal size={16} /></button>
             <button className="ml-2 flex items-center justify-center p-2 rounded-[3px] text-[var(--text-secondary)] hover:bg-[#F4F5F7] transition-colors" onClick={onClose}><X size={18} /></button>
           </div>
         </header>
@@ -273,16 +273,28 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
             />
 
             <div className="mt-6 mb-10 flex flex-wrap gap-2">
-              <button className="flex items-center gap-2 rounded-[3px] bg-[#091E42]/[0.04] px-3 py-1.5 text-sm font-semibold text-[#42526E] transition-colors hover:bg-[#091E42]/[0.08] active:bg-[#091E42]/[0.12]">
+              <button 
+                className="flex items-center gap-2 rounded-[3px] bg-[#091E42]/[0.04] px-3 py-1.5 text-sm font-semibold text-[#42526E] transition-colors hover:bg-[#091E42]/[0.08] active:bg-[#091E42]/[0.12]"
+                onClick={() => toast('Attach feature coming soon', { icon: '📎' })}
+              >
                 <Paperclip size={14} /> Attach
               </button>
-              <button className="flex items-center gap-2 rounded-[3px] bg-[#091E42]/[0.04] px-3 py-1.5 text-sm font-semibold text-[#42526E] transition-colors hover:bg-[#091E42]/[0.08]">
+              <button 
+                className="flex items-center gap-2 rounded-[3px] bg-[#091E42]/[0.04] px-3 py-1.5 text-sm font-semibold text-[#42526E] transition-colors hover:bg-[#091E42]/[0.08]"
+                onClick={() => setActiveTab('subtasks')}
+              >
                 <CheckSquare size={14} /> Subtasks
               </button>
-              <button className="flex items-center gap-2 rounded-[3px] bg-[#091E42]/[0.04] px-3 py-1.5 text-sm font-semibold text-[#42526E] transition-colors hover:bg-[#091E42]/[0.08]">
+              <button 
+                className="flex items-center gap-2 rounded-[3px] bg-[#091E42]/[0.04] px-3 py-1.5 text-sm font-semibold text-[#42526E] transition-colors hover:bg-[#091E42]/[0.08]"
+                onClick={() => toast('Link issue coming soon', { icon: '🔗' })}
+              >
                 <Link size={14} /> Link issue
               </button>
-              <button className="flex items-center gap-2 rounded-[3px] bg-[#091E42]/[0.04] px-3 py-1.5 text-sm font-semibold text-[#42526E] transition-colors hover:bg-[#091E42]/[0.08]">
+              <button 
+                className="flex items-center gap-2 rounded-[3px] bg-[#091E42]/[0.04] px-3 py-1.5 text-sm font-semibold text-[#42526E] transition-colors hover:bg-[#091E42]/[0.08]"
+                onClick={() => toast('More options coming soon')}
+              >
                 <span>More</span> <ChevronDown size={14} />
               </button>
             </div>
@@ -521,7 +533,6 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
             <div className="mb-8 flex flex-col gap-1 rounded-lg border border-[var(--border-subtle)] bg-white p-2">
               <div className="flex items-center justify-between p-3">
                 <h4 className="text-[13px] font-bold text-[var(--text-heading)]">Details</h4>
-                <button className="text-[11px] font-bold text-[#0052CC] hover:underline">Toggle icons</button>
               </div>
               
               <div className="space-y-1">
@@ -597,7 +608,9 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
                 <div className="group flex items-center rounded px-3 py-1.5 transition-colors hover:bg-[#F4F5F7]">
                   <div className="w-28 shrink-0 text-[13px] font-bold text-[#6B778C]">Sprint</div>
                   <div className="flex-1 overflow-hidden">
-                    <span className="truncate text-[13px] font-bold text-[#0052CC] hover:underline cursor-pointer">Active Sprint (Alpha)</span>
+                    <span className="truncate text-[13px] font-medium text-[var(--text-primary)]">
+                      {card.sprint_id ? 'In Sprint' : 'None'}
+                    </span>
                   </div>
                 </div>
               </div>

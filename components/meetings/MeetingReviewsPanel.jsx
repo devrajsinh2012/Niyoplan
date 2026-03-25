@@ -112,22 +112,18 @@ export default function MeetingReviewsPanel({ projectId }) {
     }
   };
 
-  const convertActionItem = async (actionItemId) => {
+  const deleteReview = async (type, id) => {
+    if (!window.confirm(`Are you sure you want to delete this ${type} review?`)) return;
     try {
-      const res = await fetch(`/api/projects/${projectId}/meetings/action-items/${actionItemId}/convert-to-card`, {
-        method: 'POST'
+      const res = await fetch(`/api/projects/${projectId}/meetings/${type}/${id}`, {
+        method: 'DELETE'
       });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to convert action item');
-      }
-
-      toast.success('Action item converted to board card');
+      if (!res.ok) throw new Error(`Failed to delete ${type} review`);
+      toast.success(`${type.toUpperCase()} review deleted`);
       loadData();
     } catch (error) {
       console.error(error);
-      toast.error(error.message || 'Failed to convert action item');
+      toast.error(error.message || 'Failed to delete review');
     }
   };
 
@@ -233,8 +229,21 @@ export default function MeetingReviewsPanel({ projectId }) {
           <h3 className="text-gray-900 text-lg font-semibold mb-4">PM Reviews & Action Items</h3>
           <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
             {pmReviews.map((review) => (
-              <article key={review.id} className="border border-gray-200 rounded-xl p-4 bg-gray-50 hover:border-gray-300 transition-colors">
-                <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">{review.meeting_date} • RAG: {review.rag_status?.toUpperCase()}</div>
+              <article key={review.id} className="border border-gray-200 rounded-xl p-4 bg-gray-50 hover:border-gray-300 transition-colors relative group/item">
+                <button 
+                  className="absolute top-3 right-3 text-gray-400 hover:text-rose-500 opacity-0 group-item-hover:opacity-100 transition-all p-1"
+                  onClick={() => deleteReview('pm', review.id)}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                </button>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className={`w-2 h-2 rounded-full ${
+                    review.rag_status === 'red' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]' : 
+                    review.rag_status === 'green' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 
+                    'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'
+                  }`} />
+                  <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{review.meeting_date} • RAG: {review.rag_status?.toUpperCase()}</div>
+                </div>
                 <h4 className="text-gray-900 font-semibold mb-2 text-sm">{review.summary || 'No summary'}</h4>
                 <p className="text-xs text-gray-500 mb-3 leading-relaxed">{review.decisions || 'No decisions captured.'}</p>
                 <div className="space-y-1.5">
@@ -279,7 +288,13 @@ export default function MeetingReviewsPanel({ projectId }) {
         <h3 className="text-gray-900 text-lg font-semibold mb-4">HR Review History</h3>
         <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
           {hrReviews.map((review) => (
-            <article key={review.id} className="border border-gray-200 rounded-xl p-4 bg-gray-50 hover:border-gray-300 transition-colors">
+            <article key={review.id} className="border border-gray-200 rounded-xl p-4 bg-gray-50 hover:border-gray-300 transition-colors relative group/item">
+              <button 
+                className="absolute top-3 right-3 text-gray-400 hover:text-rose-500 opacity-0 group-item-hover:opacity-100 transition-all p-1"
+                onClick={() => deleteReview('hr', review.id)}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+              </button>
               <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{review.review_date}</div>
               <p className="text-sm text-gray-700 mt-2 leading-relaxed font-medium">{review.manager_notes || review.employee_notes || 'No notes yet.'}</p>
             </article>

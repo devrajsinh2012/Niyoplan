@@ -51,9 +51,39 @@ export async function GET(request, { params }) {
       }
 
       case 'workload': {
+        const { data: project } = await supabaseAdmin
+          .from('projects')
+          .select('organization_id')
+          .eq('id', projectId)
+          .single();
+
+        if (!project?.organization_id) {
+          data = [];
+          break;
+        }
+
+        const { data: orgMembers } = await supabaseAdmin
+          .from('organization_members')
+          .select('user_id')
+          .eq('organization_id', project.organization_id);
+
+        const userIds = (orgMembers || []).map(m => m.user_id);
+
+        if (userIds.length === 0) {
+          data = [];
+          break;
+        }
+
         const [{ data: members, error: mErr }, { data: cards, error: cErr }] = await Promise.all([
-          supabaseAdmin.from('profiles').select('id, full_name, avatar_url'),
-          supabaseAdmin.from('cards').select('id, assignee_id, status, priority').eq('project_id', projectId).not('assignee_id', 'is', null)
+          supabaseAdmin
+            .from('profiles')
+            .select('id, full_name, avatar_url')
+            .in('id', userIds),
+          supabaseAdmin
+            .from('cards')
+            .select('id, assignee_id, status, priority')
+            .eq('project_id', projectId)
+            .not('assignee_id', 'is', null)
         ]);
 
         if (mErr) throw mErr;

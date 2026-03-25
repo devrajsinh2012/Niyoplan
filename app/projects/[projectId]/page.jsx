@@ -149,7 +149,7 @@ export default function ProjectDetailPage() {
 
       if (event.key === '/') {
         event.preventDefault();
-        router.push(`/projects/${id}?tab=list`);
+        router.push(`/projects/${id}?tab=list`, { scroll: false });
         requestAnimationFrame(() => searchInputRef.current?.focus());
         return;
       }
@@ -165,7 +165,7 @@ export default function ProjectDetailPage() {
         event.preventDefault();
         const index = event.key === '0' ? 9 : Number(event.key) - 1;
         if (tabs[index]) {
-          router.push(`/projects/${id}?tab=${tabs[index].id}`);
+          router.push(`/projects/${id}?tab=${tabs[index].id}`, { scroll: false });
         }
       }
     };
@@ -181,7 +181,7 @@ export default function ProjectDetailPage() {
   }, [fetchProjectAndCards]);
 
   const setActiveTab = (tabId) => {
-    router.push(`/projects/${id}?tab=${tabId}`);
+    router.push(`/projects/${id}?tab=${tabId}`, { scroll: false });
   };
 
   const handleSaveCard = async (updates) => {
@@ -280,13 +280,10 @@ export default function ProjectDetailPage() {
       <div className="max-w-screen-2xl mx-auto w-full animate-fade-in pb-10 flex flex-col min-h-full text-primary">
       
       <header className="mb-6 shrink-0">
-        <Link href="/projects" className="text-[var(--text-secondary)] hover:text-[var(--accent-primary)] flex items-center gap-1 w-fit mb-4 transition-colors text-sm font-medium">
-          <ChevronLeft size={16} /> Back to Projects
-        </Link>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
           <div>
             <nav className="flex items-center gap-2 mb-2 text-xs text-[var(--text-muted)] font-medium">
-              <span>Projects</span>
+              <Link href="/projects" className="hover:underline hover:text-[var(--text-primary)] transition-colors">Projects</Link>
               <span>/</span>
               <span className="text-[var(--text-secondary)]">{project.name}</span>
             </nav>

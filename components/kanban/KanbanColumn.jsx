@@ -5,6 +5,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { SortableContext } from '@dnd-kit/sortable';
 import KanbanCard from './KanbanCard';
+import toast from 'react-hot-toast';
 
 export default function KanbanColumn({ list, cards, onCardOpen, onQuickAddCard }) {
   const {
@@ -54,7 +55,7 @@ export default function KanbanColumn({ list, cards, onCardOpen, onQuickAddCard }
           {list.title}
           <span className="card-count">{cards.length}</span>
         </h3>
-        <button className="column-menu-btn">⋯</button>
+        <button className="column-menu-btn" onClick={() => toast('List options coming soon')}>⋯</button>
       </div>
 
       <div className="kanban-column-body">

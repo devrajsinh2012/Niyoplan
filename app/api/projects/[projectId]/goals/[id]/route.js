@@ -63,3 +63,30 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ error: 'Failed to update goal' }, { status: 500 });
   }
 }
+
+export async function DELETE(request, { params }) {
+  const { projectId, id: goalId } = await params;
+  const { user, error: authError } = await getAuthUser(request);
+  if (authError || !user) {
+    return NextResponse.json({ error: authError || 'Unauthorized' }, { status: 401 });
+  }
+
+  if (!checkRole(user, 'admin', 'pm')) {
+    return NextResponse.json({ error: 'Forbidden. PM or Admin only.' }, { status: 403 });
+  }
+
+  try {
+    const { error } = await supabaseAdmin
+      .from('goals')
+      .delete()
+      .eq('id', goalId)
+      .eq('project_id', projectId);
+
+    if (error) throw error;
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: 'Failed to delete goal' }, { status: 500 });
+  }
+}
+

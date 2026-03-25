@@ -165,6 +165,23 @@ export default function ProjectSettingsPage() {
         return;
       }
 
+      // Check if user is in the organization
+      if (project?.organization_id) {
+        const { data: orgMember } = await supabase
+          .from('organization_members')
+          .select('id')
+          .eq('organization_id', project.organization_id)
+          .eq('user_id', userData.id)
+          .eq('status', 'active')
+          .single();
+
+        if (!orgMember) {
+          toast.error('User must be an active member of your workspace/organization to be invited to this project.');
+          setIsSaving(false);
+          return;
+        }
+      }
+
       // Check if already a member
       const { data: existingMember } = await supabase
         .from('project_members')

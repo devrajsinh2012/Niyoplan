@@ -1,3 +1,4 @@
+import { verifyProjectAccess } from '@/lib/access';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import { getAuthUser } from '@/lib/auth';
@@ -10,6 +11,11 @@ export async function GET(request, { params }) {
   if (error || !user) {
     return NextResponse.json({ error: error || 'Unauthorized' }, { status: 401 });
   }
+  const access = await verifyProjectAccess(projectId, user.id);
+  if (!access.hasAccess) {
+    return NextResponse.json({ error: access.error }, { status: 403 });
+  }
+
 
   try {
     const { data: goals, error: fetchError } = await supabaseAdmin
@@ -68,6 +74,11 @@ export async function POST(request, { params }) {
   if (error || !user) {
     return NextResponse.json({ error: error || 'Unauthorized' }, { status: 401 });
   }
+  const access = await verifyProjectAccess(projectId, user.id);
+  if (!access.hasAccess) {
+    return NextResponse.json({ error: access.error }, { status: 403 });
+  }
+
 
   if (!checkRole(user, 'admin', 'pm', 'member')) {
     return NextResponse.json({ error: 'Forbidden. Insufficient role.' }, { status: 403 });

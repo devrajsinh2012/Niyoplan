@@ -1,217 +1,132 @@
-# Niyoplan
+<div align="center">
+  <h1>🚀 Niyoplan</h1>
+  <p><strong>A Modern, Full-Stack Agile Project Management Platform</strong></p>
+  <p>Built with Next.js 15, React 19, Supabase, and Tailwind CSS v4.</p>
+</div>
 
-Niyoplan is a full-stack project management platform built with Next.js App Router and Supabase.
-It combines issue tracking, sprint planning, Kanban, Gantt, docs, DSM updates, goals/OKRs, meeting workflows, notifications, and AI-powered writing/summarization features in one codebase.
+---
 
-## What You Get
+## 📖 Overview
 
-- Multi-project workspace with organization onboarding (create or join via invite code)
-- Role-aware access (`admin`, `pm`, `member`, `viewer`) for key actions
-- Kanban + backlog + sprint workflow for ticket lifecycle management
-- Gantt timeline with dependency tracking
-- Docs workspace with spaces/folders/documents
-- DSM (daily updates), PM/HR meeting review flows, and action-item conversion to cards
-- Goals and key results tracking
-- In-app notifications and dashboard metrics
-- AI helper endpoints backed by Groq for summaries and content assistance
+**Niyoplan** is a highly capable project management and issue-tracking platform designed for Agile teams. It acts as an all-in-one workspace, combining traditional Kanban boards and Sprint planning tools with advanced features like Gantt charts, Daily Scrum (DSM) updates, Goal (OKR) tracking, and built-in HR/PM meeting workflows. 
 
-## Tech Stack
+Furthermore, Niyoplan leverages **Groq AI** to provide smart ticket summarizations, sprint velocity predictions, and automated risk analysis, enabling teams to operate at maximum efficiency.
 
-- Framework: Next.js 15 (App Router), React 19
-- Language: JavaScript (JSX)
-- Styling: Tailwind CSS v4 + custom CSS files
-- Backend/API: Next.js Route Handlers under `app/api`
-- Database/Auth: Supabase (Postgres + Auth)
-- Drag-and-drop: dnd-kit
-- Date utilities: date-fns
-- Icons/UI helpers: lucide-react, react-hot-toast, clsx, tailwind-merge
-- Containerization: Docker + Docker Compose
+## ✨ Key Features
 
-## Architecture At A Glance
+*   🏢 **Multi-Tenant Workspaces:** Support for isolated organizations. Join an existing team via an invite code, or create a new workspace from scratch.
+*   🔒 **Enterprise-Grade Security:** Custom architectural middleware (`lib/access.js`) guaranteeing strict, server-side resource scoping to prevent IDOR and cross-tenant data leaks.
+*   📋 **Advanced Issue Tracking:** Full ticket lifecycle management with backlog curation, sprint assignments, priority tagging, and custom statuses.
+*   📊 **Visual Workflows:**
+    *   Interactive **Kanban Boards** featuring drag-and-drop powered by `dnd-kit`.
+    *   Dynamic **Gantt Timelines** to visualize blocker dependencies.
+*   🤖 **AI Enhancements:** Built-in Groq integrations that automatically generate meeting summaries, suggest ticket descriptions, and highlight project risks.
+*   🎯 **Goals & OKRs:** Track top-level objectives and measurable key results directly alongside your project execution.
+*   📝 **Knowledge Base:** Internal Docs workspace supporting spaces, folders, and markdown-based collaborative documents.
+*   👥 **Role-Based Access Control (RBAC):** Granular permissions ensuring `admin`, `pm`, `member`, and `viewer` roles can only perform authorized actions.
 
-- Frontend pages live in `app/*`.
-- APIs are colocated in `app/api/*/route.js`.
-- Client-side auth/profile state is managed in `context/AuthContext.jsx`.
-- App shell + onboarding checks are enforced globally in `app/layout.jsx`.
-- Supabase clients live in `lib/supabase.js` (client) and `lib/supabaseServer.js` (server/service role).
+## 🛠️ Tech Stack
 
-Important runtime note:
+### Frontend
+- **Framework:** Next.js 15 (App Router)
+- **UI Library:** React 19
+- **Styling:** Tailwind CSS v4 + custom modules
+- **Components:** Radix primitives + Lucide React for icons
+- **State/Interactions:** `dnd-kit` (drag-and-drop), `date-fns`
 
-- The main dashboard route is `/` (not `/dashboard`).
+### Backend & Infrastructure
+- **API:** Next.js Serverless Route Handlers (`app/api/*`)
+- **Database:** PostgreSQL (via Supabase)
+- **Authentication:** Supabase Auth with JWT verification
+- **AI Integrations:** Groq LLM API
+- **Containerization:** Docker & Docker Compose (`output: 'standalone'`)
 
-## Core Route Areas
+---
 
-- UI pages:
-    - `/` dashboard
-    - `/projects` project listing and creation
-    - `/projects/[projectId]/*` project workspaces (board, docs, goals, settings, etc.)
-    - `/login`, `/register`
-    - `/onboarding`, `/onboarding/create`, `/onboarding/join`
-    - `/settings/*`, `/admin/settings`
+## 🏗️ Architecture & Security Model
 
-- API groups (`app/api`):
-    - `auth/profile`
-    - `projects` and nested resources (cards, lists, sprints, docs, dependencies, goals, meetings, notifications, spaces, folders)
-    - `organizations` and membership/invite-code operations
-    - `dashboard/stats`
-    - `admin/users`
-    - `ai/[action]`
+Niyoplan follows a strict separation of concerns within the Next.js App Router:
+*   **Colocated APIs:** Endpoints live under `app/api/` representing RESTful resources.
+*   **Dynamic Server Rendering:** Native Next.js 15 data fetching strategies utilizing strict `force-dynamic` headers to ensure boards and kanban lists never display stale cache.
+*   **Access Control Middleware:** Due to complex hierarchical data (Organizations -> Projects -> Sprints -> Cards), the codebase enforces a manual Verification Layer (`lib/access.js`) on the backend against the Supabase Service Role client, ensuring 100% tenant isolation.
 
-## AI Actions
+---
 
-`POST /api/ai/[action]` supports these actions:
+## 🚦 Quick Start
 
-- `generate-description`
-- `improve-description`
-- `suggest-priority`
-- `sprint-summary`
-- `meeting-summary`
-- `risk-helper`
-- `goal-narrative`
-- `dsm-summary`
-
-All AI actions require valid auth and a configured Groq API key.
-
-## Authentication and Authorization
-
-- API handlers verify bearer tokens via Supabase auth in `lib/auth.js`.
-- Role checks are centralized in `lib/roles.js`.
-- Many server routes use the service-role Supabase client (`supabaseAdmin`), so protect server environment secrets carefully.
-
-## Prerequisites
-
+### 1. Prerequisites
 - Node.js 20+
 - npm 10+
-- Supabase project (Auth + Postgres)
-- Groq API key (for AI endpoints)
+- [Supabase](https://supabase.com/) Project (Auth + Postgres)
+- [Groq](https://groq.com/) API key (for AI features)
 
-## Quick Start
-
-1. Clone and install:
-
+### 2. Installation
+Clone the repository and install dependencies:
 ```bash
 git clone https://github.com/devrajsinh2012/Niyoplan.git
 cd Niyoplan
 npm install
 ```
 
-2. Create a `.env` file in project root:
-
+### 3. Environment Variables
+Create a `.env` file at the root of your project:
 ```env
-# Supabase (required)
+# Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_KEY=your_service_role_key
 
-# Groq AI (required for /api/ai/*)
+# Groq AI Configuration
 GROQ_API_KEY=your_groq_api_key
 
-# Optional overrides
+# Optional Groq Overrides
 GROQ_MODEL=llama-3.3-70b-versatile
 GROQ_API_BASE_URL=https://api.groq.com/openai/v1
 ```
 
-3. Run development server:
+### 4. Database Seeding
+Setup your database using the provided SQL files:
+1. Run `database/schema.sql` in your Supabase SQL Editor to establish foundational tables.
+2. Run any incremental scripts found in `supabase/migrations/`.
+3. *(Optional)* Run the server-side helper `scripts/migrate-organizations.js` if upgrading from a legacy schema.
 
+### 5. Run Development Server
 ```bash
 npm run dev
 ```
+Navigate to [http://localhost:3000](http://localhost:3000)
 
-4. Open:
+---
 
-- http://localhost:3000
+## 🐳 Docker Deployment
 
-## Database and Migrations
-
-Schema and migration assets are in:
-
-- `database/schema.sql`
-- `database/migrations/*`
-- `supabase/migrations/*`
-
-Recommended approach:
-
-1. Apply the main schema first (`database/schema.sql`) in Supabase SQL editor.
-2. Apply incremental migration files from `supabase/migrations`.
-3. Verify required tables exist (`profiles`, `projects`, `cards`, `lists`, `sprints`, `organizations`, `organization_members`, etc.).
-
-Operational note:
-
-- Kanban rendering groups by `list_id`. Ensure newly created cards include a valid `list_id` (or a default backlog list assignment) so cards appear correctly.
-
-## Scripts
-
-- `npm run dev` start local dev server
-- `npm run build` create production build
-- `npm run start` run production server
-- `npm run lint` run Next.js linting
-
-## Docker
-
-This repository includes a production-oriented Docker setup (`output: 'standalone'`).
-
-Start with Compose:
+Niyoplan expects a production-oriented standalone output.
+To build and spin up the containerized application instantly:
 
 ```bash
 docker compose up -d --build
 ```
+*Note: Make sure your `.env` variables are correctly bound/passed to the container.*
 
-Container details:
+---
 
-- App exposed on port `3000`
-- Environment loaded from `.env`
-- Uses multi-stage build with Next.js standalone output
-
-## Project Structure
+## 🗂️ Project Structure
 
 ```text
-app/
-    api/                      # Route handlers
-    projects/                 # Project-centric pages
-    onboarding/               # Create/join organization flow
-components/
-    kanban/                   # Kanban board UI
-    gantt/                    # Gantt chart UI
-    dsm/                      # Daily stand-up UI
-    goals/                    # Goals/OKR panels
-    docs/                     # Documentation workspace UI
-context/
-    AuthContext.jsx           # Session and profile state
-lib/
-    auth.js                   # API auth token verification
-    roles.js                  # Role checks
-    supabase.js               # Browser client
-    supabaseServer.js         # Server/service-role client
-database/
-    schema.sql                # Base schema
-supabase/
-    migrations/               # Supabase SQL migrations
-scripts/
-    migrate-organizations.js  # Organization migration helper
+Niyoplan/
+├── app/
+│   ├── api/          # Secure REST API Endpoints
+│   ├── projects/     # Main Workspace & Dashboards
+│   └── onboarding/   # Multi-tenant Auth flows
+├── components/       # Reusable UI Blocks (Kanban, Gantt, DSM)
+├── context/          # React Context Providers (Auth, Active Org)
+├── lib/              # Core Utilities (Access Middleware, Roles, DB Clients)
+├── database/         # SQL Schemas
+└── scripts/          # Migration Utilities
 ```
 
-## Troubleshooting
+---
 
-- `Unauthorized` from API routes:
-    - Ensure requests include `Authorization: Bearer <supabase_access_token>`.
-- AI route failures:
-    - Confirm `GROQ_API_KEY` is set and valid.
-- Missing data in Kanban/Gantt:
-    - Confirm `lists` are seeded and cards have proper `list_id`; ensure date fields are populated where expected.
-- Users stuck before app access:
-    - Verify onboarding status and active organization membership rows in `organization_members`.
-
-## Deployment Notes
-
-- Designed to run well on Vercel or any Node-compatible container platform.
-- Ensure all required environment variables are configured in deployment.
-- Keep `SUPABASE_SERVICE_KEY` server-side only.
-
-## Maintainer
-
-- Devrajsinh Gohil
-- GitHub: https://github.com/devrajsinh2012
-
-## License
-
-No explicit license file is currently included in this repository.
+## 👤 Maintainer
+**Devrajsinh Gohil**
+- GitHub: [devrajsinh2012](https://github.com/devrajsinh2012)

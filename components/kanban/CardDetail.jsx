@@ -73,18 +73,22 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
   }, [card?.id]);
 
   const fetchUsers = useCallback(async () => {
+    if (!card?.project_id) return;
     try {
       const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .order('full_name', { ascending: true });
+        .from('project_members')
+        .select('user_id, profile:profiles(id, full_name)')
+        .eq('project_id', card.project_id);
 
       if (error) throw error;
-      setUsers(data || []);
+      
+      let mapped = (data || []).map(d => d.profile).filter(Boolean);
+      mapped.sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
+      setUsers(mapped);
     } catch (err) {
       console.error(err);
     }
-  }, []);
+  }, [card?.project_id]);
 
   // Fetch comments and subtasks
   useEffect(() => {

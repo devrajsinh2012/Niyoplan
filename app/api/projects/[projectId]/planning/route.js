@@ -1,3 +1,4 @@
+import { verifyProjectAccess } from '@/lib/access';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import { getAuthUser } from '@/lib/auth';

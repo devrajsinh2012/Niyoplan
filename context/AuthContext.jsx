@@ -54,7 +54,9 @@ export const AuthProvider = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        setLoading(true);
+        if (_event === 'INITIAL_SESSION' || _event === 'SIGNED_IN') {
+          setLoading(true);
+        }
         fetchProfile(session.user.id);
       } else {
         setProfile(null);

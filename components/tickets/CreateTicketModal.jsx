@@ -38,12 +38,15 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
   }, [defaultSprintId]);
 
   useEffect(() => {
+    if (!projectId) return;
     const fetchUsers = async () => {
-      const { data } = await supabase.from('profiles').select('id, full_name');
-      if (data) setUsers(data);
+      const { data } = await supabase.from('project_members')
+        .select('user_id, profile:profiles(id, full_name)')
+        .eq('project_id', projectId);
+      if (data) setUsers(data.map(d => d.profile).filter(Boolean));
     };
     fetchUsers();
-  }, []);
+  }, [projectId]);
 
   useEffect(() => {
     if (!projectId) return;

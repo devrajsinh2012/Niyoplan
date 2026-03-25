@@ -3,6 +3,8 @@ import { supabaseAdmin } from '@/lib/supabaseServer';
 import { getAuthUser } from '@/lib/auth';
 import { checkRole } from '@/lib/roles';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   const { user, error } = await getAuthUser(request);
   if (error || !user) {

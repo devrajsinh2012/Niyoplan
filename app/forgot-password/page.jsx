@@ -16,10 +16,11 @@ export default function ForgotPasswordPage() {
     setIsSubmitting(true);
 
     try {
+      const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
       const appUrl =
+        currentOrigin ||
         process.env.NEXT_PUBLIC_APP_URL ||
-        process.env.NEXT_PUBLIC_SITE_URL ||
-        window.location.origin;
+        process.env.NEXT_PUBLIC_SITE_URL;
 
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${appUrl}/reset-password`,

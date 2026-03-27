@@ -32,7 +32,8 @@ export async function GET(request, { params }) {
   }
 }
 
-export async function POST(request) {
+export async function POST(request, { params }) {
+  const { projectId } = await params;
   const { user, error } = await getAuthUser(request);
   if (error || !user) {
     return NextResponse.json({ error: error || 'Unauthorized' }, { status: 401 });

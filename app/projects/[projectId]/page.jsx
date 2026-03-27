@@ -26,6 +26,7 @@ import DocsWorkspacePanel from '@/components/docs/DocsWorkspacePanel';
 import WorkspaceViewsPanel from '@/components/workspace/WorkspaceViewsPanel';
 import AIToolsPanel from '@/components/ai/AIToolsPanel';
 import UserAvatar from '@/components/ui/UserAvatar';
+import ProjectBadge from '@/components/ui/ProjectBadge';
 import { ProjectDetailPageSkeleton } from '@/components/ui/PageSkeleton';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 
@@ -255,56 +256,97 @@ export default function ProjectDetailPage() {
     <ScheduleStoreProvider projectId={id}>
       <div className="max-w-screen-2xl mx-auto w-full animate-fade-in pb-10 flex flex-col min-h-full text-primary">
       
-      <header className="mb-6 shrink-0">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-          <div>
-            <nav className="flex items-center gap-2 mb-2 text-xs text-[var(--text-muted)] font-medium">
-              <Link href="/projects" className="hover:underline hover:text-[var(--text-primary)] transition-colors">Projects</Link>
-              <span>/</span>
-              <span className="text-[var(--text-secondary)]">{project.name}</span>
-            </nav>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="px-2 py-1 rounded bg-[var(--accent-subtle)] text-[var(--accent-primary)] border border-[var(--accent-primary)]/20 text-[10px] font-bold font-mono">
-                {project.prefix}
-              </div>
-              <h1 className="text-2xl font-bold text-[var(--text-heading)]">{project.name}</h1>
-            </div>
-            <p className="text-[var(--text-secondary)] max-w-2xl text-sm leading-relaxed">{project.description}</p>
-          </div>
+      <header className="mb-8 shrink-0">
+        <div
+          className="relative overflow-hidden rounded-[28px] border bg-[var(--bg-surface)] p-6 sm:p-8"
+          style={{
+            borderColor: 'color-mix(in srgb, var(--accent-primary) 12%, var(--border-subtle))',
+            background: 'linear-gradient(180deg, color-mix(in srgb, var(--bg-surface) 96%, white 4%), color-mix(in srgb, var(--bg-surface) 82%, var(--bg-panel) 18%))',
+            boxShadow: 'var(--shadow-lg)',
+          }}
+        >
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 h-32"
+            style={{
+              background: 'radial-gradient(circle at top left, color-mix(in srgb, var(--accent-primary) 14%, transparent), transparent 48%), radial-gradient(circle at top right, color-mix(in srgb, var(--shell-ambient-2) 72%, transparent), transparent 28%)',
+            }}
+          />
 
-          <div className="flex items-center gap-2">
-            {canWrite && (
-              <button
-                onClick={() => {
-                  setCreateIssueContext({ sprintId: null });
-                  setShowModal(true);
-                }}
-                className="flex items-center gap-2 rounded-[3px] bg-[#0052CC] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#0065FF]"
-              >
-                <Plus size={18} strokeWidth={2.5} />
-                Create Issue
-              </button>
-            )}
+          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex items-start gap-4">
+              <ProjectBadge project={project} size={68} />
+
+              <div className="min-w-0">
+                <nav className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
+                  <Link href="/projects" className="transition-colors hover:text-[var(--text-primary)]">
+                    Projects
+                  </Link>
+                  <span>/</span>
+                  <span className="truncate text-[var(--accent-primary)]">{project.prefix}</span>
+                </nav>
+
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-[var(--accent-subtle)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.26em] text-[var(--accent-primary)]">
+                    {project.prefix}
+                  </span>
+                  <span className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-surface-hover)] px-3 py-1 text-[11px] font-semibold text-[var(--text-secondary)]">
+                    Product delivery workspace
+                  </span>
+                </div>
+
+                <h1 className="text-3xl font-bold tracking-tight text-[var(--text-heading)] sm:text-[2rem]">
+                  {project.name}
+                </h1>
+                <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--text-secondary)] sm:text-[15px]">
+                  {project.description || 'Plan work, align the team, and keep every sprint, meeting, document, and milestone connected in one polished project workspace.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-3 shadow-sm">
+                <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--text-muted)]">Issues tracked</div>
+                <div className="mt-1 text-2xl font-semibold text-[var(--text-heading)]">{cards.length}</div>
+              </div>
+
+              {canWrite && (
+                <button
+                  onClick={() => {
+                    setCreateIssueContext({ sprintId: null });
+                    setShowModal(true);
+                  }}
+                  className="flex items-center gap-2 rounded-[3px] bg-[#0052CC] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#0065FF]"
+                >
+                  <Plus size={18} strokeWidth={2.5} />
+                  Create Issue
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Navigation Tabs (Modern Jira style) */}
-      <div className="flex border-b border-[var(--border-subtle)] mb-6 shrink-0 overflow-x-auto">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm transition-all whitespace-nowrap ${
-              activeTab === tab.id 
-                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]' 
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-panel-hover)]'
-            }`}
-          >
-            <tab.icon size={16} />
-            {tab.name}
-          </button>
-        ))}
+      <div className="mb-6 shrink-0 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-1.5 shadow-sm">
+        <div className="flex overflow-x-auto">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium transition-all whitespace-nowrap ${
+                activeTab === tab.id
+                  ? 'text-[var(--accent-primary)]'
+                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)]'
+              }`}
+              style={activeTab === tab.id ? {
+                background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent-primary) 12%, white 88%), color-mix(in srgb, var(--accent-subtle) 85%, white 15%))',
+                boxShadow: '0 10px 30px rgba(37, 99, 235, 0.08)',
+              } : undefined}
+            >
+              <tab.icon size={16} />
+              {tab.name}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Tab Contents */}

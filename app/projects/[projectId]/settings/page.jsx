@@ -2,11 +2,10 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import UserAvatar from '@/components/ui/UserAvatar';
 import {
-  Settings, Users, Calendar, AlertTriangle, Trash2, Plus, X, Archive, Mail, Crown
+  Settings, Users, Calendar, AlertTriangle, Plus, X, Archive
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '@/components/ui/ConfirmModal';
@@ -22,12 +21,15 @@ const TABS = [
 export default function ProjectSettingsPage() {
   const { projectId } = useParams();
   const router = useRouter();
-  const { profile } = useAuth();
   const [activeTab, setActiveTab] = useState('general');
   const [project, setProject] = useState(null);
   const [members, setMembers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [permissions, setPermissions] = useState({
+    canManageSettings: false,
+    canDeleteProject: false,
+  });
 
   // General Settings
   const [name, setName] = useState('');
@@ -51,18 +53,49 @@ export default function ProjectSettingsPage() {
   const [deleteConfirmName, setDeleteConfirmName] = useState('');
   const [memberToRemove, setMemberToRemove] = useState(null);
 
+  const requestWithAuth = useCallback(async (url, options = {}) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+
+    if (!token) {
+      throw new Error('Your session has expired. Please sign in again.');
+    }
+
+    const hasBody = options.body !== undefined;
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
+        ...(options.headers || {}),
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.status === 204) {
+      return null;
+    }
+
+    const payload = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(payload?.error || 'Request failed');
+    }
+
+    return payload;
+  }, []);
+
   const fetchProjectData = useCallback(async () => {
     try {
-      // Fetch project details
-      const { data: projectData, error: projectError } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', projectId)
-        .single();
-
-      if (projectError) throw projectError;
+      const [projectData, membersData] = await Promise.all([
+        requestWithAuth(`/api/projects/${projectId}`),
+        requestWithAuth(`/api/projects/${projectId}/members`),
+      ]);
 
       setProject(projectData);
+      setPermissions({
+        canManageSettings: Boolean(projectData?.access?.canManageSettings),
+        canDeleteProject: Boolean(projectData?.access?.canDeleteProject),
+      });
       setName(projectData.name || '');
       setProjectKey(projectData.prefix || '');
       setProjectType(projectData.type || 'software');
@@ -70,22 +103,14 @@ export default function ProjectSettingsPage() {
       setStatus(projectData.status || 'active');
       setSprintDuration(projectData.sprint_duration || '2');
       setSprintNaming(projectData.sprint_naming || 'Sprint {n}');
-
-      // Fetch project members
-      const { data: membersData, error: membersError } = await supabase
-        .from('project_members')
-        .select('*, profile:profiles(id, full_name, email, avatar_url)')
-        .eq('project_id', projectId);
-
-      if (membersError) throw membersError;
       setMembers(membersData || []);
     } catch (error) {
       console.error('Error fetching project data:', error);
-      toast.error('Failed to load project settings');
+      toast.error(error.message || 'Failed to load project settings');
     } finally {
       setIsLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, requestWithAuth]);
 
   useEffect(() => {
     fetchProjectData();
@@ -96,17 +121,15 @@ export default function ProjectSettingsPage() {
       toast.error('Project name is required');
       return;
     }
+    if (!projectKey.trim()) {
+      toast.error('Project key is required');
+      return;
+    }
 
     setIsSaving(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      const res = await fetch(`/api/projects/${projectId}`, {
+      await requestWithAuth(`/api/projects/${projectId}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           name: name.trim(),
           prefix: projectKey.trim(),
@@ -116,13 +139,8 @@ export default function ProjectSettingsPage() {
         }),
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to update project');
-      }
-
       toast.success('Project updated successfully');
-      fetchProjectData();
+      await fetchProjectData();
     } catch (error) {
       console.error('Error updating project:', error);
       toast.error(error.message || 'Failed to update project');
@@ -134,26 +152,16 @@ export default function ProjectSettingsPage() {
   const handleSaveSprints = async () => {
     setIsSaving(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      const res = await fetch(`/api/projects/${projectId}`, {
+      await requestWithAuth(`/api/projects/${projectId}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           sprint_duration: sprintDuration,
           sprint_naming: sprintNaming,
         }),
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to update sprint settings');
-      }
-
       toast.success('Sprint settings updated');
+      await fetchProjectData();
     } catch (error) {
       console.error('Error updating sprint settings:', error);
       toast.error(error.message || 'Failed to update sprint settings');
@@ -170,123 +178,75 @@ export default function ProjectSettingsPage() {
 
     setIsSaving(true);
     try {
-      // Check if user exists
-      const { data: userData, error: userError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', inviteEmail.trim())
-        .single();
-
-      if (userError || !userData) {
-        toast.error('User not found');
-        setIsSaving(false);
-        return;
-      }
-
-      // Check if user is in the organization
-      if (project?.organization_id) {
-        const { data: orgMember } = await supabase
-          .from('organization_members')
-          .select('id')
-          .eq('organization_id', project.organization_id)
-          .eq('user_id', userData.id)
-          .eq('status', 'active')
-          .single();
-
-        if (!orgMember) {
-          toast.error('User must be an active member of your workspace/organization to be invited to this project.');
-          setIsSaving(false);
-          return;
-        }
-      }
-
-      // Check if already a member
-      const { data: existingMember } = await supabase
-        .from('project_members')
-        .select('id')
-        .eq('project_id', projectId)
-        .eq('user_id', userData.id)
-        .single();
-
-      if (existingMember) {
-        toast.error('User is already a member');
-        setIsSaving(false);
-        return;
-      }
-
-      // Add member
-      const { error: insertError } = await supabase
-        .from('project_members')
-        .insert({
-          project_id: projectId,
-          user_id: userData.id,
+      await requestWithAuth(`/api/projects/${projectId}/members`, {
+        method: 'POST',
+        body: JSON.stringify({
+          email: inviteEmail.trim(),
           role: inviteRole,
-        });
-
-      if (insertError) throw insertError;
+        }),
+      });
 
       toast.success('Member invited successfully');
       setShowInviteModal(false);
       setInviteEmail('');
       setInviteRole('member');
-      fetchProjectData();
+      await fetchProjectData();
     } catch (error) {
       console.error('Error inviting member:', error);
-      toast.error('Failed to invite member');
+      toast.error(error.message || 'Failed to invite member');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleRemoveMember = async (memberId) => {
+    setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from('project_members')
-        .delete()
-        .eq('id', memberId);
-
-      if (error) throw error;
+      await requestWithAuth(`/api/projects/${projectId}/members/${memberId}`, {
+        method: 'DELETE',
+      });
 
       toast.success('Member removed');
-      fetchProjectData();
+      await fetchProjectData();
     } catch (error) {
       console.error('Error removing member:', error);
-      toast.error('Failed to remove member');
+      toast.error(error.message || 'Failed to remove member');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleUpdateRole = async (memberId, newRole) => {
+    setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from('project_members')
-        .update({ role: newRole })
-        .eq('id', memberId);
-
-      if (error) throw error;
+      await requestWithAuth(`/api/projects/${projectId}/members/${memberId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ role: newRole }),
+      });
 
       toast.success('Role updated');
-      fetchProjectData();
+      await fetchProjectData();
     } catch (error) {
       console.error('Error updating role:', error);
-      toast.error('Failed to update role');
+      toast.error(error.message || 'Failed to update role');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleArchiveProject = async () => {
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from('projects')
-        .update({ status: 'archived' })
-        .eq('id', projectId);
-
-      if (error) throw error;
+      await requestWithAuth(`/api/projects/${projectId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'archived' }),
+      });
 
       toast.success('Project archived');
       router.push('/projects');
     } catch (error) {
       console.error('Error archiving project:', error);
-      toast.error('Failed to archive project');
+      toast.error(error.message || 'Failed to archive project');
     } finally {
       setIsSaving(false);
     }
@@ -300,17 +260,9 @@ export default function ProjectSettingsPage() {
 
     setIsSaving(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      const res = await fetch(`/api/projects/${projectId}`, {
+      await requestWithAuth(`/api/projects/${projectId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
       });
-
-      if (!res.ok && res.status !== 204) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to delete project');
-      }
 
       toast.success('Project deleted');
       router.push('/projects');
@@ -325,6 +277,9 @@ export default function ProjectSettingsPage() {
   if (isLoading) {
     return <ProjectSettingsPageSkeleton />;
   }
+
+  const canManageSettings = permissions.canManageSettings;
+  const canDeleteProject = permissions.canDeleteProject;
 
   return (
     <div className="min-h-screen bg-[var(--bg-app)]">
@@ -341,6 +296,11 @@ export default function ProjectSettingsPage() {
           <p className="mt-2 text-sm text-[var(--text-secondary)]">
             {project?.name}
           </p>
+          {!canManageSettings && (
+            <p className="mt-3 text-sm text-[var(--text-muted)]">
+              You can view this page, but only project managers can change these settings.
+            </p>
+          )}
         </div>
 
         {/* Tabs */}
@@ -380,6 +340,7 @@ export default function ProjectSettingsPage() {
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
+                    disabled={!canManageSettings}
                     className="w-full rounded-md border border-[var(--border-subtle)] bg-white px-4 py-2 text-sm text-[var(--text-primary)] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     placeholder="Enter project name"
                   />
@@ -393,6 +354,7 @@ export default function ProjectSettingsPage() {
                     type="text"
                     value={projectKey}
                     onChange={(e) => setProjectKey(e.target.value.toUpperCase())}
+                    disabled={!canManageSettings}
                     className="w-full rounded-md border border-[var(--border-subtle)] bg-white px-4 py-2 text-sm font-mono uppercase text-[var(--text-primary)] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     placeholder="e.g., TEST01"
                     maxLength={10}
@@ -409,6 +371,7 @@ export default function ProjectSettingsPage() {
                   <select
                     value={projectType}
                     onChange={(e) => setProjectType(e.target.value)}
+                    disabled={!canManageSettings}
                     className="w-full rounded-md border border-[var(--border-subtle)] bg-white px-4 py-2 text-sm text-[var(--text-primary)] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
                     <option value="software">Software Project</option>
@@ -425,6 +388,7 @@ export default function ProjectSettingsPage() {
                   <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
+                    disabled={!canManageSettings}
                     rows={4}
                     className="w-full rounded-md border border-[var(--border-subtle)] bg-white px-4 py-2 text-sm text-[var(--text-primary)] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     placeholder="Describe your project"
@@ -438,6 +402,7 @@ export default function ProjectSettingsPage() {
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value)}
+                    disabled={!canManageSettings}
                     className="w-full rounded-md border border-[var(--border-subtle)] bg-white px-4 py-2 text-sm text-[var(--text-primary)] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
                     <option value="active">Active</option>
@@ -449,7 +414,7 @@ export default function ProjectSettingsPage() {
                 <div className="flex justify-end pt-4">
                   <button
                     onClick={handleSaveGeneral}
-                    disabled={isSaving}
+                    disabled={isSaving || !canManageSettings}
                     className="rounded-md bg-blue-600 px-6 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
                   >
                     {isSaving ? 'Saving...' : 'Save Changes'}
@@ -466,7 +431,8 @@ export default function ProjectSettingsPage() {
                 <h2 className="text-xl font-semibold text-[var(--text-heading)]">Members</h2>
                 <button
                   onClick={() => setShowInviteModal(true)}
-                  className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+                  disabled={!canManageSettings}
+                  className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Plus size={16} />
                   Invite Member
@@ -511,6 +477,7 @@ export default function ProjectSettingsPage() {
                           <select
                             value={member.role}
                             onChange={(e) => handleUpdateRole(member.id, e.target.value)}
+                            disabled={!canManageSettings || isSaving}
                             className="rounded-md border border-[var(--border-subtle)] bg-white px-3 py-1.5 text-sm text-[var(--text-primary)] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                           >
                             <option value="admin">Admin</option>
@@ -524,7 +491,8 @@ export default function ProjectSettingsPage() {
                         <td className="py-4">
                           <button
                             onClick={() => setMemberToRemove(member)}
-                            className="text-sm font-medium text-red-600 hover:underline"
+                            disabled={!canManageSettings || isSaving}
+                            className="text-sm font-medium text-red-600 hover:underline disabled:cursor-not-allowed disabled:no-underline disabled:opacity-50"
                           >
                             Remove
                           </button>
@@ -550,6 +518,7 @@ export default function ProjectSettingsPage() {
                   <select
                     value={sprintDuration}
                     onChange={(e) => setSprintDuration(e.target.value)}
+                    disabled={!canManageSettings}
                     className="w-full rounded-md border border-[var(--border-subtle)] bg-white px-4 py-2 text-sm text-[var(--text-primary)] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
                     <option value="1">1 week</option>
@@ -567,6 +536,7 @@ export default function ProjectSettingsPage() {
                     type="text"
                     value={sprintNaming}
                     onChange={(e) => setSprintNaming(e.target.value)}
+                    disabled={!canManageSettings}
                     className="w-full rounded-md border border-[var(--border-subtle)] bg-white px-4 py-2 text-sm text-[var(--text-primary)] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     placeholder="e.g., Sprint {n}"
                   />
@@ -578,7 +548,7 @@ export default function ProjectSettingsPage() {
                 <div className="flex justify-end pt-4">
                   <button
                     onClick={handleSaveSprints}
-                    disabled={isSaving}
+                    disabled={isSaving || !canManageSettings}
                     className="rounded-md bg-blue-600 px-6 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
                   >
                     {isSaving ? 'Saving...' : 'Save Changes'}
@@ -602,7 +572,8 @@ export default function ProjectSettingsPage() {
                     </p>
                     <button
                       onClick={() => setShowArchiveModal(true)}
-                      className="rounded-md border-2 border-yellow-600 bg-white px-6 py-2 text-sm font-semibold text-yellow-600 transition-colors hover:bg-yellow-600 hover:text-white"
+                      disabled={!canManageSettings}
+                      className="rounded-md border-2 border-yellow-600 bg-white px-6 py-2 text-sm font-semibold text-yellow-600 transition-colors hover:bg-yellow-600 hover:text-white disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-yellow-600 disabled:opacity-50"
                     >
                       Archive Project
                     </button>
@@ -621,7 +592,8 @@ export default function ProjectSettingsPage() {
                     </p>
                     <button
                       onClick={() => setShowDeleteModal(true)}
-                      className="rounded-md border-2 border-red-600 bg-white px-6 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-600 hover:text-white"
+                      disabled={!canDeleteProject}
+                      className="rounded-md border-2 border-red-600 bg-white px-6 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-600 hover:text-white disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-red-600 disabled:opacity-50"
                     >
                       Delete Project
                     </button>

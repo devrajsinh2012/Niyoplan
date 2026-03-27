@@ -2,7 +2,6 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { FileText, Palette, BookOpen, X, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import UserAvatar from '@/components/ui/UserAvatar';
@@ -12,23 +11,51 @@ import { DashboardPageSkeleton } from '@/components/ui/PageSkeleton';
 import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/context/OrganizationContext';
 
+const EMPTY_TODAY_STATS = {
+  total: 0,
+  completed: 0,
+  pending: 0,
+  highPriority: 0,
+  plannedHours: 0,
+  linkedIssues: 0,
+  assignees: 0,
+  completionRate: 0,
+};
+
+const buildTodayStats = (items = []) => {
+  const completed = items.filter((item) => item.is_done).length;
+  const pending = items.length - completed;
+  const highPriority = items.filter((item) => {
+    const priority = (item.priority || '').toLowerCase();
+    return !item.is_done && (priority === 'high' || priority === 'highest');
+  }).length;
+  const plannedHours = Math.round(((items.reduce((sum, item) => sum + (item.estimate_mins || 0), 0) / 60) * 10)) / 10;
+  const linkedIssues = items.filter((item) => item.type === 'card').length;
+  const assignees = new Set(items.map((item) => item.user_id).filter(Boolean)).size;
+
+  return {
+    total: items.length,
+    completed,
+    pending,
+    highPriority,
+    plannedHours,
+    linkedIssues,
+    assignees,
+    completionRate: items.length > 0 ? Math.round((completed / items.length) * 100) : 0,
+  };
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const { activeOrganization, loading: orgLoading } = useOrganization();
   const [stats, setStats] = useState({ resolved: 0, open: 0, storyPoints: 0, velocity: 0 });
+  const [todayStats, setTodayStats] = useState(EMPTY_TODAY_STATS);
   const [activities, setActivities] = useState([]);
   const [recentIssues, setRecentIssues] = useState([]);
   const [workload, setWorkload] = useState([]);
   const [activeSprint, setActiveSprint] = useState(null);
   const [activeSprintCount, setActiveSprintCount] = useState(0);
   const [activeSprints, setActiveSprints] = useState([]);
-  const [resourceProjectId, setResourceProjectId] = useState(null);
-  const [resourceLinks, setResourceLinks] = useState({
-    projectRequirement: '',
-    designPrototype: '',
-    apiDocumentation: '',
-  });
-  const [viewerState, setViewerState] = useState({ open: false, title: '', url: '' });
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchDashboardData = useCallback(async () => {
@@ -37,21 +64,31 @@ export default function DashboardPage() {
 
       if (!organizationId) {
         setStats({ resolved: 0, open: 0, storyPoints: 0, velocity: 0 });
+        setTodayStats(EMPTY_TODAY_STATS);
         setActiveSprint(null);
         setActiveSprintCount(0);
         setActiveSprints([]);
         setActivities([]);
         setRecentIssues([]);
         setWorkload([]);
-        setResourceLinks({ projectRequirement: '', designPrototype: '', apiDocumentation: '' });
-        setResourceProjectId(null);
         return;
       }
 
-      const { data: orgProjects } = await supabase
-        .from('projects')
-        .select('id, name, prefix')
-        .eq('organization_id', organizationId);
+      const todayKey = new Date().toISOString().split('T')[0];
+
+      const [{ data: orgProjects }, { data: todayTaskData }] = await Promise.all([
+        supabase
+          .from('projects')
+          .select('id, name, prefix')
+          .eq('organization_id', organizationId),
+        supabase
+          .from('daily_tasks')
+          .select('id, user_id, estimate_mins, priority, is_done, type, done_at')
+          .eq('organization_id', organizationId)
+          .or(`is_done.eq.false,done_at.eq.${todayKey}`),
+      ]);
+
+      setTodayStats(buildTodayStats(todayTaskData || []));
 
       const projectIds = (orgProjects || []).map((p) => p.id);
 
@@ -63,8 +100,6 @@ export default function DashboardPage() {
         setActivities([]);
         setRecentIssues([]);
         setWorkload([]);
-        setResourceLinks({ projectRequirement: '', designPrototype: '', apiDocumentation: '' });
-        setResourceProjectId(null);
         return;
       }
 
@@ -174,30 +209,6 @@ export default function DashboardPage() {
       setActivities(activityLogs || []);
       setRecentIssues(recent || []);
 
-      const contextProjectId = sprint?.project_id || recent?.[0]?.project_id || projectIds[0];
-      setResourceProjectId(contextProjectId || null);
-
-      if (contextProjectId) {
-        const { data: docs } = await supabase
-          .from('docs')
-          .select('title, content')
-          .eq('project_id', contextProjectId);
-
-        const normalize = (value) => (value || '').trim().toLowerCase();
-        const byTitle = (docs || []).reduce((acc, doc) => {
-          acc[normalize(doc.title)] = doc.content || '';
-          return acc;
-        }, {});
-
-        setResourceLinks({
-          projectRequirement: byTitle['project requirement'] || byTitle['product requirements'] || '',
-          designPrototype: byTitle['design prototype'] || '',
-          apiDocumentation: byTitle['api documentation'] || '',
-        });
-      } else {
-        setResourceLinks({ projectRequirement: '', designPrototype: '', apiDocumentation: '' });
-      }
-
       // Compute workload per user
       const userMap = {};
       (cardData || []).forEach(c => {
@@ -267,32 +278,6 @@ export default function DashboardPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     toast('Showing latest team activity on this page.');
   };
-
-  const normalizeLink = (value) => {
-    const trimmed = (value || '').trim();
-    if (!trimmed) return '';
-    if (/^https?:\/\//i.test(trimmed)) return trimmed;
-    return `https://${trimmed}`;
-  };
-
-  const toPreviewUrl = (value) => {
-    const url = normalizeLink(value);
-    const driveFileMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/i);
-    if (driveFileMatch?.[1]) {
-      return `https://drive.google.com/file/d/${driveFileMatch[1]}/preview`;
-    }
-    return url;
-  };
-
-  const openResource = (title, link) => {
-    if (!link) {
-      toast('No document link configured for this project yet.');
-      return;
-    }
-    setViewerState({ open: true, title, url: toPreviewUrl(link) });
-  };
-
-  const closeViewer = () => setViewerState({ open: false, title: '', url: '' });
 
   const topRiskSprint = activeSprints
     .slice()
@@ -633,71 +618,79 @@ export default function DashboardPage() {
           <div className="overflow-hidden rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-sm">
             <div className="border-b border-[var(--border-subtle)] px-6 py-6 bg-[var(--bg-panel)]">
               <h3 className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em]">
-                Quick Links
+                Today Focus
               </h3>
             </div>
-            <div className="p-4 grid grid-cols-1 gap-1.5">
-              {[
-                { icon: FileText, label: 'Project Requirement', key: 'projectRequirement', color: '#0052CC' },
-                { icon: Palette, label: 'Design Prototype', key: 'designPrototype', color: '#F24E1E' },
-                { icon: BookOpen, label: 'API Documentation', key: 'apiDocumentation', color: '#006644' },
-              ].map((r, i) => (
-                <button
-                  key={i}
-                  className="flex w-full items-center gap-5 rounded-[4px] p-4 text-left transition-all hover:bg-[var(--bg-panel-hover)] group"
-                  onClick={() => openResource(r.label, resourceLinks[r.key])}
-                >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] group-hover:border-transparent group-hover:shadow-md transition-all">
-                    <r.icon size={18} style={{ color: r.color }} />
+            <div className="p-6">
+              <div className="mb-6 flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-lg font-bold text-[var(--text-heading)]">Execution pulse for today</p>
+                  <p className="mt-1 text-sm text-[var(--text-muted)]">
+                    Live stats from the Today workspace across your active organization.
+                  </p>
+                </div>
+                <span className="rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-panel-hover)] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.15em] text-[var(--text-muted)]">
+                  {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
+              </div>
+
+              {todayStats.total === 0 ? (
+                <div className="rounded-[4px] border border-dashed border-[var(--border-subtle)] bg-[var(--bg-panel)]/40 px-4 py-6 text-sm text-[var(--text-muted)]">
+                  No tasks have been added to Today yet. Start planning the day to see completion, effort, and focus stats here.
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: 'Focus Items', value: todayStats.total, sub: 'Tracked today' },
+                      { label: 'Completed', value: todayStats.completed, sub: `${todayStats.completionRate}% finished` },
+                      { label: 'High Priority', value: todayStats.highPriority, sub: 'Still pending' },
+                      { label: 'Planned Effort', value: `${todayStats.plannedHours}h`, sub: 'Estimated load' },
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        className="rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-panel)]/50 px-4 py-4"
+                      >
+                        <p className="text-2xl font-bold leading-none text-[var(--text-heading)]">{item.value}</p>
+                        <p className="mt-2 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--text-muted)]">
+                          {item.label}
+                        </p>
+                        <p className="mt-1 text-[11px] text-[var(--text-secondary)]">{item.sub}</p>
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex-1">
-                    <span className="text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-[0.15em] group-hover:text-[var(--text-primary)] transition-colors">{r.label}</span>
+
+                  <div className="mt-6">
+                    <div className="mb-2 flex items-center justify-between text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+                      <span>Completion</span>
+                      <span>{todayStats.completionRate}%</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--bg-panel-hover)]">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-[#0F766E] to-[#22C55E] transition-all duration-700"
+                        style={{ width: `${Math.min(todayStats.completionRate, 100)}%` }}
+                      />
+                    </div>
                   </div>
-                </button>
-              ))}
+
+                  <div className="mt-6 grid grid-cols-1 gap-2 text-sm text-[var(--text-secondary)]">
+                    <p>{todayStats.pending} items are still in progress across the team.</p>
+                    <p>{todayStats.linkedIssues} items were pulled directly from project issues.</p>
+                    <p>{todayStats.assignees} teammates currently have Today tasks assigned.</p>
+                  </div>
+                </>
+              )}
+
+              <Link
+                href="/today"
+                className="mt-6 inline-flex items-center justify-center rounded-[4px] border border-[var(--border-subtle)] px-4 py-2 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-panel-hover)]"
+              >
+                Open Today Workspace
+              </Link>
             </div>
           </div>
         </div>
       </div>
-
-      {viewerState.open && (
-        <div className="fixed inset-0 z-[2000] bg-black/70 backdrop-blur-sm">
-          <div className="h-full w-full bg-[var(--bg-app)] flex flex-col">
-            <div className="shrink-0 h-14 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center justify-between px-4">
-              <div>
-                <h3 className="text-sm font-semibold text-[var(--text-heading)]">{viewerState.title}</h3>
-                {resourceProjectId && (
-                  <p className="text-xs text-[var(--text-muted)]">Project resource preview</p>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <a
-                  href={viewerState.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-panel-hover)]"
-                >
-                  <ExternalLink size={14} /> Open in new tab
-                </a>
-                <button
-                  onClick={closeViewer}
-                  className="inline-flex items-center gap-1 rounded-md bg-[var(--accent-primary)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
-                >
-                  <X size={14} /> Close
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 bg-white">
-              <iframe
-                title={viewerState.title}
-                src={viewerState.url}
-                className="h-full w-full"
-                referrerPolicy="strict-origin-when-cross-origin"
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

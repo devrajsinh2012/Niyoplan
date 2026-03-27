@@ -34,17 +34,25 @@ const NavSection = ({ title, children, expanded }) => {
 const SideNavItem = ({ href, icon: Icon, label, isActive, expanded }) => {
   const pathname = usePathname();
   const active = isActive ?? (pathname === href || (href !== '/' && pathname.startsWith(href)));
+  const activeStyle = active
+    ? {
+        background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent-primary) 12%, white 88%), color-mix(in srgb, var(--accent-subtle) 82%, white 18%))',
+        border: '1px solid color-mix(in srgb, var(--accent-primary) 18%, transparent)',
+        boxShadow: '0 10px 24px rgba(37, 99, 235, 0.08)',
+      }
+    : undefined;
 
   return (
     <Link
       href={href}
       className={`flex items-center gap-3 rounded-lg mx-2 transition-all duration-200 ${
-        expanded ? 'px-3 py-2' : 'px-2 py-2.5 justify-center'
+        expanded ? 'px-3 py-2.5' : 'px-2 py-2.5 justify-center'
       } ${
         active
-          ? 'bg-blue-50 text-blue-600 font-semibold'
-          : 'text-[var(--text-secondary)] hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)]'
+          ? 'text-blue-600 font-semibold'
+          : 'border border-transparent text-[var(--text-secondary)] hover:border-[var(--border-subtle)] hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)]'
       }`}
+      style={activeStyle}
       title={!expanded ? label : undefined}
     >
       {Icon && <Icon size={18} className="shrink-0" />}
@@ -78,26 +86,40 @@ export default function Sidebar({ project, expanded, onExpandedChange }) {
       id="project-sidebar"
       onMouseEnter={() => onExpandedChange?.(true)}
       onMouseLeave={() => onExpandedChange?.(false)}
-      className={`fixed left-0 top-[var(--topnav-height)] h-[calc(100vh-var(--topnav-height))] z-40 flex flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-panel)] transition-all duration-200 ${expanded ? 'w-60' : 'w-16'}`}
+      className={`fixed left-0 top-[var(--topnav-height)] h-[calc(100vh-var(--topnav-height))] z-40 flex flex-col border-r border-[var(--border-subtle)] transition-all duration-200 ${expanded ? 'w-60' : 'w-16'}`}
+      style={{
+        background: 'linear-gradient(180deg, color-mix(in srgb, var(--bg-surface) 94%, white 6%), color-mix(in srgb, var(--bg-panel) 92%, white 8%))',
+        boxShadow: 'inset -1px 0 0 rgba(255, 255, 255, 0.45)',
+      }}
     >
       {/* Project/App Header */}
       {(projectId || (!orgLoading && !organization)) && (
         <div className="shrink-0 border-b border-[var(--border-subtle)] p-3">
           <div
-            className={`group flex cursor-pointer items-center rounded-lg p-2 hover:bg-[var(--bg-panel-hover)] ${expanded ? 'gap-3' : 'justify-center'}`}
+            className={`group flex cursor-pointer items-center rounded-2xl p-2 transition-all duration-200 hover:bg-[var(--bg-panel-hover)] ${expanded ? 'gap-3' : 'justify-center'}`}
+            style={expanded ? {
+              background: 'linear-gradient(180deg, color-mix(in srgb, var(--bg-surface) 88%, white 12%), color-mix(in srgb, var(--bg-panel) 90%, white 10%))',
+              border: '1px solid color-mix(in srgb, var(--border-subtle) 78%, white 22%)',
+              boxShadow: 'var(--shadow-sm)',
+            } : undefined}
             onClick={() => projectId ? router.push(`/projects/${projectId}`) : router.push('/')}
           >
-            <ProjectBadge project={project} size={32} className="shrink-0 transition-transform group-hover:scale-105" />
+            <ProjectBadge project={project} size={36} className="shrink-0 transition-transform group-hover:scale-[1.03]" />
             {expanded && (
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold text-[var(--text-heading)]">
                   {project?.name || 'Niyoplan'}
                 </div>
-                {projectId && (
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                    Software Project
-                  </div>
-                )}
+                <div className="mt-1 flex items-center gap-2">
+                  {project?.prefix && (
+                    <span className="rounded-full bg-[var(--accent-subtle)] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.24em] text-[var(--accent-primary)]">
+                      {project.prefix}
+                    </span>
+                  )}
+                  <span className="text-[10px] font-semibold text-[var(--text-muted)]">
+                    {projectId ? 'Software Project' : 'Workspace Home'}
+                  </span>
+                </div>
               </div>
             )}
           </div>

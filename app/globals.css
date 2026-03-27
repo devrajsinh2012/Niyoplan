@@ -6,33 +6,35 @@
 @layer base {
   :root {
     /* --- Base Backgrounds (Light theme as default) --- */
-    --bg-app: #FFFFFF;
-    --bg-panel: #F7F8F9;
-    --bg-panel-hover: #EBECF0;
+    --bg-app: #F4F7FB;
+    --bg-panel: #EEF3F8;
+    --bg-panel-hover: #E3EBF5;
     --bg-surface: #FFFFFF;
-    --bg-surface-hover: #F4F5F7;
+    --bg-surface-hover: #F8FAFD;
     --bg-input: #FFFFFF;
     --bg-header: #FFFFFF;
+    --shell-ambient-1: rgba(59, 130, 246, 0.16);
+    --shell-ambient-2: rgba(20, 184, 166, 0.12);
 
     /* --- Borders --- */
-    --border-subtle: #DCDFE4;
-    --border-strong: #C1C7D0;
-    --border-focus: #388BFF;
+    --border-subtle: #D8E2F0;
+    --border-strong: #B6C5DA;
+    --border-focus: #3B82F6;
 
     /* --- Text --- */
-    --text-primary: #172B4D;
-    --text-heading: #091E42;
-    --text-secondary: #44546F;
-    --text-muted: #626F86;
-    --text-link: #0052CC;
+    --text-primary: #17314E;
+    --text-heading: #0B1F33;
+    --text-secondary: #4B6480;
+    --text-muted: #70849B;
+    --text-link: #2563EB;
     --text-inverse: #FFFFFF;
 
     /* --- Accent / Brand --- */
-    --accent-primary: #0052CC;
-    --accent-hover: #0065FF;
-    --accent-subtle: #E9F2FF;
-    --accent-text: #0052CC;
-    --accent-glow: rgba(0, 82, 204, 0.1);
+    --accent-primary: #2563EB;
+    --accent-hover: #1D4ED8;
+    --accent-subtle: #E8F0FF;
+    --accent-text: #1D4ED8;
+    --accent-glow: rgba(37, 99, 235, 0.16);
 
     /* --- Status Colors --- */
     --status-todo: #8C9BAB;
@@ -95,6 +97,8 @@
     --bg-surface-hover: #2E3540;
     --bg-input: #22272B;
     --bg-header: #1D2125;
+    --shell-ambient-1: rgba(37, 99, 235, 0.18);
+    --shell-ambient-2: rgba(20, 184, 166, 0.12);
 
     --border-subtle: rgba(166, 197, 226, 0.08);
     --border-strong: rgba(166, 197, 226, 0.16);
@@ -132,6 +136,10 @@
     width: 100%;
     font-family: var(--font-family);
     background-color: var(--bg-app);
+    background-image:
+      radial-gradient(circle at 0% 0%, var(--shell-ambient-1), transparent 30%),
+      radial-gradient(circle at 100% 0%, var(--shell-ambient-2), transparent 22%),
+      linear-gradient(180deg, color-mix(in srgb, var(--bg-app) 92%, white 8%), var(--bg-app));
     color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;

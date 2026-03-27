@@ -65,6 +65,15 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
     return match?.id;
   }, [lists]);
 
+  const triggerDoneCelebration = useCallback(() => {
+    confetti({
+      particleCount: 150,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ['#0052CC', '#22A06B', '#E34935', '#6554C0']
+    });
+  }, []);
+
   const fetchBoardData = useCallback(async () => {
     try {
       const [listsRes, cardsRes] = await Promise.all([
@@ -280,9 +289,14 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
     if (isActiveACard) {
        const card = cards.find((item) => item.id === activeId);
        if (!card) return;
+       const sourceStatus = getStatusFromList(card.listId);
+       const destinationListId = over.data.current?.type === 'List'
+         ? over.id
+         : cards.find((item) => item.id === over.id)?.listId || card.listId;
+       const destinationStatus = getStatusFromList(destinationListId);
 
        const listCards = cards
-         .filter((item) => item.listId === card.listId)
+         .filter((item) => (item.id === activeId ? destinationListId : item.listId) === destinationListId)
          .sort((a, b) => (a.rank || 0) - (b.rank || 0));
        const targetIndex = listCards.findIndex((item) => item.id === activeId);
 
@@ -304,38 +318,33 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
          if (item.id !== activeId) return item;
          return {
            ...item,
+           listId: destinationListId,
            rank: newRank,
-           status: getStatusFromList(card.listId)
+           status: destinationStatus
          };
        }));
 
        const { error } = await supabase.from('cards')
-         .update({ list_id: card.listId, rank: newRank, status: getStatusFromList(card.listId) })
+         .update({ list_id: destinationListId, rank: newRank, status: destinationStatus })
          .eq('id', activeId);
 
        if (error) {
          toast.error('Failed to save card position');
          await fetchBoardData();
        } else {
-         // Trigger celebration if moved to Done
-         if (getStatusFromList(card.listId) === 'done') {
-           confetti({
-             particleCount: 150,
-             spread: 70,
-             origin: { y: 0.6 },
-             colors: ['#22A06B', '#0C66E4', '#E34935', '#6554C0']
-           });
+         if (sourceStatus !== 'done' && destinationStatus === 'done') {
+           triggerDoneCelebration();
          }
          await updateScheduleItem(activeId, {
-          list_id: card.listId,
-          status: getStatusFromList(card.listId),
+          list_id: destinationListId,
+          status: destinationStatus,
           rank: newRank
         }, { silent: true });
         if (typeof onCardUpdated === 'function') {
           onCardUpdated({
             ...card,
-            list_id: card.listId,
-            status: getStatusFromList(card.listId),
+            list_id: destinationListId,
+            status: destinationStatus,
             rank: newRank
           });
         }

@@ -3,10 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
-import { LogIn } from 'lucide-react';
+import { Eye, EyeOff, LogIn } from 'lucide-react';
 import toast from 'react-hot-toast';
 import BrandMark from '@/components/ui/BrandMark';
+import { useAuth } from '@/context/AuthContext';
 
 const REMEMBER_ME_KEY = 'niyoplan-remember-me';
 const REMEMBERED_EMAIL_KEY = 'niyoplan-remembered-email';
@@ -14,6 +14,7 @@ const REMEMBERED_EMAIL_KEY = 'niyoplan-remembered-email';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { signIn, user, loading } = useAuth();
@@ -51,7 +52,7 @@ export default function LoginPage() {
       } else {
         localStorage.removeItem(REMEMBERED_EMAIL_KEY);
       }
-      
+
       toast.success('Welcome back!');
       router.replace('/');
     } catch (error) {
@@ -62,30 +63,61 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh', width: '100%',
-      background: 'var(--bg-app)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 20, position: 'relative', overflow: 'hidden'
-    }} className="animate-fade-in text-primary">
-      
-      {/* Background Ornaments */}
-      <div style={{
-        position: 'absolute', top: '-10%', left: '-10%', width: '40%', height: '40%',
-        borderRadius: '50%', background: 'var(--accent-primary)', opacity: 0.1,
-        filter: 'blur(120px)', pointerEvents: 'none'
-      }} />
-      <div style={{
-        position: 'absolute', bottom: '-10%', right: '-10%', width: '40%', height: '40%',
-        borderRadius: '50%', background: '#6554C0', opacity: 0.1,
-        filter: 'blur(120px)', pointerEvents: 'none'
-      }} />
+    <div
+      style={{
+        minHeight: '100vh',
+        width: '100%',
+        background: 'var(--bg-app)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20,
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+      className="animate-fade-in text-primary"
+    >
+      <div
+        style={{
+          position: 'absolute',
+          top: '-10%',
+          left: '-10%',
+          width: '40%',
+          height: '40%',
+          borderRadius: '50%',
+          background: 'var(--accent-primary)',
+          opacity: 0.1,
+          filter: 'blur(120px)',
+          pointerEvents: 'none',
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '-10%',
+          right: '-10%',
+          width: '40%',
+          height: '40%',
+          borderRadius: '50%',
+          background: '#6554C0',
+          opacity: 0.1,
+          filter: 'blur(120px)',
+          pointerEvents: 'none',
+        }}
+      />
 
       <div style={{ width: '100%', maxWidth: 420, position: 'relative', zIndex: 10 }}>
-        
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
           <BrandMark size={64} className="mx-auto mb-6 rounded-2xl" />
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-heading)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>
+          <h1
+            style={{
+              fontSize: 28,
+              fontWeight: 700,
+              color: 'var(--text-heading)',
+              margin: '0 0 8px',
+              letterSpacing: '-0.03em',
+            }}
+          >
             Welcome to NiyoPlan
           </h1>
           <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: 14 }}>
@@ -96,20 +128,39 @@ export default function LoginPage() {
         <div className="card" style={{ padding: 32 }}>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'var(--text-secondary)',
+                  marginBottom: 8,
+                }}
+              >
                 Email
               </label>
               <input
-                type="email" required
+                type="email"
+                required
                 style={{
-                  width: '100%', padding: '10px 14px', background: 'var(--bg-panel)',
-                  border: '2px solid var(--border-strong)', borderRadius: 'var(--radius-md)',
-                  color: 'var(--text-primary)', fontSize: 14, transition: 'var(--transition-fast)'
+                  width: '100%',
+                  padding: '10px 14px',
+                  background: 'var(--bg-panel)',
+                  border: '2px solid var(--border-strong)',
+                  borderRadius: 'var(--radius-md)',
+                  color: 'var(--text-primary)',
+                  fontSize: 14,
+                  transition: 'var(--transition-fast)',
                 }}
                 placeholder="name@company.com"
-                value={email} onChange={(e) => setEmail(e.target.value)}
-                onFocus={e => e.target.style.borderColor = 'var(--accent-primary)'}
-                onBlur={e => e.target.style.borderColor = 'var(--border-strong)'}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onFocus={(e) => {
+                  e.target.style.borderColor = 'var(--accent-primary)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'var(--border-strong)';
+                }}
               />
             </div>
 
@@ -118,22 +169,58 @@ export default function LoginPage() {
                 <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
                   Password
                 </label>
-                <Link href="/forgot-password" style={{ fontSize: 13, color: 'var(--accent-text)', textDecoration: 'none', fontWeight: 500 }}>
+                <Link
+                  href="/forgot-password"
+                  style={{ fontSize: 13, color: 'var(--accent-text)', textDecoration: 'none', fontWeight: 500 }}
+                >
                   Forgot?
                 </Link>
               </div>
-              <input
-                type="password" required
-                style={{
-                  width: '100%', padding: '10px 14px', background: 'var(--bg-panel)',
-                  border: '2px solid var(--border-strong)', borderRadius: 'var(--radius-md)',
-                  color: 'var(--text-primary)', fontSize: 14, transition: 'var(--transition-fast)'
-                }}
-                placeholder="••••••••"
-                value={password} onChange={(e) => setPassword(e.target.value)}
-                onFocus={e => e.target.style.borderColor = 'var(--accent-primary)'}
-                onBlur={e => e.target.style.borderColor = 'var(--border-strong)'}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '10px 44px 10px 14px',
+                    background: 'var(--bg-panel)',
+                    border: '2px solid var(--border-strong)',
+                    borderRadius: 'var(--radius-md)',
+                    color: 'var(--text-primary)',
+                    fontSize: 14,
+                    transition: 'var(--transition-fast)',
+                  }}
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = 'var(--accent-primary)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = 'var(--border-strong)';
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((current) => !current)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  style={{
+                    position: 'absolute',
+                    right: 14,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    border: 'none',
+                    background: 'transparent',
+                    color: 'var(--text-secondary)',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: -6, cursor: 'pointer' }}>
@@ -148,13 +235,34 @@ export default function LoginPage() {
             </label>
 
             <button
-              type="submit" disabled={isSubmitting} className="btn-primary"
-              style={{ width: '100%', padding: '12px', fontSize: 15, display: 'flex', justifyContent: 'center', gap: 8, marginTop: 8 }}
+              type="submit"
+              disabled={isSubmitting}
+              className="btn-primary"
+              style={{
+                width: '100%',
+                padding: '12px',
+                fontSize: 15,
+                display: 'flex',
+                justifyContent: 'center',
+                gap: 8,
+                marginTop: 8,
+              }}
             >
               {isSubmitting ? (
-                <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff' }} className="animate-spin" />
+                <div
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: '50%',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    borderTopColor: '#fff',
+                  }}
+                  className="animate-spin"
+                />
               ) : (
-                <><LogIn size={18} /> Sign In</>
+                <>
+                  <LogIn size={18} /> Sign In
+                </>
               )}
             </button>
           </form>

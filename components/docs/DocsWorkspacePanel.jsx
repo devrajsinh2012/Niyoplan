@@ -6,6 +6,7 @@ import InputModal from '@/components/ui/InputModal';
 import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
 import { FolderPlus, FilePlus2, Layers3 } from 'lucide-react';
 import { DocsPanelSkeleton } from '@/components/ui/PageSkeleton';
+import { getSupabaseAuthHeaders } from '@/lib/apiClient';
 
 export default function DocsWorkspacePanel({ projectId }) {
   const [docs, setDocs] = useState([]);
@@ -20,18 +21,40 @@ export default function DocsWorkspacePanel({ projectId }) {
 
   const selectedDoc = useMemo(() => docs.find((doc) => doc.id === selectedDocId) || null, [docs, selectedDocId]);
 
+  const apiRequest = useCallback(async (url, options = {}) => {
+    const hasBody = options.body !== undefined;
+    const authHeaders = await getSupabaseAuthHeaders(hasBody ? { 'Content-Type': 'application/json' } : {});
+
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        ...authHeaders,
+        ...(options.headers || {}),
+      },
+    });
+
+    if (response.status === 204) {
+      return null;
+    }
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(payload?.error || 'Request failed');
+    }
+
+    return payload;
+  }, []);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const loadDocs = async () => {
-        const res = await fetch(`/api/projects/${projectId}/docs`);
-        if (!res.ok) return [];
-        return res.json();
+        const data = await apiRequest(`/api/projects/${projectId}/docs`);
+        return Array.isArray(data) ? data : [];
       };
       const loadHierarchy = async () => {
-        const res = await fetch(`/api/projects/${projectId}/spaces`);
-        if (!res.ok) return { spaces: [], folders: [] };
-        return res.json();
+        const data = await apiRequest(`/api/projects/${projectId}/spaces`);
+        return data || { spaces: [], folders: [] };
       };
 
       const [docRows, hierarchy] = await Promise.all([loadDocs(), loadHierarchy()]);
@@ -39,14 +62,18 @@ export default function DocsWorkspacePanel({ projectId }) {
       setDocs(normalizedDocs);
       setSpaces(Array.isArray(hierarchy?.spaces) ? hierarchy.spaces : []);
       setFolders(Array.isArray(hierarchy?.folders) ? hierarchy.folders : []);
-      if (normalizedDocs.length > 0 && !selectedDocId) setSelectedDocId(normalizedDocs[0].id);
+      if (!normalizedDocs.length) {
+        setSelectedDocId(null);
+      } else if (!normalizedDocs.some((doc) => doc.id === selectedDocId)) {
+        setSelectedDocId(normalizedDocs[0].id);
+      }
     } catch (error) {
       console.error(error);
-      toast.error('Failed to load docs workspace');
+      toast.error(error.message || 'Failed to load docs workspace');
     } finally {
       setLoading(false);
     }
-  }, [projectId, selectedDocId]);
+  }, [apiRequest, projectId, selectedDocId]);
 
   useEffect(() => {
     if (projectId) loadData();
@@ -55,12 +82,10 @@ export default function DocsWorkspacePanel({ projectId }) {
   const createSpace = async (name) => {
     if (!name?.trim()) return;
     try {
-      const res = await fetch(`/api/projects/${projectId}/spaces`, {
+      await apiRequest(`/api/projects/${projectId}/spaces`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim() })
       });
-      if (!res.ok) throw new Error('Failed to create space');
       toast.success('Space created');
       loadData();
     } catch (error) {
@@ -77,12 +102,10 @@ export default function DocsWorkspacePanel({ projectId }) {
     }
 
     try {
-      const res = await fetch(`/api/projects/${projectId}/folders`, {
+      await apiRequest(`/api/projects/${projectId}/folders`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim(), space_id: spaces[0].id })
       });
-      if (!res.ok) throw new Error('Failed to create folder');
       toast.success('Folder created');
       loadData();
     } catch (error) {
@@ -95,9 +118,8 @@ export default function DocsWorkspacePanel({ projectId }) {
     if (!title?.trim()) return;
 
     try {
-      const res = await fetch(`/api/projects/${projectId}/docs`, {
+      const created = await apiRequest(`/api/projects/${projectId}/docs`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: title.trim(),
           space_id: spaces[0]?.id || null,
@@ -105,8 +127,6 @@ export default function DocsWorkspacePanel({ projectId }) {
           content: ''
         })
       });
-      if (!res.ok) throw new Error('Failed to create doc');
-      const created = await res.json();
       toast.success('Doc created');
       await loadData();
       setSelectedDocId(created.id);
@@ -124,10 +144,9 @@ export default function DocsWorkspacePanel({ projectId }) {
     if (!selectedDoc) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/projects/${projectId}/docs/${selectedDoc.id}`, {
+      await apiRequest(`/api/projects/${projectId}/docs/${selectedDoc.id}`, {
         method: 'DELETE'
       });
-      if (!res.ok) throw new Error('Failed to delete doc');
       toast.success('Doc deleted');
       setShowDeleteConfirm(false);
       setSelectedDocId(null);
@@ -144,9 +163,8 @@ export default function DocsWorkspacePanel({ projectId }) {
     if (!selectedDoc) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/projects/${projectId}/docs/${selectedDoc.id}`, {
+      await apiRequest(`/api/projects/${projectId}/docs/${selectedDoc.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: selectedDoc.title,
           content: selectedDoc.content,
@@ -154,7 +172,6 @@ export default function DocsWorkspacePanel({ projectId }) {
           folder_id: selectedDoc.folder_id
         })
       });
-      if (!res.ok) throw new Error('Failed to save doc');
       toast.success('Doc saved');
       loadData();
     } catch (error) {

@@ -11,23 +11,85 @@ export default function ResetPasswordPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingLink, setIsCheckingLink] = useState(true);
   const [isReady, setIsReady] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('Checking your recovery link...');
 
   useEffect(() => {
     let mounted = true;
 
-    const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
+    const updateReadyState = async () => {
+      const { data, error } = await supabase.auth.getSession();
       if (!mounted) return;
+
+      if (error) {
+        setIsReady(false);
+        setStatusMessage(error.message || 'Recovery session not found. Please use the password reset link from your email.');
+        setIsCheckingLink(false);
+        return;
+      }
+
       setIsReady(Boolean(data?.session));
+      setStatusMessage(
+        data?.session
+          ? ''
+          : 'Recovery session not found. Please use the password reset link from your email.'
+      );
+      setIsCheckingLink(false);
     };
 
-    checkSession();
+    const hydrateRecoverySession = async () => {
+      try {
+        const url = new URL(window.location.href);
+        const hashParams = new URLSearchParams(url.hash.startsWith('#') ? url.hash.slice(1) : '');
+        const searchParams = url.searchParams;
+        const code = searchParams.get('code');
+        const tokenHash = searchParams.get('token_hash');
+        const recoveryType = searchParams.get('type') || hashParams.get('type');
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+        } else if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (error) throw error;
+        } else if (tokenHash && recoveryType === 'recovery') {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: 'recovery',
+          });
+          if (error) throw error;
+        }
+
+        await updateReadyState();
+
+        if (mounted && (code || tokenHash || accessToken)) {
+          window.history.replaceState({}, document.title, url.pathname);
+        }
+      } catch (error) {
+        if (!mounted) return;
+        setIsReady(false);
+        setStatusMessage(error?.message || 'Recovery session not found. Please use the password reset link from your email.');
+        setIsCheckingLink(false);
+      }
+    };
+
+    hydrateRecoverySession();
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
+
       if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
         setIsReady(Boolean(session));
+        setStatusMessage(
+          session ? '' : 'Recovery session not found. Please use the password reset link from your email.'
+        );
+        setIsCheckingLink(false);
       }
     });
 
@@ -120,9 +182,13 @@ export default function ResetPasswordPage() {
         </div>
 
         <div className="card" style={{ padding: 32 }}>
-          {!isReady ? (
+          {isCheckingLink ? (
             <div style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>
-              Recovery session not found. Please use the password reset link from your email.
+              {statusMessage}
+            </div>
+          ) : !isReady ? (
+            <div style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>
+              {statusMessage}
             </div>
           ) : (
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -152,7 +218,7 @@ export default function ResetPasswordPage() {
                     fontSize: 14,
                     transition: 'var(--transition-fast)',
                   }}
-                  placeholder="••••••••"
+                  placeholder="New password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                 />
@@ -184,7 +250,7 @@ export default function ResetPasswordPage() {
                     fontSize: 14,
                     transition: 'var(--transition-fast)',
                   }}
-                  placeholder="••••••••"
+                  placeholder="Confirm password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                 />

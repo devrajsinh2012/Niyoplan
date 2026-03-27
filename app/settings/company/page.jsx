@@ -283,6 +283,7 @@ export default function CompanySettingsPage() {
 
   const industries = ['Software', 'Marketing', 'Design', 'Finance', 'Education', 'Healthcare', 'Manufacturing', 'Other'];
   const sizes = ['1-10', '11-50', '51-200', '200+'];
+  const activeMemberCount = members.length;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -440,7 +441,12 @@ export default function CompanySettingsPage() {
 
                 {/* Active Members */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-4">Active Members</h3>
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <h3 className="font-semibold text-gray-900">Active Members</h3>
+                    <span className="text-sm font-medium text-gray-500">
+                      {activeMemberCount} member{activeMemberCount === 1 ? '' : 's'}
+                    </span>
+                  </div>
                   <div className="border border-gray-200 rounded-lg overflow-hidden">
                     <table className="w-full">
                       <thead className="bg-gray-50">
@@ -452,43 +458,54 @@ export default function CompanySettingsPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
-                        {members.map(member => (
-                          <tr key={member.id}>
-                            <td className="px-6 py-4">
-                              <div>
-                                <p className="font-medium text-gray-900">
-                                  {member.profiles?.full_name || 'Unknown'}
-                                </p>
-                                <p className="text-sm text-gray-500">{member.email}</p>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <select
-                                value={member.role}
-                                onChange={(e) => handleMemberAction(member.id, 'changeRole', e.target.value)}
-                                className="px-3 py-1 border border-gray-300 rounded-lg text-sm"
-                                disabled={member.user_id === user?.id}
-                              >
-                                <option value="admin">Admin</option>
-                                <option value="member">Member</option>
-                                <option value="viewer">Viewer</option>
-                              </select>
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-600">
-                              {new Date(member.joined_at).toLocaleDateString()}
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              {member.user_id !== user?.id && (
-                                <button
-                                  onClick={() => setMemberToRemove(member)}
-                                  className="text-red-600 hover:text-red-700"
-                                >
-                                  Remove
-                                </button>
-                              )}
+                        {activeMemberCount === 0 ? (
+                          <tr>
+                            <td colSpan={4} className="px-6 py-12 text-center">
+                              <p className="text-sm font-medium text-gray-900">0 members</p>
+                              <p className="mt-1 text-sm text-gray-500">
+                                Invite teammates with your company invite code to see them here.
+                              </p>
                             </td>
                           </tr>
-                        ))}
+                        ) : (
+                          members.map(member => (
+                            <tr key={member.id}>
+                              <td className="px-6 py-4">
+                                <div>
+                                  <p className="font-medium text-gray-900">
+                                    {member.profiles?.full_name || member.email || 'Unknown'}
+                                  </p>
+                                  <p className="text-sm text-gray-500">{member.email || 'No email available'}</p>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <select
+                                  value={member.role}
+                                  onChange={(e) => handleMemberAction(member.id, 'changeRole', e.target.value)}
+                                  className="px-3 py-1 border border-gray-300 rounded-lg text-sm"
+                                  disabled={member.user_id === user?.id}
+                                >
+                                  <option value="admin">Admin</option>
+                                  <option value="member">Member</option>
+                                  <option value="viewer">Viewer</option>
+                                </select>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-600">
+                                {member.joined_at ? new Date(member.joined_at).toLocaleDateString() : 'Not available'}
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                {member.user_id !== user?.id && (
+                                  <button
+                                    onClick={() => setMemberToRemove(member)}
+                                    className="text-red-600 hover:text-red-700"
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>

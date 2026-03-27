@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -9,7 +9,6 @@ import { useOrganization } from '@/context/OrganizationContext';
 import { FolderKanban, Plus, Star, Activity, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 import UserAvatar from '@/components/ui/UserAvatar';
-import BrandMark from '@/components/ui/BrandMark';
 import ProjectBadge from '@/components/ui/ProjectBadge';
 import { ProjectsPageSkeleton } from '@/components/ui/PageSkeleton';
 
@@ -20,6 +19,10 @@ const DEFAULT_LISTS = [
   { name: 'In Review', rank: 4000 },
   { name: 'Done', rank: 5000 }
 ];
+
+const STARRED_PROJECTS_STORAGE_KEY = 'niyoplan-starred-projects';
+
+const getStarredProjectsKey = (profileId) => `${STARRED_PROJECTS_STORAGE_KEY}:${profileId || 'guest'}`;
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState([]);
@@ -39,25 +42,110 @@ export default function ProjectsPage() {
   const [projectRequirementLink, setProjectRequirementLink] = useState('');
   const [designPrototypeLink, setDesignPrototypeLink] = useState('');
   const [apiDocumentationLink, setApiDocumentationLink] = useState('');
+  const [starredProjectIds, setStarredProjectIds] = useState([]);
+  const [openInfoProjectId, setOpenInfoProjectId] = useState(null);
 
   useEffect(() => {
     const incoming = searchParams.get('search') || '';
     setSearchTerm(incoming);
   }, [searchParams]);
-  const filteredProjects = projects.filter((project) => {
-    const query = searchTerm.trim().toLowerCase();
-    const matchesSearch = !query || [project.name, project.description, project.prefix]
-      .filter(Boolean)
-      .some((value) => value.toLowerCase().includes(query));
 
-    if (!matchesSearch) return false;
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
 
-    if (projectScope === 'my') {
-      return project.created_by === profile?.id;
+    try {
+      const storedIds = JSON.parse(localStorage.getItem(getStarredProjectsKey(profile?.id)) || '[]');
+      setStarredProjectIds(Array.isArray(storedIds) ? storedIds : []);
+    } catch (error) {
+      console.error('Failed to load starred projects', error);
+      setStarredProjectIds([]);
     }
+  }, [profile?.id]);
 
-    return true;
-  });
+  useEffect(() => {
+    if (!openInfoProjectId) return;
+
+    const handlePointerDown = (event) => {
+      if (!(event.target instanceof Element)) {
+        setOpenInfoProjectId(null);
+        return;
+      }
+
+      if (!event.target.closest('[data-project-info-container="true"]')) {
+        setOpenInfoProjectId(null);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setOpenInfoProjectId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [openInfoProjectId]);
+
+  const filteredProjects = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+
+    return projects
+      .filter((project) => {
+        const matchesSearch = !query || [project.name, project.description, project.prefix]
+          .filter(Boolean)
+          .some((value) => value.toLowerCase().includes(query));
+
+        if (!matchesSearch) return false;
+
+        if (projectScope === 'my') {
+          return project.created_by === profile?.id;
+        }
+
+        return true;
+      })
+      .sort((leftProject, rightProject) => {
+        const leftStarred = starredProjectIds.includes(leftProject.id);
+        const rightStarred = starredProjectIds.includes(rightProject.id);
+
+        if (leftStarred !== rightStarred) {
+          return rightStarred ? 1 : -1;
+        }
+
+        return new Date(rightProject.created_at) - new Date(leftProject.created_at);
+      });
+  }, [projects, searchTerm, projectScope, profile?.id, starredProjectIds]);
+
+  const persistStarredProjects = useCallback((nextProjectIds) => {
+    setStarredProjectIds(nextProjectIds);
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(getStarredProjectsKey(profile?.id), JSON.stringify(nextProjectIds));
+    }
+  }, [profile?.id]);
+
+  const handleToggleStar = useCallback((event, project) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const isStarred = starredProjectIds.includes(project.id);
+    const nextProjectIds = isStarred
+      ? starredProjectIds.filter((projectId) => projectId !== project.id)
+      : [project.id, ...starredProjectIds.filter((projectId) => projectId !== project.id)];
+
+    persistStarredProjects(nextProjectIds);
+    toast.success(isStarred ? 'Project removed from starred' : 'Project added to starred');
+  }, [persistStarredProjects, starredProjectIds]);
+
+  const handleToggleProjectInfo = useCallback((event, projectId) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setOpenInfoProjectId((currentProjectId) => currentProjectId === projectId ? null : projectId);
+  }, []);
 
 
   const fetchProjects = useCallback(async () => {
@@ -72,7 +160,7 @@ export default function ProjectsPage() {
         .from('projects')
         .select(`
           *,
-          profiles ( full_name, avatar_url )
+          profiles ( id, full_name, avatar_url, role )
         `)
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false });
@@ -249,7 +337,13 @@ export default function ProjectsPage() {
             )}
           </div>
         ) : (
-          filteredProjects.map(project => (
+          filteredProjects.map((project) => {
+            const isStarred = starredProjectIds.includes(project.id);
+            const isInfoOpen = openInfoProjectId === project.id;
+            const ownerName = project.profiles?.full_name || 'Unknown owner';
+            const ownerRole = project.profiles?.role || 'member';
+
+            return (
             <Link 
               href={`/projects/${project.id}`} 
               key={project.id}
@@ -268,13 +362,17 @@ export default function ProjectsPage() {
                   </div>
                 </div>
                 <button 
-                  className="rounded-md p-1.5 text-[var(--text-muted)] opacity-0 transition-all hover:bg-[var(--bg-panel-hover)] hover:text-yellow-500 group-hover:opacity-100"
-                  onClick={e => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
+                  type="button"
+                  aria-label={isStarred ? `Unstar ${project.name}` : `Star ${project.name}`}
+                  aria-pressed={isStarred}
+                  className={`rounded-md p-1.5 transition-all hover:bg-[var(--bg-panel-hover)] ${
+                    isStarred
+                      ? 'bg-yellow-50 text-yellow-500 opacity-100'
+                      : 'text-[var(--text-muted)] opacity-0 hover:text-yellow-500 group-hover:opacity-100'
+                  }`}
+                  onClick={(event) => handleToggleStar(event, project)}
                 >
-                  <Star size={16} />
+                  <Star size={16} fill={isStarred ? 'currentColor' : 'none'} />
                 </button>
               </div>
               
@@ -283,10 +381,50 @@ export default function ProjectsPage() {
               </p>
               
               <div className="mt-auto flex items-center justify-between border-t border-[var(--border-subtle)] pt-5">
-                <div className="flex items-center -space-x-2">
-                  <div className="relative z-20 border-2 border-[var(--bg-surface)] rounded-full shadow-sm" title={project.profiles?.full_name}>
-                    <UserAvatar user={project.profiles} size={24} />
-                  </div>
+                <div className="relative" data-project-info-container="true">
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 rounded-full p-1 text-left transition-colors hover:bg-[var(--bg-panel-hover)]"
+                    onClick={(event) => handleToggleProjectInfo(event, project.id)}
+                    aria-expanded={isInfoOpen}
+                    aria-label={`Show info for ${ownerName}`}
+                  >
+                    <div className="relative z-20 rounded-full border-2 border-[var(--bg-surface)] shadow-sm" title={ownerName}>
+                      <UserAvatar user={project.profiles} size={24} />
+                    </div>
+                    <span className="text-xs font-semibold text-[var(--text-muted)]">
+                      Owner
+                    </span>
+                  </button>
+
+                  {isInfoOpen && (
+                    <div className="absolute bottom-full left-0 z-[100] mb-3 w-64 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
+                      <div className="mb-3 flex items-center gap-3">
+                        <UserAvatar user={project.profiles} size={36} />
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-slate-900">{ownerName}</div>
+                          <div className="text-xs font-medium uppercase tracking-wider text-slate-500">{ownerRole}</div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Project</span>
+                          <span className="max-w-[120px] truncate text-[11px] font-semibold text-slate-900">{project.name}</span>
+                        </div>
+                        <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Created</span>
+                          <span className="text-[11px] font-semibold text-slate-900">{new Date(project.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Organization</span>
+                          <span className="max-w-[120px] truncate text-[11px] font-semibold text-[#0052CC]">{activeOrganization?.name || 'Niyoplan'}</span>
+                        </div>
+                      </div>
+
+                      <div className="absolute left-5 top-full -mt-1 h-3 w-3 rotate-45 border-b border-r border-slate-200 bg-white" />
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex items-center gap-3">
@@ -294,38 +432,23 @@ export default function ProjectsPage() {
                     <Activity size={10} className="text-[#006644]" /> Active
                   </div>
                   
-                  <div className="relative group/info">
+                  <div className="relative" data-project-info-container="true">
                     <button 
-                      className="text-gray-400 hover:text-blue-600 transition-colors p-1 rounded-full hover:bg-blue-50"
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                      type="button"
+                      aria-label={`Show project info for ${project.name}`}
+                      className={`rounded-full p-1 transition-colors hover:bg-blue-50 hover:text-blue-600 ${
+                        isInfoOpen ? 'bg-blue-50 text-blue-600' : 'text-gray-400'
+                      }`}
+                      onClick={(event) => handleToggleProjectInfo(event, project.id)}
                     >
                       <Info size={14} />
                     </button>
-                    
-                    {/* Tooltip Content */}
-                    <div className="invisible group-hover/info:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 p-3 bg-white border border-gray-200 rounded-xl shadow-xl z-[100] animate-in fade-in slide-in-from-bottom-2 duration-200">
-                      <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-2">Project Info</div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center bg-gray-50 p-1.5 rounded-lg border border-gray-100">
-                          <span className="text-[10px] text-gray-500 font-bold">Manager</span>
-                          <span className="text-[10px] text-gray-900 font-bold">{project.profiles?.full_name || 'N/A'}</span>
-                        </div>
-                        <div className="flex justify-between items-center bg-gray-50 p-1.5 rounded-lg border border-gray-100">
-                          <span className="text-[10px] text-gray-500 font-bold">Created</span>
-                          <span className="text-[10px] text-gray-900 font-bold">{new Date(project.created_at).toLocaleDateString()}</span>
-                        </div>
-                        <div className="flex justify-between items-center bg-gray-50 p-1.5 rounded-lg border border-gray-100">
-                          <span className="text-[10px] text-gray-500 font-bold">Organization</span>
-                          <span className="text-[10px] text-[#0052CC] font-bold">{activeOrganization?.name || 'Niyoplan'}</span>
-                        </div>
-                      </div>
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-white border-b border-r border-gray-200 rotate-45" />
-                    </div>
                   </div>
                 </div>
               </div>
             </Link>
-          ))
+            );
+          })
         )}
       </div>
 

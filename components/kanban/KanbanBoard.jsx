@@ -12,6 +12,8 @@ import { supabase } from '@/lib/supabase';
 import { useScheduleStore } from '@/context/ScheduleStore';
 import toast from 'react-hot-toast';
 import { Plus, LayoutGrid } from 'lucide-react';
+import confetti from 'canvas-confetti';
+
 import InputModal from '@/components/ui/InputModal';
 import { KanbanPanelSkeleton } from '@/components/ui/PageSkeleton';
 
@@ -314,8 +316,17 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
        if (error) {
          toast.error('Failed to save card position');
          await fetchBoardData();
-      } else {
-        await updateScheduleItem(activeId, {
+       } else {
+         // Trigger celebration if moved to Done
+         if (getStatusFromList(card.listId) === 'done') {
+           confetti({
+             particleCount: 150,
+             spread: 70,
+             origin: { y: 0.6 },
+             colors: ['#22A06B', '#0C66E4', '#E34935', '#6554C0']
+           });
+         }
+         await updateScheduleItem(activeId, {
           list_id: card.listId,
           status: getStatusFromList(card.listId),
           rank: newRank

@@ -1,10 +1,26 @@
 'use client';
+import React, { useEffect, useState } from 'react';
 
 /**
  * NiyoplanLoader – full-screen loading overlay with the animated conveyor SVG.
- * Used in Next.js `loading.jsx` files to show before skeleton screens appear.
+ * Theme-aware: matches dark or light background based on user preference.
  */
 export default function NiyoplanLoader() {
+  const [isDark, setIsDark] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    // Check localStorage for theme preference
+    const savedTheme = localStorage.getItem('niyoplan-theme');
+    setIsDark(savedTheme === 'dark');
+    setMounted(true);
+  }, []);
+
+  // Use a slight delay or default to light to avoid flash for the majority of users
+  const bg = isDark ? '#0d1117' : '#FFFFFF';
+  const textColor = isDark ? 'rgba(255,255,255,0.85)' : '#44546F';
+  const dotColor = isDark ? 'rgba(255,255,255,0.4)' : 'rgba(68, 84, 111, 0.4)';
+
   return (
     <div
       style={{
@@ -14,9 +30,10 @@ export default function NiyoplanLoader() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#0d1117',
+        background: bg,
         zIndex: 9999,
         gap: '24px',
+        transition: 'background-color 0.2s ease',
       }}
     >
       {/* Brand mark with conveyor animation */}
@@ -53,13 +70,15 @@ export default function NiyoplanLoader() {
         </g>
       </svg>
 
-      {/* Label */}
+      {/* Label and Dots (hidden until theme detected to avoid flash) */}
       <div
         style={{
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           gap: '6px',
+          opacity: mounted ? 1 : 0,
+          transition: 'opacity 0.2s ease',
         }}
       >
         <span
@@ -67,7 +86,7 @@ export default function NiyoplanLoader() {
             fontSize: '15px',
             fontWeight: 600,
             letterSpacing: '0.08em',
-            color: 'rgba(255,255,255,0.85)',
+            color: textColor,
             fontFamily: 'inherit',
           }}
         >
@@ -88,7 +107,7 @@ export default function NiyoplanLoader() {
                 width: '5px',
                 height: '5px',
                 borderRadius: '50%',
-                background: 'rgba(255,255,255,0.4)',
+                background: dotColor,
                 animation: `niyoDot 1.2s ${i * 0.2}s infinite ease-in-out both`,
               }}
             />

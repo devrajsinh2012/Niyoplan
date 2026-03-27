@@ -99,24 +99,33 @@ export default function ProjectSettingsPage() {
 
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from('projects')
-        .update({
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
           name: name.trim(),
-          prefix: projectKey.trim().toUpperCase(),
+          prefix: projectKey.trim(),
           type: projectType,
           description: description.trim(),
           status,
-        })
-        .eq('id', projectId);
+        }),
+      });
 
-      if (error) throw error;
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to update project');
+      }
 
       toast.success('Project updated successfully');
       fetchProjectData();
     } catch (error) {
       console.error('Error updating project:', error);
-      toast.error('Failed to update project');
+      toast.error(error.message || 'Failed to update project');
     } finally {
       setIsSaving(false);
     }
@@ -125,20 +134,29 @@ export default function ProjectSettingsPage() {
   const handleSaveSprints = async () => {
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from('projects')
-        .update({
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
           sprint_duration: sprintDuration,
           sprint_naming: sprintNaming,
-        })
-        .eq('id', projectId);
+        }),
+      });
 
-      if (error) throw error;
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to update sprint settings');
+      }
 
       toast.success('Sprint settings updated');
     } catch (error) {
       console.error('Error updating sprint settings:', error);
-      toast.error('Failed to update sprint settings');
+      toast.error(error.message || 'Failed to update sprint settings');
     } finally {
       setIsSaving(false);
     }
@@ -282,18 +300,23 @@ export default function ProjectSettingsPage() {
 
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from('projects')
-        .delete()
-        .eq('id', projectId);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      if (error) throw error;
+      if (!res.ok && res.status !== 204) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to delete project');
+      }
 
       toast.success('Project deleted');
       router.push('/projects');
     } catch (error) {
       console.error('Error deleting project:', error);
-      toast.error('Failed to delete project');
+      toast.error(error.message || 'Failed to delete project');
     } finally {
       setIsSaving(false);
     }

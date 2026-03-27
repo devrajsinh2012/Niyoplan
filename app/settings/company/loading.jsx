@@ -1,5 +1,2 @@
-import { CompanySettingsPageSkeleton } from '@/components/ui/PageSkeleton';
-
-export default function Loading() {
-  return <CompanySettingsPageSkeleton />;
-}
+import NiyoplanLoader from '@/components/ui/NiyoplanLoader';
+export default function Loading() { return <NiyoplanLoader />; }

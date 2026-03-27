@@ -34,6 +34,9 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
   const [showCreateCardModal, setShowCreateCardModal] = useState(false);
   const [createCardListId, setCreateCardListId] = useState(null);
   const [showCreateListModal, setShowCreateListModal] = useState(false);
+  const [typeFilter, setTypeFilter] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -458,20 +461,68 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
   // Map db 'name' to component 'title' expected by KanbanColumn
   const displayLists = lists.map(l => ({...l, title: l.name}));
 
+  const filteredCards = cards.filter(card => {
+    const matchesType = !typeFilter || card.issue_type?.toLowerCase() === typeFilter.toLowerCase();
+    const matchesPriority = !priorityFilter || card.priority?.toLowerCase() === priorityFilter.toLowerCase();
+    const matchesSearch = !searchQuery || card.title.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesType && matchesPriority && matchesSearch;
+  });
+
   return (
     <div className="kanban-wrapper">
       <header className="kanban-header">
-        <div className="kanban-filters flex-1 pt-1">
-          <button className="kanban-filter-chip" title="Filter by type" onClick={() => toast('Type filter coming soon')}>
-            <span>Type ▾</span>
-          </button>
-          <button className="kanban-filter-chip" title="Filter by priority" onClick={() => toast('Priority filter coming soon')}>
-            <span>Priority ▾</span>
-          </button>
-          <button className="kanban-filter-chip" title="Filter by label" onClick={() => toast('Label filter coming soon')}>
-            <span>Label ▾</span>
-          </button>
-          <button className="kanban-filter-clear">Clear all</button>
+        <div className="kanban-filters flex-1 pt-1 flex items-center gap-2">
+          <div className="relative">
+            <select 
+              className="kanban-filter-chip appearance-none pr-8"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+            >
+              <option value="">All Types</option>
+              <option value="task">Task</option>
+              <option value="bug">Bug</option>
+              <option value="story">Story</option>
+              <option value="epic">Epic</option>
+            </select>
+            <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">▾</div>
+          </div>
+          
+          <div className="relative">
+            <select 
+              className="kanban-filter-chip appearance-none pr-8"
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value)}
+            >
+              <option value="">All Priorities</option>
+              <option value="highest">Highest</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+              <option value="lowest">Lowest</option>
+            </select>
+            <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">▾</div>
+          </div>
+
+          <input 
+            type="text"
+            placeholder="Search cards..."
+            className="kanban-filter-chip focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[200px]"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+
+          {(typeFilter || priorityFilter || searchQuery) && (
+            <button 
+              className="kanban-filter-clear"
+              onClick={() => {
+                setTypeFilter('');
+                setPriorityFilter('');
+                setSearchQuery('');
+              }}
+            >
+              Clear all
+            </button>
+          )}
         </div>
       </header>
       
@@ -488,7 +539,7 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
               <KanbanColumn
                 key={list.id}
                 list={list}
-                cards={cards.filter(c => c.listId === list.id).sort((a,b) => a.rank - b.rank)}
+                cards={filteredCards.filter(c => c.listId === list.id).sort((a,b) => (a.rank || 0) - (b.rank || 0))}
                 onCardOpen={(card) => {
                   setSelectedCard(card);
                   router.replace(`/projects/${projectId}?tab=board&cardId=${card.id}`);

@@ -9,11 +9,37 @@ export async function GET(request) {
     return NextResponse.json({ error: error || 'Unauthorized' }, { status: 401 });
   }
 
-  if (!checkRole(user, 'admin')) {
-    return NextResponse.json({ error: 'Forbidden. Requires admin role.' }, { status: 403 });
-  }
-
   try {
+    const searchParams = request.nextUrl.searchParams;
+    const orgId = searchParams.get('orgId');
+
+    if (orgId) {
+      // Return members of the specified organization (accessible to any org admin/member)
+      const { data: members, error: membersError } = await supabaseAdmin
+        .from('organization_members')
+        .select('*, profile:profiles(id, full_name, email, avatar_url, created_at, role)')
+        .eq('organization_id', orgId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+      if (membersError) throw membersError;
+
+      // Flatten: return the profile data with the org role
+      const users = (members || []).map(m => ({
+        ...m.profile,
+        org_role: m.role,
+        org_member_id: m.id,
+        joined_org_at: m.created_at,
+      }));
+
+      return NextResponse.json(users);
+    }
+
+    // Global admin: return all profiles
+    if (!checkRole(user, 'admin')) {
+      return NextResponse.json({ error: 'Forbidden. Requires admin role or orgId param.' }, { status: 403 });
+    }
+
     const { data: users, error: fetchError } = await supabaseAdmin
       .from('profiles')
       .select('*')

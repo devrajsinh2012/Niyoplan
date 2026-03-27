@@ -49,6 +49,26 @@ export default function CalendarGrid({
   const [selectedItem, setSelectedItem] = useState(null);
   const [draggedItem, setDraggedItem] = useState(null);
 
+  // Day view inline writing state
+  const [inlineHour, setInlineHour] = useState(null); // hour slot clicked
+  const [inlineText, setInlineText] = useState('');
+  const [dayNotes, setDayNotes] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(`niyoplan-day-notes-${projectId}`) || '{}');
+    } catch { return {}; }
+  });
+
+  const saveDayNote = (dateStr, hour, text) => {
+    if (!text.trim()) { setInlineHour(null); return; }
+    const key = `${dateStr}_${hour}`;
+    const updated = { ...dayNotes, [key]: text.trim() };
+    setDayNotes(updated);
+    try { localStorage.setItem(`niyoplan-day-notes-${projectId}`, JSON.stringify(updated)); } catch {}
+    setInlineHour(null);
+    setInlineText('');
+    toast.success('Note saved');
+  };
+
   useEffect(() => {
     if (selectedItem && typeof onItemSelect === 'function') {
       onItemSelect(selectedItem);
@@ -194,8 +214,9 @@ export default function CalendarGrid({
     const dayStart = new Date(currentDate);
     dayStart.setHours(6, 0, 0, 0);
     const dayEnd = new Date(currentDate);
-    dayEnd.setHours(20, 0, 0, 0);
+    dayEnd.setHours(21, 0, 0, 0);
     const hours = eachHourOfInterval({ start: dayStart, end: dayEnd });
+    const dateStr = format(currentDate, 'yyyy-MM-dd');
 
     const dayItems = storeItems.filter((item) =>
       isSameDay(parseISO(item.start_date), currentDate)
@@ -203,22 +224,36 @@ export default function CalendarGrid({
 
     return (
       <div className="calendar-day-view">
-        <div className="calendar-day-date">{format(currentDate, 'EEEE, MMMM d, yyyy')}</div>
+        <div className="calendar-day-date">
+          {format(currentDate, 'EEEE, MMMM d, yyyy')}
+          <span style={{ fontSize: '11px', marginLeft: '10px', color: 'var(--text-muted)', fontWeight: 500 }}>
+            Click any empty slot to add a note
+          </span>
+        </div>
         <div className="calendar-day-timeline">
-          {hours.map((hour) => (
-            <div key={hour.toISOString()} className="calendar-day-hour">
-              <div className="calendar-day-time">{format(hour, 'h a')}</div>
-              <div className="calendar-day-events">
-                {dayItems
-                  .filter((item) => {
-                    const itemHour = parseISO(item.start_date).getHours();
-                    return itemHour === hour.getHours();
-                  })
-                  .map((item) => (
+          {hours.map((hour) => {
+            const hourKey = `${dateStr}_${hour.getHours()}`;
+            const existingNote = dayNotes[hourKey];
+            const isEditing = inlineHour === hour.getHours();
+            const hourItems = dayItems.filter((item) => parseISO(item.start_date).getHours() === hour.getHours());
+
+            return (
+              <div key={hour.toISOString()} className="calendar-day-hour">
+                <div className="calendar-day-time">{format(hour, 'h a')}</div>
+                <div className="calendar-day-events"
+                  style={{ cursor: hourItems.length === 0 && !isEditing ? 'pointer' : 'default' }}
+                  onClick={() => {
+                    if (hourItems.length === 0 && !isEditing) {
+                      setInlineHour(hour.getHours());
+                      setInlineText(existingNote || '');
+                    }
+                  }}
+                >
+                  {hourItems.map((item) => (
                     <div
                       key={item.id}
                       className={`calendar-day-event calendar-item-${item.priority}`}
-                      onClick={() => setSelectedItem(item)}
+                      onClick={(e) => { e.stopPropagation(); setSelectedItem(item); }}
                     >
                       <div className="calendar-event-title">{item.title}</div>
                       <div className="calendar-event-time">
@@ -227,9 +262,61 @@ export default function CalendarGrid({
                       </div>
                     </div>
                   ))}
+
+                  {/* Inline note editor */}
+                  {isEditing ? (
+                    <div style={{ display: 'flex', gap: '6px', padding: '4px 0' }} onClick={e => e.stopPropagation()}>
+                      <input
+                        autoFocus
+                        value={inlineText}
+                        onChange={e => setInlineText(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') saveDayNote(dateStr, hour.getHours(), inlineText);
+                          if (e.key === 'Escape') { setInlineHour(null); setInlineText(''); }
+                        }}
+                        placeholder="Add a note for this hour... (Enter to save, Esc to cancel)"
+                        style={{
+                          flex: 1,
+                          fontSize: '12px',
+                          padding: '5px 10px',
+                          border: '1px solid #0C66E4',
+                          borderRadius: '6px',
+                          outline: 'none',
+                          background: '#fff',
+                          color: '#172B4D',
+                          boxShadow: '0 0 0 2px rgba(12,102,228,0.15)',
+                        }}
+                      />
+                      <button
+                        onClick={() => saveDayNote(dateStr, hour.getHours(), inlineText)}
+                        style={{ padding: '5px 10px', fontSize: '11px', fontWeight: 700, background: '#0C66E4', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+                      >Save</button>
+                      <button
+                        onClick={() => { setInlineHour(null); setInlineText(''); }}
+                        style={{ padding: '5px 10px', fontSize: '11px', fontWeight: 700, background: 'transparent', color: '#6B778C', border: '1px solid #DFE1E6', borderRadius: '6px', cursor: 'pointer' }}
+                      >✕</button>
+                    </div>
+                  ) : existingNote ? (
+                    <div
+                      style={{
+                        fontSize: '11px',
+                        padding: '4px 8px',
+                        background: '#FFF7D1',
+                        border: '1px solid #F7C948',
+                        borderRadius: '6px',
+                        color: '#172B4D',
+                        cursor: 'pointer',
+                        marginTop: '2px',
+                      }}
+                      onClick={(e) => { e.stopPropagation(); setInlineHour(hour.getHours()); setInlineText(existingNote); }}
+                    >
+                      📝 {existingNote}
+                    </div>
+                  ) : null}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     );

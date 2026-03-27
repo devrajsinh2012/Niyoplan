@@ -6,6 +6,7 @@ import {
   MoreHorizontal, AlertCircle
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useOrganization } from '@/context/OrganizationContext';
 import UserAvatar from '@/components/ui/UserAvatar';
 import InputModal from '@/components/ui/InputModal';
 import ConfirmModal from '@/components/ui/ConfirmModal';
@@ -31,6 +32,7 @@ const getRoleColor = (role) => {
 
 export default function AdminSettingsPage() {
   const { profile } = useAuth();
+  const { activeOrganization } = useOrganization();
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -43,11 +45,14 @@ export default function AdminSettingsPage() {
   const [isInvitingSending, setIsInvitingSending] = useState(false);
   const [pendingApprovals, setPendingApprovals] = useState([]);
 
-  // Fetch users
+  // Fetch users scoped to active organization
   useEffect(() => {
     const fetchUsers = async () => {
+      setIsLoading(true);
       try {
-        const res = await fetch('/api/admin/users');
+        const orgId = activeOrganization?.id;
+        const url = orgId ? `/api/admin/users?orgId=${orgId}` : '/api/admin/users';
+        const res = await fetch(url);
         if (!res.ok) throw new Error('Failed to fetch users');
         const data = await res.json();
         setUsers(data || []);
@@ -60,10 +65,10 @@ export default function AdminSettingsPage() {
     };
 
     fetchUsers();
-  }, []);
+  }, [activeOrganization?.id]);
 
-  // Check if current user is admin
-  const isAdmin = profile?.role === 'admin';
+  // Check if current user is admin of the active organization
+  const isAdmin = activeOrganization?.role === 'admin' || profile?.role === 'admin';
   if (!isAdmin) {
     return (
       <div className="mx-auto w-full max-w-4xl animate-fade-in p-6 text-primary">
@@ -82,6 +87,9 @@ export default function AdminSettingsPage() {
     (u.full_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
     (u.email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
   );
+
+  // Display org_role if available, else global role
+  const getUserDisplayRole = (u) => u.org_role || u.role;
 
   const handleRoleUpdate = async (userId, newRole) => {
     try {

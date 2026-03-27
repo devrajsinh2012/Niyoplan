@@ -1,5 +1,2 @@
-import { ProfileSettingsPageSkeleton } from '@/components/ui/PageSkeleton';
-
-export default function Loading() {
-  return <ProfileSettingsPageSkeleton />;
-}
+import NiyoplanLoader from '@/components/ui/NiyoplanLoader';
+export default function Loading() { return <NiyoplanLoader />; }

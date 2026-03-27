@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Building2, Upload, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
+import { useOrganization } from '@/context/OrganizationContext';
 
 export default function CreateCompanyPage() {
   const router = useRouter();
+  const { refreshOrganizations } = useOrganization();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -114,6 +116,10 @@ export default function CreateCompanyPage() {
 
       // Store organization name for welcome modal
       localStorage.setItem('new-org-name', formData.name);
+      localStorage.setItem(`niyoplan-active-org-${user.id}`, org.id);
+
+      // Force context to fetch new organizations list
+      await refreshOrganizations();
 
       // Show success with invite code
       toast.success(`Company "${formData.name}" created successfully!`);

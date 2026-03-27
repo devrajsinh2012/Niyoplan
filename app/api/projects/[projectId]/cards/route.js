@@ -4,6 +4,9 @@ import { supabaseAdmin } from '@/lib/supabaseServer';
 import { getAuthUser } from '@/lib/auth';
 import { checkRole } from '@/lib/roles';
 import { createProjectMajorNotifications } from '@/lib/projectNotifications';
+import { validateString, validateEnum, combineValidations, validationError, validateNonEmpty } from '@/lib/validate';
+import { ISSUE_TYPE, CARD_PRIORITY, ISSUE_TYPES, PRIORITIES } from '@/lib/constants';
+import { logger, rateLimit } from '@/lib/middleware';
 
 export async function GET(request, { params }) {
   const { projectId } = await params;
@@ -15,7 +18,6 @@ export async function GET(request, { params }) {
   if (!access.hasAccess) {
     return NextResponse.json({ error: access.error }, { status: 403 });
   }
-
 
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -47,7 +49,14 @@ export async function GET(request, { params }) {
 }
 
 export async function POST(request, { params }) {
-  const { projectId } = await params;
+  const { projectId } = params;
+  const ip = request.headers.get('x-forwarded-for') || 'anonymous';
+
+  if (!rateLimit(ip)) {
+    logger.warn('Rate limit exceeded for Cards POST', { ip, projectId });
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
+
   const { user, error } = await getAuthUser(request);
   if (error || !user) {
     return NextResponse.json({ error: error || 'Unauthorized' }, { status: 401 });
@@ -57,16 +66,29 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: access.error }, { status: 403 });
   }
 
-
   if (!checkRole(user, 'admin', 'pm', 'member')) {
     return NextResponse.json({ error: 'Forbidden. Insufficient role.' }, { status: 403 });
   }
 
   try {
-    const { title, description, issue_type, priority, assignee_id, story_points, list_id, sprint_id, rank } = await request.json();
+    const body = await request.json();
+    const { title, issue_type, priority, description, status, assignee_id, story_points, list_id, sprint_id, rank } = body;
 
-    if (!title) {
-      return NextResponse.json({ error: 'Title is required' }, { status: 400 });
+    const validation = combineValidations(
+      validateString(title, 'Title', { required: true, maxLength: 255 }),
+      validateEnum(issue_type || 'task', 'Issue Type', Object.values(ISSUE_TYPE)),
+      validateEnum(priority || 'medium', 'Priority', Object.values(CARD_PRIORITY))
+    );
+
+    if (!validation.valid) {
+      return validationError(validation.errors);
+    }
+
+    if (assignee_id) {
+       const assigneeValid = await verifyValidAssignee(projectId, assignee_id);
+       if (!assigneeValid.isValid) {
+         return NextResponse.json({ error: assigneeValid.error }, { status: 400 });
+       }
     }
 
     const { data: card, error: cardError } = await supabaseAdmin

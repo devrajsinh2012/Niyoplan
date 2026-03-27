@@ -1,5 +1,2 @@
-import { GenericPageSkeleton } from '@/components/ui/PageSkeleton';
-
-export default function Loading() {
-  return <GenericPageSkeleton />;
-}
+import NiyoplanLoader from '@/components/ui/NiyoplanLoader';
+export default function Loading() { return <NiyoplanLoader />; }

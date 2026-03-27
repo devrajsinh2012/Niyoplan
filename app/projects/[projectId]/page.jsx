@@ -27,33 +27,9 @@ import WorkspaceViewsPanel from '@/components/workspace/WorkspaceViewsPanel';
 import AIToolsPanel from '@/components/ai/AIToolsPanel';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { ProjectDetailPageSkeleton } from '@/components/ui/PageSkeleton';
+import ErrorBoundary from '@/components/ui/ErrorBoundary';
 
-class TabErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false };
-  }
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error) {
-    console.error('Project tab render error:', error);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 text-sm text-[var(--text-secondary)]">
-          This tab failed to render. Please switch tabs and try again.
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -334,8 +310,9 @@ export default function ProjectDetailPage() {
       {/* Tab Contents */}
       <div className="flex-1 shrink-0 flex flex-col">
         {activeTab === 'list' && (
-          <TabErrorBoundary>
+          <ErrorBoundary>
             <div className="flex flex-col flex-1 animate-fade-in">
+
             <div className="flex flex-col sm:flex-row gap-4 justify-between items-center mb-4">
               <div className="relative w-full sm:max-w-xs">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} />
@@ -422,86 +399,92 @@ export default function ProjectDetailPage() {
               </div>
             </div>
             </div>
-          </TabErrorBoundary>
+          </ErrorBoundary>
         )}
 
         {activeTab === 'board' && (
-          <div className="flex-1 animate-fade-in flex flex-col min-h-[600px] h-full">
-            <KanbanBoard
-              projectId={id}
-              refreshNonce={refreshNonce}
-              sharedCards={cards}
-              onCardUpdated={handleBoardCardUpdated}
-            />
-          </div>
+          <ErrorBoundary>
+            <div className="flex-1 animate-fade-in flex flex-col min-h-[600px] h-full">
+              <KanbanBoard
+                projectId={id}
+                refreshNonce={refreshNonce}
+                sharedCards={cards}
+                onCardUpdated={handleBoardCardUpdated}
+              />
+            </div>
+          </ErrorBoundary>
         )}
 
         {activeTab === 'backlog' && (
-          <TabErrorBoundary>
+          <ErrorBoundary>
             <div className="flex-1 animate-fade-in flex flex-col">
               <SprintManager projectId={id} refreshNonce={refreshNonce} />
             </div>
-          </TabErrorBoundary>
+          </ErrorBoundary>
         )}
 
         {activeTab === 'gantt' && (
-          <div className="flex-1 animate-fade-in flex flex-col">
-            <GanttChart projectId={id} refreshNonce={refreshNonce} />
-          </div>
+          <ErrorBoundary>
+            <div className="flex-1 animate-fade-in flex flex-col">
+              <GanttChart projectId={id} refreshNonce={refreshNonce} />
+            </div>
+          </ErrorBoundary>
         )}
 
         {activeTab === 'calendar' && (
-          <TabErrorBoundary>
+          <ErrorBoundary>
             <div className="flex-1 animate-fade-in flex flex-col">
               <CalendarGrid projectId={id} onItemSelect={setSelectedCard} />
             </div>
-          </TabErrorBoundary>
+          </ErrorBoundary>
         )}
 
         {activeTab === 'dsm' && (
-          <div className="flex-1 animate-fade-in flex flex-col">
-            <DSMPanel projectId={id} />
-          </div>
+          <ErrorBoundary>
+            <div className="flex-1 animate-fade-in flex flex-col">
+              <DSMPanel projectId={id} />
+            </div>
+          </ErrorBoundary>
         )}
 
         {activeTab === 'meetings' && (
-          <TabErrorBoundary>
+          <ErrorBoundary>
             <div className="flex-1 animate-fade-in flex flex-col">
               <MeetingReviewsPanel projectId={id} />
             </div>
-          </TabErrorBoundary>
+          </ErrorBoundary>
         )}
 
         {activeTab === 'goals' && (
-          <TabErrorBoundary>
+          <ErrorBoundary>
             <div className="flex-1 animate-fade-in flex flex-col">
               <GoalsPanel projectId={id} />
             </div>
-          </TabErrorBoundary>
+          </ErrorBoundary>
         )}
 
         {activeTab === 'docs' && (
-          <TabErrorBoundary>
+          <ErrorBoundary>
             <div className="flex-1 animate-fade-in flex flex-col">
               <DocsWorkspacePanel projectId={id} />
             </div>
-          </TabErrorBoundary>
+          </ErrorBoundary>
         )}
 
         {activeTab === 'views' && (
-          <TabErrorBoundary>
+          <ErrorBoundary>
             <div className="flex-1 animate-fade-in flex flex-col">
               <WorkspaceViewsPanel projectId={id} />
             </div>
-          </TabErrorBoundary>
+          </ErrorBoundary>
         )}
 
         {activeTab === 'ai-tools' && (
-          <TabErrorBoundary>
+          <ErrorBoundary>
             <div className="flex-1 animate-fade-in flex flex-col">
               <AIToolsPanel projectId={id} />
             </div>
-          </TabErrorBoundary>
+          </ErrorBoundary>
         )}
 
         {!tabs.some((tab) => tab.id === activeTab) && (

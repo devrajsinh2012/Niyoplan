@@ -10,7 +10,7 @@ import {
   LayoutDashboard, Layers, KanbanSquare,
   BarChart2, Tag, Keyboard,
   Settings, BookOpen, Target,
-  Zap, MessageSquare, Calendar, LogOut, Building2
+  Zap, MessageSquare, Calendar, LogOut, Building2, Sun
 } from 'lucide-react';
 import UserAvatar from '@/components/ui/UserAvatar';
 import ProjectBadge from '@/components/ui/ProjectBadge';
@@ -132,8 +132,9 @@ export default function Sidebar({ project, expanded, onExpandedChange }) {
         ) : (
           <div className="space-y-1">
             <SideNavItem href="/" icon={LayoutDashboard} label="Dashboard" expanded={expanded} />
+            <SideNavItem href="/today" icon={Sun} label="Today" expanded={expanded} />
             <SideNavItem href="/projects" icon={KanbanSquare} label="Projects" expanded={expanded} />
-            {profile?.role === 'admin' && (
+            {(userRole === 'admin' || profile?.role === 'admin') && (
               <SideNavItem href="/admin/settings" icon={Settings} label="Admin Settings" expanded={expanded} />
             )}
           </div>

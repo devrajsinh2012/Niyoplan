@@ -112,11 +112,20 @@ export default function ProfileSettingsPage() {
       const fileName = `${profile.id}-${Date.now()}.${fileExt}`;
       const filePath = `avatars/${fileName}`;
 
+      // Check if bucket exists by trying to list (or just upload and catch specific error)
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, avatarFile);
+        .upload(filePath, avatarFile, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        if (uploadError.message.includes('bucket not found')) {
+          throw new Error('Avatar storage bucket not found. Please contact admin.');
+        }
+        throw uploadError;
+      }
 
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
@@ -125,7 +134,7 @@ export default function ProfileSettingsPage() {
       return publicUrl;
     } catch (error) {
       console.error('Error uploading avatar:', error);
-      toast.error('Failed to upload avatar');
+      toast.error(error.message || 'Failed to upload avatar');
       return profile.avatar_url;
     }
   };
@@ -249,18 +258,27 @@ export default function ProfileSettingsPage() {
 
     setIsSaving(true);
     try {
-      // Delete user profile and account
-      const { error } = await supabase.rpc('delete_user_account', {
+      // First attempt RPC
+      const { error: rpcError } = await supabase.rpc('delete_user_account', {
         user_id: profile.id
       });
 
-      if (error) throw error;
+      if (rpcError) {
+        console.warn('RPC delete_user_account failed or missing:', rpcError);
+        // Fallback or explicit error if RPC is strictly required
+        if (rpcError.message.includes('not found')) {
+          toast.error('Account deletion service is currently unavailable. Please contact support.');
+          return;
+        }
+        throw rpcError;
+      }
 
       toast.success('Account deleted');
+      await supabase.auth.signOut();
       router.push('/login');
     } catch (error) {
       console.error('Error deleting account:', error);
-      toast.error('Failed to delete account');
+      toast.error(error.message || 'Failed to delete account');
     } finally {
       setIsSaving(false);
     }

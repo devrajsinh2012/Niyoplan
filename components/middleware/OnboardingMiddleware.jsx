@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import NiyoplanLoader from '@/components/ui/NiyoplanLoader';
 
 export default function OnboardingMiddleware({ children }) {
   const { user, profile, loading: authLoading } = useAuth();
@@ -98,14 +99,7 @@ export default function OnboardingMiddleware({ children }) {
 
   // Show loading state while checking
   if (checking || authLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
+    return <NiyoplanLoader />;
   }
 
   // Show pending state if user has pending membership

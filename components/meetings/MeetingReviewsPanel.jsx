@@ -115,7 +115,26 @@ export default function MeetingReviewsPanel({ projectId }) {
     }
   };
 
+  const convertActionItem = async (actionItemId) => {
+    try {
+      const res = await fetch(
+        `/api/projects/${projectId}/meetings/action-items/${actionItemId}/convert-to-card`,
+        { method: 'POST' }
+      );
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to convert action item');
+      }
+      toast.success('Action item converted to card');
+      loadData();
+    } catch (error) {
+      console.error(error);
+      toast.error(error.message || 'Failed to convert action item');
+    }
+  };
+
   const deleteReview = async (type, id) => {
+
     setIsDeleting(true);
     try {
       const res = await fetch(`/api/projects/${projectId}/meetings/${type}/${id}`, {

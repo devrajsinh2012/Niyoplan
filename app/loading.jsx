@@ -1,5 +1,2 @@
-import { DashboardPageSkeleton } from '@/components/ui/PageSkeleton';
-
-export default function Loading() {
-  return <DashboardPageSkeleton />;
-}
+import NiyoplanLoader from '@/components/ui/NiyoplanLoader';
+export default function Loading() { return <NiyoplanLoader />; }

@@ -1,5 +1,2 @@
-import { AdminSettingsPageSkeleton } from '@/components/ui/PageSkeleton';
-
-export default function Loading() {
-  return <AdminSettingsPageSkeleton />;
-}
+import NiyoplanLoader from '@/components/ui/NiyoplanLoader';
+export default function Loading() { return <NiyoplanLoader />; }

@@ -1,11 +1,27 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import { getAuthUser } from '@/lib/auth';
-
+import { verifyProjectAccess } from '@/lib/access';
 export async function GET(request, { params }) {
   const { id } = await params;
+  const { user, error: authError } = await getAuthUser(request);
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   try {
+    // Verify project access before fetching comments
+    const { data: card } = await supabaseAdmin
+      .from('cards')
+      .select('project_id')
+      .eq('id', id)
+      .single();
+      
+    if (!card) return NextResponse.json({ error: 'Card not found' }, { status: 404 });
+    const access = await verifyProjectAccess(card.project_id, user.id);
+    if (!access.hasAccess) return NextResponse.json({ error: access.error }, { status: 403 });
+
     const { data: comments, error } = await supabaseAdmin
       .from('card_comments')
       .select('*, user:profiles!card_comments_user_id_fkey(id, full_name, avatar_url)')
@@ -29,6 +45,17 @@ export async function POST(request, { params }) {
   }
 
   try {
+    // Verify project access before creating comment
+    const { data: card } = await supabaseAdmin
+      .from('cards')
+      .select('project_id')
+      .eq('id', id)
+      .single();
+      
+    if (!card) return NextResponse.json({ error: 'Card not found' }, { status: 404 });
+    const access = await verifyProjectAccess(card.project_id, user.id);
+    if (!access.hasAccess) return NextResponse.json({ error: access.error }, { status: 403 });
+
     const body = await request.json();
     const { content } = body;
 

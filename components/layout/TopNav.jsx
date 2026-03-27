@@ -157,6 +157,7 @@ export default function TopNav({ theme, onToggleTheme }) {
                       onClick={() => {
                         switchOrganization(org.id);
                         setOrgMenuOpen(false);
+                        router.push('/');
                       }}
                       className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-[var(--bg-panel-hover)] ${activeOrganization?.id === org.id ? 'bg-[var(--accent-subtle)]' : ''}`}
                     >

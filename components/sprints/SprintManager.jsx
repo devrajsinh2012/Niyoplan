@@ -12,6 +12,8 @@ import UserAvatar from '@/components/ui/UserAvatar';
 import InputModal from '@/components/ui/InputModal';
 import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
 import SprintInsightsModal from '@/components/sprints/SprintInsightsModal';
+import confetti from 'canvas-confetti';
+
 
 const issueTypeIcon = (type) => {
   const t = (type || '').toLowerCase();
@@ -200,6 +202,16 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
     else {
       setSprints(sprints.map(s => s.id === sprint.id ? { ...s, ...nextPayload } : s));
       toast.success(`Sprint marked as ${status}`);
+
+      // Trigger celebration if completed
+      if (status === 'completed') {
+        confetti({
+          particleCount: 150,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#0052CC', '#22A06B', '#E34935', '#6554C0']
+        });
+      }
     }
   };
 

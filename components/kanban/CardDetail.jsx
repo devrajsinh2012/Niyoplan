@@ -8,7 +8,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import UserAvatar from '@/components/ui/UserAvatar';
 import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
-import { supabase } from '@/lib/supabase';
+import { apiFetch } from '@/lib/apiClient';
 import toast from 'react-hot-toast';
 
 // Sub-components
@@ -56,7 +56,7 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
     if (!card?.id) return;
     setIsLoadingComments(true);
     try {
-      const res = await fetch(`/api/cards/${card.id}/comments`);
+      const res = await apiFetch(`/api/cards/${card.id}/comments`);
       if (!res.ok) throw new Error('Failed to fetch comments');
       const data = await res.json();
       setComments(data || []);
@@ -71,7 +71,7 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
     if (!card?.id) return;
     setIsLoadingSubtasks(true);
     try {
-      const res = await fetch(`/api/cards/${card.id}/subtasks`);
+      const res = await apiFetch(`/api/cards/${card.id}/subtasks`);
       if (!res.ok) throw new Error('Failed to fetch subtasks');
       const data = await res.json();
       setSubtasks(data || []);
@@ -85,18 +85,25 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
   const fetchUsers = useCallback(async () => {
     if (!card?.project_id) return;
     try {
-      const { data, error } = await supabase
-        .from('project_members')
-        .select('user_id, profile:profiles(id, full_name)')
-        .eq('project_id', card.project_id);
+      const res = await apiFetch(`/api/projects/${card.project_id}/members`);
 
-      if (error) throw error;
-      
-      let mapped = (data || []).map(d => d.profile).filter(Boolean);
+      if (!res.ok) {
+        let message = 'Failed to fetch project members';
+        try {
+          const errorBody = await res.json();
+          message = errorBody?.error || message;
+        } catch {
+          // Ignore JSON parse failures and keep the generic message.
+        }
+        throw new Error(message);
+      }
+
+      const data = await res.json();
+      let mapped = (data || []).map((member) => member?.profile || member).filter(Boolean);
       mapped.sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
       setUsers(mapped);
     } catch (err) {
-      console.error(err);
+      console.error('Failed to load card assignees:', err);
     }
   }, [card?.project_id]);
 
@@ -146,9 +153,8 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
     if (!newComment.trim()) return;
 
     try {
-      const res = await fetch(`/api/cards/${card.id}/comments`, {
+      const res = await apiFetch(`/api/cards/${card.id}/comments`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: newComment })
       });
 
@@ -168,9 +174,8 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
 
     setIsAddingSubtask(true);
     try {
-      const res = await fetch(`/api/cards/${card.id}/subtasks`, {
+      const res = await apiFetch(`/api/cards/${card.id}/subtasks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: newSubtaskTitle })
       });
 

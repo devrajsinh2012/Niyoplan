@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import UserAvatar from '@/components/ui/UserAvatar';
 import {
-  Settings, Users, Calendar, AlertTriangle, Plus, X, Archive
+  Settings, Users, Calendar, AlertTriangle, Plus, X, Archive, RefreshCw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '@/components/ui/ConfirmModal';
@@ -25,6 +25,7 @@ export default function ProjectSettingsPage() {
   const [project, setProject] = useState(null);
   const [members, setMembers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [membersLoadError, setMembersLoadError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [permissions, setPermissions] = useState({
     canManageSettings: false,
@@ -86,10 +87,8 @@ export default function ProjectSettingsPage() {
 
   const fetchProjectData = useCallback(async () => {
     try {
-      const [projectData, membersData] = await Promise.all([
-        requestWithAuth(`/api/projects/${projectId}`),
-        requestWithAuth(`/api/projects/${projectId}/members`),
-      ]);
+      // Fetch project data first
+      const projectData = await requestWithAuth(`/api/projects/${projectId}`);
 
       setProject(projectData);
       setPermissions({
@@ -103,18 +102,65 @@ export default function ProjectSettingsPage() {
       setStatus(projectData.status || 'active');
       setSprintDuration(projectData.sprint_duration || '2');
       setSprintNaming(projectData.sprint_naming || 'Sprint {n}');
-      setMembers(membersData || []);
     } catch (error) {
       console.error('Error fetching project data:', error);
       toast.error(error.message || 'Failed to load project settings');
-    } finally {
-      setIsLoading(false);
+      throw error; // Re-throw to prevent loading members if project fails
     }
   }, [projectId, requestWithAuth]);
 
+  const fetchMembers = useCallback(async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      if (!token) {
+        setMembers([]);
+        setMembersLoadError(true);
+        return;
+      }
+
+      const response = await fetch(`/api/projects/${projectId}/members`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const membersData = await response.json();
+        setMembers(membersData || []);
+        setMembersLoadError(false);
+      } else {
+        // Don't throw, just set empty state with error flag
+        setMembers([]);
+        setMembersLoadError(true);
+      }
+    } catch (error) {
+      console.error('Error fetching members:', error);
+      // Don't show error toast for members - just track the error state
+      setMembers([]);
+      setMembersLoadError(true);
+    }
+  }, [projectId]);
+
+  const refreshMembers = async () => {
+    setMembersLoadError(false);
+    await fetchMembers();
+  };
+
   useEffect(() => {
-    fetchProjectData();
-  }, [fetchProjectData]);
+    // Fetch project data first, then members
+    const loadData = async () => {
+      try {
+        await fetchProjectData();
+      } finally {
+        // Always try to fetch members, but don't block on failure
+        await fetchMembers();
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, [fetchProjectData, fetchMembers]);
 
   const handleSaveGeneral = async () => {
     if (!name.trim()) {
@@ -429,15 +475,33 @@ export default function ProjectSettingsPage() {
             <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6">
               <div className="mb-6 flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-[var(--text-heading)]">Members</h2>
-                <button
-                  onClick={() => setShowInviteModal(true)}
-                  disabled={!canManageSettings}
-                  className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <Plus size={16} />
-                  Invite Member
-                </button>
+                <div className="flex items-center gap-2">
+                  {membersLoadError && (
+                    <span className="text-xs text-[var(--text-muted)]">Failed to load members</span>
+                  )}
+                  <button
+                    onClick={refreshMembers}
+                    className="flex items-center gap-2 rounded-md border border-[var(--border-subtle)] bg-white px-3 py-2 text-sm font-medium text-[var(--text-primary)] transition-colors hover:bg-gray-50"
+                  >
+                    <RefreshCw size={16} />
+                    Refresh
+                  </button>
+                  <button
+                    onClick={() => setShowInviteModal(true)}
+                    disabled={!canManageSettings}
+                    className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Plus size={16} />
+                    Invite Member
+                  </button>
+                </div>
               </div>
+
+              {membersLoadError && (
+                <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-4 text-sm text-red-600">
+                  Failed to load members. Click the refresh button to try again.
+                </div>
+              )}
 
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -501,6 +565,11 @@ export default function ProjectSettingsPage() {
                     ))}
                   </tbody>
                 </table>
+                {!membersLoadError && members.length === 0 && (
+                  <div className="py-8 text-center text-sm text-[var(--text-muted)]">
+                    No members found. Invite team members to get started.
+                  </div>
+                )}
               </div>
             </div>
           )}

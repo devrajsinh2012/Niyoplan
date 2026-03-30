@@ -9,8 +9,9 @@ import { useOrganization } from '@/context/OrganizationContext';
 import { FolderKanban, Plus, Star, Activity, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 import UserAvatar from '@/components/ui/UserAvatar';
-import ProjectBadge from '@/components/ui/ProjectBadge';
 import { ProjectsPageSkeleton } from '@/components/ui/PageSkeleton';
+import { Folder } from 'lucide-react';
+import CreateProjectModal from '@/components/modals/CreateProjectModal';
 
 const DEFAULT_LISTS = [
   { name: 'Backlog', rank: 1000 },
@@ -351,7 +352,9 @@ export default function ProjectsPage() {
             >
               <div className="mb-5 flex items-start justify-between">
                 <div className="flex items-center gap-4">
-                  <ProjectBadge project={project} size={40} />
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-panel-hover)] font-mono text-[11px] font-bold text-[var(--accent-primary)] uppercase tracking-wider shadow-sm transition-all group-hover:border-[var(--accent-primary)] group-hover:bg-[var(--accent-subtle)]/30">
+                    {project.prefix?.substring(0, 3) || project.name?.substring(0, 2).toUpperCase() || 'PR'}
+                  </div>
                   <div className="min-w-0">
                     <h3 className="truncate text-base font-bold text-[var(--text-heading)] group-hover:text-[#0052CC] transition-colors">
                       {project.name}

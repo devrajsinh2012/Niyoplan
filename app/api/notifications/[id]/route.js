@@ -1,8 +1,8 @@
-import { supabaseAdmin } from '@/lib/supabaseServer';
 import { NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabaseServer';
 import { getAuthUser } from '@/lib/auth';
 
-export async function PATCH(request, { params }) {
+export async function DELETE(request, { params }) {
   try {
     const { user, error: authError } = await getAuthUser(request);
     if (authError || !user) {
@@ -24,18 +24,18 @@ export async function PATCH(request, { params }) {
 
     const { error } = await supabaseAdmin
       .from('notifications')
-      .update({ is_read: true })
+      .delete()
       .eq('id', id)
       .eq('user_id', user.id);
 
     if (error) {
-      console.error('Error marking notification as read:', error);
+      console.error('Failed to delete notification:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Notification read PATCH error:', error);
+    console.error('Notification DELETE error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

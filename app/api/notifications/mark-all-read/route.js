@@ -1,27 +1,18 @@
-import { createServerClient } from '@/lib/supabaseServer';
+import { supabaseAdmin } from '@/lib/supabaseServer';
 import { NextResponse } from 'next/server';
+import { getAuthUser } from '@/lib/auth';
 
 export async function PATCH(request) {
   try {
-    const supabase = createServerClient();
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
-    // Get current user from auth if not provided
-    let targetUserId = userId;
-    if (!targetUserId) {
-      const { data: { user } } = await supabase.auth.getUser();
-      targetUserId = user?.id;
+    const { user, error: authError } = await getAuthUser(request);
+    if (authError || !user) {
+      return NextResponse.json({ error: authError || 'Unauthorized' }, { status: 401 });
     }
 
-    if (!targetUserId) {
-      return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
-    }
-
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('notifications')
       .update({ is_read: true })
-      .eq('user_id', targetUserId)
+      .eq('user_id', user.id)
       .eq('is_read', false);
 
     if (error) {

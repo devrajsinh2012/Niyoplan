@@ -88,17 +88,20 @@ export const AuthProvider = ({ children }) => {
 
   const signIn = async (email, password, options = {}) => {
     const { rememberMe = true } = options;
-    const result = await supabase.auth.signInWithPassword({ email, password });
-
-    if (!result.error) {
+    
+    // Set the preference BEFORE signing in so the custom storage 
+    // knows whether to use localStorage or sessionStorage
+    if (typeof window !== 'undefined') {
       localStorage.setItem(REMEMBER_ME_KEY, rememberMe ? '1' : '0');
     }
 
+    const result = await supabase.auth.signInWithPassword({ email, password });
     return result;
   };
 
   const signOut = async () => {
-    localStorage.removeItem(REMEMBER_ME_KEY);
+    // We stop removing REMEMBER_ME_KEY here to preserve the user's 
+    // checkbox preference for their next login attempt.
     return supabase.auth.signOut();
   };
 

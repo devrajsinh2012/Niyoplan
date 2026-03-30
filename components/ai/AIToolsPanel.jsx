@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { apiFetch } from '@/lib/apiClient';
 
 export default function AIToolsPanel({ projectId }) {
   const [title, setTitle] = useState('');
@@ -17,7 +18,7 @@ export default function AIToolsPanel({ projectId }) {
     if (!projectId) return;
     try {
       const safeArray = async (url) => {
-        const res = await fetch(url);
+        const res = await apiFetch(url);
         if (!res.ok) return [];
         const data = await res.json();
         return Array.isArray(data) ? data : [];
@@ -48,11 +49,8 @@ export default function AIToolsPanel({ projectId }) {
   const runTool = async (path, payload, outputKey) => {
     setLoading(true);
     try {
-      const res = await fetch(path, {
+      const res = await apiFetch(path, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(payload)
       });
       if (!res.ok) throw new Error('AI request failed');

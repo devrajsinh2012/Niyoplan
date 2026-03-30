@@ -230,7 +230,7 @@ export default function LoginPage() {
                 onChange={(e) => setRememberMe(e.target.checked)}
               />
               <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
-                Remember me on this browser
+                Remember me
               </span>
             </label>
 

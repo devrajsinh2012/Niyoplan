@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import { getAuthUser } from '@/lib/auth';
 import { verifyProjectAccess } from '@/lib/access';
+import { createProjectMajorNotifications } from '@/lib/projectNotifications';
+
 export async function GET(request, { params }) {
   const { id } = await params;
   const { user, error: authError } = await getAuthUser(request);
@@ -48,7 +50,7 @@ export async function POST(request, { params }) {
     // Verify project access before creating subtask
     const { data: card } = await supabaseAdmin
       .from('cards')
-      .select('project_id')
+      .select('project_id, title, custom_id')
       .eq('id', id)
       .single();
       
@@ -79,6 +81,45 @@ export async function POST(request, { params }) {
       .single();
 
     if (error) throw error;
+
+    // Create notification for subtask creation
+    if (assignee_id && assignee_id !== user.id) {
+      // Notify the assignee
+      await supabaseAdmin.from('notifications').insert({
+        project_id: card.project_id,
+        user_id: assignee_id,
+        type: 'subtask_assigned',
+        title: 'New subtask assigned',
+        message: `assigned you to subtask "${subtask.title}" on ${card.custom_id || card.title}`,
+        metadata: {
+          card_id: id,
+          card_title: card.title,
+          card_custom_id: card.custom_id || null,
+          subtask_id: subtask.id,
+          subtask_title: subtask.title,
+          actor_id: user.id,
+          actor_name: user.full_name || 'Team Member',
+        },
+      });
+    }
+
+    // Create project-wide notification for subtask creation
+    await createProjectMajorNotifications({
+      projectId: card.project_id,
+      actorId: user.id,
+      type: 'subtask_created',
+      title: 'New subtask created',
+      message: `created subtask "${subtask.title}" on ${card.custom_id || card.title}`,
+      metadata: {
+        card_id: id,
+        card_title: card.title,
+        card_custom_id: card.custom_id || null,
+        subtask_id: subtask.id,
+        subtask_title: subtask.title,
+      },
+      includeMemberViewer: false, // Only notify admins and PMs for subtask creation
+    });
+
     return NextResponse.json(subtask);
   } catch (err) {
     console.error(err);

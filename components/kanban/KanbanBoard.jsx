@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { DndContext, closestCorners, TouchSensor, MouseSensor, KeyboardSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
@@ -18,11 +18,11 @@ import InputModal from '@/components/ui/InputModal';
 import { KanbanPanelSkeleton } from '@/components/ui/PageSkeleton';
 
 const DEFAULT_LISTS = [
-  { name: 'Backlog', rank: 1000 },
-  { name: 'To Do', rank: 2000 },
-  { name: 'In Progress', rank: 3000 },
-  { name: 'In Review', rank: 4000 },
-  { name: 'Done', rank: 5000 }
+  { name: 'BACKLOG', rank: 1000 },
+  { name: 'TO DO', rank: 2000 },
+  { name: 'IN PROGRESS', rank: 3000 },
+  { name: 'IN REVIEW', rank: 4000 },
+  { name: 'DONE', rank: 5000 }
 ];
 
 export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards = null, onCardUpdated = null }) {
@@ -41,14 +41,15 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
   const [searchQuery, setSearchQuery] = useState('');
   const searchParams = useSearchParams();
   const router = useRouter();
+  const dragSourceRef = useRef({ status: null, listId: null });
 
   const getStatusFromList = useCallback((listId) => {
     const list = lists.find((item) => item.id === listId);
     const normalized = (list?.name || '').trim().toLowerCase();
-    if (normalized === 'done') return 'done';
-    if (normalized === 'in review') return 'in_review';
-    if (normalized === 'in progress') return 'in_progress';
-    if (normalized === 'to do' || normalized === 'todo') return 'todo';
+    if (normalized === 'done' || normalized === 'completed' || normalized === 'resolved' || normalized === 'finished') return 'done';
+    if (normalized === 'in review' || normalized === 'testing') return 'in_review';
+    if (normalized === 'in progress' || normalized === 'doing' || normalized === 'active') return 'in_progress';
+    if (normalized === 'to do' || normalized === 'todo' || normalized === 'upcoming') return 'todo';
     return 'backlog';
   }, [lists]);
 
@@ -66,12 +67,45 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
   }, [lists]);
 
   const triggerDoneCelebration = useCallback(() => {
-    confetti({
-      particleCount: 150,
-      spread: 70,
-      origin: { y: 0.6 },
+    const duration = 2200;
+    const animationEnd = Date.now() + duration;
+    const defaults = {
+      startVelocity: 38,
+      spread: 300,
+      ticks: 80,
+      zIndex: 1000,
       colors: ['#0052CC', '#22A06B', '#E34935', '#6554C0']
-    });
+    };
+
+    const randomInRange = (min, max) => Math.random() * (max - min) + min;
+
+    const frame = () => {
+      const timeLeft = animationEnd - Date.now();
+
+      if (timeLeft <= 0) {
+        return;
+      }
+
+      const particleCount = 40 * (timeLeft / duration);
+
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.1, 0.3), y: randomInRange(0.2, 0.4) },
+        angle: randomInRange(55, 125)
+      });
+
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.7, 0.9), y: randomInRange(0.2, 0.4) },
+        angle: randomInRange(55, 125)
+      });
+
+      requestAnimationFrame(frame);
+    };
+
+    frame();
   }, []);
 
   const fetchBoardData = useCallback(async () => {
@@ -197,7 +231,12 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
   const handleDragStart = (event) => {
     const { active } = event;
     if (active.data.current?.type === 'Card') {
-      setActiveCard(cards.find(c => c.id === active.id));
+      const draggedCard = cards.find(c => c.id === active.id) || null;
+      dragSourceRef.current = {
+        status: draggedCard?.status || null,
+        listId: draggedCard?.listId || null
+      };
+      setActiveCard(draggedCard);
     }
   };
 
@@ -225,8 +264,11 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
         
         if (prev[activeIndex].listId !== prev[overIndex].listId) {
           const newCards = [...prev];
-          newCards[activeIndex].listId = prev[overIndex].listId;
-          newCards[activeIndex].status = prev[overIndex].status;
+          newCards[activeIndex] = {
+            ...prev[activeIndex],
+            listId: prev[overIndex].listId,
+            status: prev[overIndex].status
+          };
           return arrayMove(newCards, activeIndex, overIndex);
         }
         return arrayMove(prev, activeIndex, overIndex);
@@ -239,16 +281,20 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
         const activeIndex = prev.findIndex(c => c.id === activeId);
         if (activeIndex < 0) return prev;
         const newCards = [...prev];
-        newCards[activeIndex].listId = overId;
-        newCards[activeIndex].status = getStatusFromList(overId);
+        newCards[activeIndex] = {
+          ...prev[activeIndex],
+          listId: overId,
+          status: getStatusFromList(overId)
+        };
         return arrayMove(newCards, activeIndex, activeIndex);
       });
     }
   };
 
   const handleDragEnd = async (event) => {
-    setActiveCard(null);
     const { active, over } = event;
+    const dragSource = dragSourceRef.current;
+    setActiveCard(null);
     if (!over) return;
     
     const activeId = active.id;
@@ -289,7 +335,9 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
     if (isActiveACard) {
        const card = cards.find((item) => item.id === activeId);
        if (!card) return;
-       const sourceStatus = getStatusFromList(card.listId);
+       
+       // Use the drag-start snapshot so hover updates do not change the transition check.
+      const sourceStatus = dragSource.status || getStatusFromList(dragSource.listId) || activeCard?.status || getStatusFromList(activeCard?.listId);
        const destinationListId = over.data.current?.type === 'List'
          ? over.id
          : cards.find((item) => item.id === over.id)?.listId || card.listId;
@@ -324,18 +372,18 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
          };
        }));
 
-       const { error } = await supabase.from('cards')
-         .update({ list_id: destinationListId, rank: newRank, status: destinationStatus })
-         .eq('id', activeId);
+        const { error } = await supabase.from('cards')
+          .update({ list_id: destinationListId, rank: newRank, status: destinationStatus })
+          .eq('id', activeId);
 
-       if (error) {
-         toast.error('Failed to save card position');
-         await fetchBoardData();
-       } else {
-         if (sourceStatus !== 'done' && destinationStatus === 'done') {
-           triggerDoneCelebration();
-         }
-         await updateScheduleItem(activeId, {
+        if (error) {
+          toast.error('Failed to save card position');
+          await fetchBoardData();
+        } else {
+          if (sourceStatus !== 'done' && destinationStatus === 'done') {
+            triggerDoneCelebration();
+          }
+          await updateScheduleItem(activeId, {
           list_id: destinationListId,
           status: destinationStatus,
           rank: newRank
@@ -350,6 +398,8 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
         }
        }
     }
+
+     dragSourceRef.current = { status: null, listId: null };
   };
 
   const handleQuickAddCard = async (title) => {
@@ -436,6 +486,12 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
         listId: data.list_id || item.listId
       };
     }));
+
+    // Trigger celebration if moved to done via modal
+    if (selectedCard.status !== 'done' && data.status === 'done') {
+      triggerDoneCelebration();
+    }
+
     setSelectedCard((prev) => (prev && prev.id === data.id ? { ...prev, ...data } : prev));
     await updateScheduleItem(data.id, {
       title: data.title,
@@ -491,10 +547,10 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
   return (
     <div className="kanban-wrapper">
       <header className="kanban-header">
-        <div className="kanban-filters flex-1 pt-1 flex items-center gap-2">
+        <div className="kanban-filters flex-1 pt-1 flex items-center gap-3">
           <div className="relative">
             <select 
-              className="kanban-filter-chip appearance-none pr-8"
+              className="kanban-filter-chip kanban-filter-select appearance-none bg-white border border-[#DFE1E6] rounded-[3px] px-3 py-1.5 text-sm cursor-pointer hover:bg-[#F4F5F7] transition-colors"
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
             >
@@ -504,12 +560,11 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
               <option value="story">Story</option>
               <option value="epic">Epic</option>
             </select>
-            <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">▾</div>
           </div>
           
           <div className="relative">
             <select 
-              className="kanban-filter-chip appearance-none pr-8"
+              className="kanban-filter-chip kanban-filter-select appearance-none bg-white border border-[#DFE1E6] rounded-[3px] px-3 py-1.5 text-sm cursor-pointer hover:bg-[#F4F5F7] transition-colors"
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
             >
@@ -520,20 +575,21 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
               <option value="low">Low</option>
               <option value="lowest">Lowest</option>
             </select>
-            <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">▾</div>
           </div>
 
-          <input 
-            type="text"
-            placeholder="Search cards..."
-            className="kanban-filter-chip focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[200px]"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+          <div className="relative flex-1 max-w-[280px]">
+            <input 
+              type="text"
+              placeholder="Search cards..."
+              className="w-full bg-[#FAFBFC] border border-[#DFE1E6] rounded-[3px] px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
 
           {(typeFilter || priorityFilter || searchQuery) && (
             <button 
-              className="kanban-filter-clear"
+              className="text-xs font-semibold text-[#0052CC] hover:underline px-2"
               onClick={() => {
                 setTypeFilter('');
                 setPriorityFilter('');
@@ -625,3 +681,4 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
     </div>
   );
 }
+

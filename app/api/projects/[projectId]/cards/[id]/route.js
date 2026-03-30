@@ -112,20 +112,71 @@ export async function PUT(request, { params }) {
     });
 
     if (changedMajorFields.length > 0) {
-      await createProjectMajorNotifications({
-        projectId,
-        actorId: user.id,
-        type: 'card_updated',
-        title: 'Card updated',
-        message: `updated ${card.custom_id || card.title}`,
-        metadata: {
-          card_id: card.id,
-          card_title: card.title,
-          card_custom_id: card.custom_id || null,
-          changed_fields: changedMajorFields,
-        },
-        includeMemberViewer: true,
-      });
+      const cardRef = card.custom_id || card.title;
+      
+      // Check for specific notification types
+      const hasStatusChange = changedMajorFields.includes('status');
+      const hasAssigneeChange = changedMajorFields.includes('assignee_id');
+      const isCompleted = hasStatusChange && card.status === 'done';
+
+      // Create specific notification for assignee changes
+      if (hasAssigneeChange && card.assignee_id && card.assignee_id !== user.id) {
+        // Get assignee name
+        const { data: assignee } = await supabaseAdmin
+          .from('profiles')
+          .select('full_name')
+          .eq('id', card.assignee_id)
+          .single();
+
+        await supabaseAdmin.from('notifications').insert({
+          project_id: projectId,
+          user_id: card.assignee_id,
+          type: 'card_assigned',
+          title: 'Task assigned to you',
+          message: `assigned you to ${cardRef}`,
+          metadata: {
+            card_id: card.id,
+            card_title: card.title,
+            card_custom_id: card.custom_id || null,
+            actor_id: user.id,
+            actor_name: user.full_name || 'Team Member',
+          },
+        });
+      }
+
+      // Create specific notification for task completion
+      if (isCompleted) {
+        await createProjectMajorNotifications({
+          projectId,
+          actorId: user.id,
+          type: 'task_completed',
+          title: 'Task completed! 🎉',
+          message: `completed ${cardRef}`,
+          metadata: {
+            card_id: card.id,
+            card_title: card.title,
+            card_custom_id: card.custom_id || null,
+            changed_fields: changedMajorFields,
+          },
+          includeMemberViewer: true,
+        });
+      } else {
+        // General update notification
+        await createProjectMajorNotifications({
+          projectId,
+          actorId: user.id,
+          type: 'card_updated',
+          title: 'Card updated',
+          message: `updated ${cardRef}`,
+          metadata: {
+            card_id: card.id,
+            card_title: card.title,
+            card_custom_id: card.custom_id || null,
+            changed_fields: changedMajorFields,
+          },
+          includeMemberViewer: true,
+        });
+      }
     }
 
     return NextResponse.json(card);

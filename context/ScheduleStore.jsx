@@ -3,6 +3,7 @@
 import React, { createContext, useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
+import { apiFetch } from '@/lib/apiClient';
 
 /**
  * ScheduleStore Context
@@ -41,16 +42,6 @@ export function ScheduleStoreProvider({ children, projectId }) {
   const cardsSubscriptionRef = useRef(null);
   const dependenciesSubscriptionRef = useRef(null);
 
-  const getAuthHeaders = useCallback(async () => {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData?.session?.access_token;
-    if (!token) return null;
-
-    return {
-      Authorization: `Bearer ${token}`,
-    };
-  }, []);
-
   /**
    * Fetch all schedule data from unified planning API
    */
@@ -60,13 +51,6 @@ export function ScheduleStoreProvider({ children, projectId }) {
     setError(null);
 
     try {
-      const authHeaders = await getAuthHeaders();
-      if (!authHeaders) {
-        // Auth can be transient during initial app boot.
-        setIsLoading(false);
-        return;
-      }
-
       // Calculate date range (±30 days for full month view)
       const now = new Date();
       const from = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
@@ -77,12 +61,8 @@ export function ScheduleStoreProvider({ children, projectId }) {
       const toISO = to.toISOString().split('T')[0];
 
       const [planningRes, depsRes] = await Promise.all([
-        fetch(`/api/projects/${projectId}/planning?from=${fromISO}&to=${toISO}`, {
-          headers: authHeaders,
-        }),
-        fetch(`/api/projects/${projectId}/dependencies`, {
-          headers: authHeaders,
-        })
+        apiFetch(`/api/projects/${projectId}/planning?from=${fromISO}&to=${toISO}`),
+        apiFetch(`/api/projects/${projectId}/dependencies`)
       ]);
 
       const [planningData, depsData] = await Promise.all([
@@ -104,7 +84,7 @@ export function ScheduleStoreProvider({ children, projectId }) {
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, getAuthHeaders]);
+  }, [projectId]);
 
   /**
    * Setup real-time subscriptions for cards and dependencies

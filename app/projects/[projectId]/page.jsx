@@ -26,7 +26,6 @@ import DocsWorkspacePanel from '@/components/docs/DocsWorkspacePanel';
 import WorkspaceViewsPanel from '@/components/workspace/WorkspaceViewsPanel';
 import AIToolsPanel from '@/components/ai/AIToolsPanel';
 import UserAvatar from '@/components/ui/UserAvatar';
-import ProjectBadge from '@/components/ui/ProjectBadge';
 import { ProjectDetailPageSkeleton } from '@/components/ui/PageSkeleton';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 
@@ -256,93 +255,43 @@ export default function ProjectDetailPage() {
     <ScheduleStoreProvider projectId={id}>
       <div className="max-w-screen-2xl mx-auto w-full animate-fade-in pb-10 flex flex-col min-h-full text-primary">
       
-      <header className="mb-8 shrink-0">
-        <div
-          className="relative overflow-hidden rounded-[28px] border bg-[var(--bg-surface)] p-6 sm:p-8"
-          style={{
-            borderColor: 'color-mix(in srgb, var(--accent-primary) 12%, var(--border-subtle))',
-            background: 'linear-gradient(180deg, color-mix(in srgb, var(--bg-surface) 96%, white 4%), color-mix(in srgb, var(--bg-surface) 82%, var(--bg-panel) 18%))',
-            boxShadow: 'var(--shadow-lg)',
-          }}
-        >
-          <div
-            className="pointer-events-none absolute inset-x-0 top-0 h-32"
-            style={{
-              background: 'radial-gradient(circle at top left, color-mix(in srgb, var(--accent-primary) 14%, transparent), transparent 48%), radial-gradient(circle at top right, color-mix(in srgb, var(--shell-ambient-2) 72%, transparent), transparent 28%)',
-            }}
-          />
-
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="flex items-start gap-4">
-              <ProjectBadge project={project} size={68} />
-
-              <div className="min-w-0">
-                <nav className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
-                  <Link href="/projects" className="transition-colors hover:text-[var(--text-primary)]">
-                    Projects
-                  </Link>
-                  <span>/</span>
-                  <span className="truncate text-[var(--accent-primary)]">{project.prefix}</span>
-                </nav>
-
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-[var(--accent-subtle)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.26em] text-[var(--accent-primary)]">
-                    {project.prefix}
-                  </span>
-                  <span className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-surface-hover)] px-3 py-1 text-[11px] font-semibold text-[var(--text-secondary)]">
-                    Product delivery workspace
-                  </span>
-                </div>
-
-                <h1 className="text-3xl font-bold tracking-tight text-[var(--text-heading)] sm:text-[2rem]">
-                  {project.name}
-                </h1>
-                <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--text-secondary)] sm:text-[15px]">
-                  {project.description || 'Plan work, align the team, and keep every sprint, meeting, document, and milestone connected in one polished project workspace.'}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-3 shadow-sm">
-                <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--text-muted)]">Issues tracked</div>
-                <div className="mt-1 text-2xl font-semibold text-[var(--text-heading)]">{cards.length}</div>
-              </div>
-
-              {canWrite && (
-                <button
-                  onClick={() => {
-                    setCreateIssueContext({ sprintId: null });
-                    setShowModal(true);
-                  }}
-                  className="flex items-center gap-2 rounded-[3px] bg-[#0052CC] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#0065FF]"
-                >
-                  <Plus size={18} strokeWidth={2.5} />
-                  Create Issue
-                </button>
-              )}
-            </div>
+      {/* ─── Project Header: Jira-style flat header ─── */}
+      <header className="mb-0 shrink-0">
+        <div className="flex items-center justify-between py-3 px-1">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold tracking-tight text-[var(--text-heading)] truncate">
+              {project.name}
+            </h1>
           </div>
+          {canWrite && (
+            <button
+              onClick={() => {
+                setCreateIssueContext({ sprintId: null });
+                setShowModal(true);
+              }}
+              className="flex items-center gap-2 rounded-[3px] bg-[#0052CC] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#0065FF] shrink-0 ml-4"
+            >
+              <Plus size={16} strokeWidth={2.5} />
+              Create Issue
+            </button>
+          )}
         </div>
       </header>
 
-      <div className="mb-6 shrink-0 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-1.5 shadow-sm">
-        <div className="flex overflow-x-auto">
+      {/* ─── Tab Navigation: Jira-style flat underline tabs ─── */}
+      <div className="mb-4 shrink-0 border-b border-[var(--border-subtle)]">
+        <div className="flex flex-wrap">
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium transition-all whitespace-nowrap ${
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all whitespace-nowrap border-b-2 -mb-px ${
                 activeTab === tab.id
-                  ? 'text-[var(--accent-primary)]'
-                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)]'
+                  ? 'border-[#0052CC] text-[#0052CC]'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-subtle)]'
               }`}
-              style={activeTab === tab.id ? {
-                background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent-primary) 12%, white 88%), color-mix(in srgb, var(--accent-subtle) 85%, white 15%))',
-                boxShadow: '0 10px 30px rgba(37, 99, 235, 0.08)',
-              } : undefined}
             >
-              <tab.icon size={16} />
+              <tab.icon size={15} />
               {tab.name}
             </button>
           ))}

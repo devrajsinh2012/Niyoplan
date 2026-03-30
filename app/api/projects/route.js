@@ -11,6 +11,9 @@ export async function GET(request) {
     return NextResponse.json({ error: error || 'Unauthorized' }, { status: 401 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const organizationId = searchParams.get('organizationId');
+
   try {
     // 1. Get user's active organizations
     const { data: orgMembers, error: orgError } = await supabaseAdmin
@@ -28,14 +31,24 @@ export async function GET(request) {
     }
 
     // 2. Filter projects to only those within the user's organizations
-    const { data: projects, error: projectsError } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('projects')
       .select(`
         *,
         profiles ( full_name, avatar_url ),
         cards ( count )
       `)
-      .in('organization_id', orgIds)
+      .in('organization_id', orgIds);
+
+    // 3. Further filter by organizationId if provided
+    if (organizationId && orgIds.includes(organizationId)) {
+      query = query.eq('organization_id', organizationId);
+    } else if (organizationId) {
+      // If organizationId is provided but user is not a member, return empty
+      return NextResponse.json([]);
+    }
+
+    const { data: projects, error: projectsError } = await query
       .order('created_at', { ascending: false });
 
     if (projectsError) throw projectsError;
@@ -57,10 +70,10 @@ export async function POST(request) {
   }
 
   try {
-    const { name, description, prefix } = await request.json();
+    const { name, description, prefix, organizationId } = await request.json();
     
-    if (!name || !prefix) {
-      return NextResponse.json({ error: 'Name and prefix are required' }, { status: 400 });
+    if (!name || !prefix || !organizationId) {
+      return NextResponse.json({ error: 'Name, prefix, and organizationId are required' }, { status: 400 });
     }
 
     const { data: project, error: projectError } = await supabaseAdmin
@@ -69,6 +82,7 @@ export async function POST(request) {
         name,
         description,
         prefix: prefix.toUpperCase(),
+        organization_id: organizationId,
         created_by: user.id
       })
       .select()

@@ -52,7 +52,6 @@ export default function DashboardPage() {
   const [todayStats, setTodayStats] = useState(EMPTY_TODAY_STATS);
   const [activities, setActivities] = useState([]);
   const [recentIssues, setRecentIssues] = useState([]);
-  const [workload, setWorkload] = useState([]);
   const [activeSprint, setActiveSprint] = useState(null);
   const [activeSprintCount, setActiveSprintCount] = useState(0);
   const [activeSprints, setActiveSprints] = useState([]);
@@ -70,7 +69,6 @@ export default function DashboardPage() {
         setActiveSprints([]);
         setActivities([]);
         setRecentIssues([]);
-        setWorkload([]);
         return;
       }
 
@@ -99,7 +97,6 @@ export default function DashboardPage() {
         setActiveSprints([]);
         setActivities([]);
         setRecentIssues([]);
-        setWorkload([]);
         return;
       }
 
@@ -208,24 +205,6 @@ export default function DashboardPage() {
       setActiveSprints(sprintPortfolio);
       setActivities(activityLogs || []);
       setRecentIssues(recent || []);
-
-      // Compute workload per user
-      const userMap = {};
-      (cardData || []).forEach(c => {
-        const uid = c.assignee_id;
-        if (!uid) return;
-        if (!userMap[uid]) {
-          userMap[uid] = {
-            name: c.profiles?.full_name || 'Unknown',
-            avatar: c.profiles?.avatar_url,
-            totalCards: 0,
-            totalSP: 0,
-          };
-        }
-        userMap[uid].totalCards++;
-        userMap[uid].totalSP += (c.story_points || 0);
-      });
-      setWorkload(Object.values(userMap).sort((a, b) => b.totalCards - a.totalCards).slice(0, 5));
     } catch (err) {
       console.error('Dashboard fetch error:', err);
     } finally {
@@ -527,9 +506,9 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 recentIssues.map(issue => (
-                  <Link
-                    href={`/projects/${issue.project_id}?tab=board&cardId=${issue.id}`}
+                  <div
                     key={issue.id}
+                    onClick={() => router.push(`/projects/${issue.project_id}?tab=board&cardId=${issue.id}`)}
                     className="flex gap-6 px-6 py-5 transition-colors hover:bg-[var(--bg-panel-hover)] cursor-pointer group"
                   >
                     <div className="mt-1.5 flex flex-col items-center">
@@ -549,7 +528,12 @@ export default function DashboardPage() {
                         <span>{relativeTime(issue.created_at)}</span>
                       </div>
                     </div>
-                  </Link>
+                    <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <svg className="w-4 h-4 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </div>
                 ))
               )}
               <Link
@@ -561,60 +545,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Workload Balance */}
-          <div className="overflow-hidden rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-sm">
-            <div className="border-b border-[var(--border-subtle)] px-6 py-6 bg-[var(--bg-panel)]">
-              <h3 className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em]">
-                Workload Balance
-              </h3>
-            </div>
-            <div className="p-8">
-              {workload.length === 0 ? (
-                <div className="py-12 text-center text-sm text-[var(--text-muted)] opacity-60">
-                  No active assignments
-                </div>
-              ) : (
-                workload.map((w, i) => (
-                  <div key={i} className="mb-8 last:mb-0 group cursor-default">
-                    <div className="mb-3 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <UserAvatar
-                          user={{ full_name: w.name, avatar_url: w.avatar, id: w.id }}
-                          size={32}
-                          className="shrink-0 shadow-sm ring-1 ring-white"
-                        />
-                        <span className="truncate text-sm font-bold text-[var(--text-heading)] group-hover:text-[var(--accent-primary)] transition-colors">
-                          {w.name}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest bg-[var(--bg-panel-hover)] px-2.5 py-1 rounded border border-[var(--border-subtle)]">
-                        {w.totalCards} Open
-                      </span>
-                    </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--bg-panel-hover)]">
-                      <div 
-                        className="h-full bg-gradient-to-r from-[#0052CC] to-[#2684FF] rounded-full transition-all duration-700 shadow-[0_0_8px_rgba(0,82,204,0.2)]" 
-                        style={{ width: `${Math.min((w.totalCards / 10) * 100, 100)}%` }} 
-                      />
-                    </div>
-                  </div>
-                ))
-              )}
-              <div className="mt-10 pt-8 border-t border-[var(--border-subtle)] flex flex-wrap gap-x-6 gap-y-4 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">
-                <span className="flex items-center gap-2 group cursor-default hover:text-[#006644] transition-colors">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#006644] shadow-[0_0_5px_rgba(0,102,68,0.4)]" /> Done
-                </span>
-                <span className="flex items-center gap-2 group cursor-default hover:text-[#0052CC] transition-colors">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#0052CC] shadow-[0_0_5px_rgba(0,82,204,0.4)]" /> In Progress
-                </span>
-                <span className="flex items-center gap-2 group cursor-default hover:text-[#42526E] transition-colors">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#42526E] shadow-[0_0_5px_rgba(66,82,110,0.4)]" /> To Do
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Project Resources */}
+          {/* Today Focus */}
           <div className="overflow-hidden rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-sm">
             <div className="border-b border-[var(--border-subtle)] px-6 py-6 bg-[var(--bg-panel)]">
               <h3 className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em]">

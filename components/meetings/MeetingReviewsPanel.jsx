@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
 import { MeetingsPanelSkeleton } from '@/components/ui/PageSkeleton';
+import { apiFetch } from '@/lib/apiClient';
 
 export default function MeetingReviewsPanel({ projectId }) {
   const [pmReviews, setPmReviews] = useState([]);
@@ -31,17 +32,17 @@ export default function MeetingReviewsPanel({ projectId }) {
     setLoading(true);
     try {
       const loadPm = async () => {
-        const res = await fetch(`/api/projects/${projectId}/meetings/pm`);
+        const res = await apiFetch(`/api/projects/${projectId}/meetings/pm`);
         if (!res.ok) return [];
         return res.json();
       };
       const loadHr = async () => {
-        const res = await fetch(`/api/projects/${projectId}/meetings/hr`);
+        const res = await apiFetch(`/api/projects/${projectId}/meetings/hr`);
         if (!res.ok) return [];
         return res.json();
       };
       const loadCal = async () => {
-        const res = await fetch(`/api/projects/${projectId}/meetings/calendar`);
+        const res = await apiFetch(`/api/projects/${projectId}/meetings/calendar`);
         if (!res.ok) return [];
         return res.json();
       };
@@ -71,9 +72,8 @@ export default function MeetingReviewsPanel({ projectId }) {
         .filter(Boolean)
         .map((title) => ({ title }));
 
-      const res = await fetch(`/api/projects/${projectId}/meetings/pm`, {
+      const res = await apiFetch(`/api/projects/${projectId}/meetings/pm`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...pmForm, action_items: actionItems })
       });
 
@@ -95,9 +95,8 @@ export default function MeetingReviewsPanel({ projectId }) {
   const submitHrReview = async (event) => {
     event.preventDefault();
     try {
-      const res = await fetch(`/api/projects/${projectId}/meetings/hr`, {
+      const res = await apiFetch(`/api/projects/${projectId}/meetings/hr`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(hrForm)
       });
 
@@ -117,7 +116,7 @@ export default function MeetingReviewsPanel({ projectId }) {
 
   const convertActionItem = async (actionItemId) => {
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/projects/${projectId}/meetings/action-items/${actionItemId}/convert-to-card`,
         { method: 'POST' }
       );
@@ -137,7 +136,7 @@ export default function MeetingReviewsPanel({ projectId }) {
 
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/projects/${projectId}/meetings/${type}/${id}`, {
+      const res = await apiFetch(`/api/projects/${projectId}/meetings/${type}/${id}`, {
         method: 'DELETE'
       });
       if (!res.ok) throw new Error(`Failed to delete ${type} review`);

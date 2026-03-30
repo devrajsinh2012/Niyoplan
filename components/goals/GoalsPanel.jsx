@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { GoalsPanelSkeleton } from '@/components/ui/PageSkeleton';
 import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
+import { apiFetch } from '@/lib/apiClient';
 
 export default function GoalsPanel({ projectId }) {
   const [goals, setGoals] = useState([]);
@@ -21,7 +22,7 @@ export default function GoalsPanel({ projectId }) {
   const loadGoals = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/projects/${projectId}/goals`);
+      const res = await apiFetch(`/api/projects/${projectId}/goals`);
       if (!res.ok) {
         // Treat missing endpoint/data as empty state to avoid noisy toasts.
         if (res.status === 404) {
@@ -61,9 +62,8 @@ export default function GoalsPanel({ projectId }) {
         key_results: goalForm.key_results.filter((kr) => kr.title)
       };
 
-      const res = await fetch(`/api/projects/${projectId}/goals`, {
+      const res = await apiFetch(`/api/projects/${projectId}/goals`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
@@ -104,7 +104,7 @@ export default function GoalsPanel({ projectId }) {
   const deleteGoal = async (goalId) => {
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/projects/${projectId}/goals/${goalId}`, {
+      const res = await apiFetch(`/api/projects/${projectId}/goals/${goalId}`, {
         method: 'DELETE'
       });
       if (!res.ok) throw new Error('Failed to delete goal');
@@ -121,9 +121,8 @@ export default function GoalsPanel({ projectId }) {
 
   const generateNarrative = async (goal) => {
     try {
-      const res = await fetch('/api/ai/goal-narrative', {
+      const res = await apiFetch('/api/ai/goal-narrative', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ goal, keyResults: goal.key_results || [] })
       });
       const data = await res.json();

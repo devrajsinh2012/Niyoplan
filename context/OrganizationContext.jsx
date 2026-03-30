@@ -1,8 +1,8 @@
 'use client';
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+import { apiFetch } from '@/lib/apiClient';
 
 const OrganizationContext = createContext({
   activeOrganization: null,
@@ -46,19 +46,7 @@ export function OrganizationProvider({ children }) {
     setLoading(true);
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-
-      if (!token) {
-        setUserOrganizations([]);
-        setActiveOrganization(null);
-        setLoading(false);
-        return;
-      }
-
-      const response = await fetch('/api/organizations', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await apiFetch('/api/organizations');
 
       if (!response.ok) {
         throw new Error('Failed to load organizations');

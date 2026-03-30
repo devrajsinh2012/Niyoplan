@@ -51,11 +51,13 @@ export default function KanbanColumn({ list, cards, onCardOpen, onQuickAddCard }
         {...attributes}
         {...listeners}
       >
-        <h3 className="kanban-column-title">
+        <h3 className="kanban-column-title uppercase text-[11px] font-bold tracking-wider text-[#5E6C84]">
           {list.title}
-          <span className="card-count">{cards.length}</span>
+          <span className="card-count ml-2 bg-[#EBECF0] text-[#42526E] px-1.5 py-0.5 rounded-full text-[10px]">{cards.length}</span>
         </h3>
-        <button className="column-menu-btn" onClick={() => toast('List options coming soon')}>⋯</button>
+        <button className="column-menu-btn text-[#6B778C] hover:bg-[#EBECF0] p-1 rounded-md transition-colors" onClick={() => toast('List options coming soon')}>
+          <span className="text-lg leading-none">⋯</span>
+        </button>
       </div>
 
       <div className="kanban-column-body">

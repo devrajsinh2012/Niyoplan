@@ -109,14 +109,11 @@ export default function AppShell({ children }) {
 
   return (
     <div className="relative flex h-screen w-full flex-col overflow-hidden bg-[var(--bg-app)]">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-[-10rem] top-[-9rem] h-[26rem] w-[26rem] rounded-full bg-[var(--shell-ambient-1)] blur-3xl opacity-70" />
-        <div className="absolute right-[-7rem] top-10 h-[22rem] w-[22rem] rounded-full bg-[var(--shell-ambient-2)] blur-3xl opacity-60" />
-      </div>
       {/* ─── Top Navigation Bar ─── */}
       <TopNav
         theme={theme}
         onToggleTheme={toggleTheme}
+        currentProject={currentProject}
       />
 
       {/* ─── Body: Sidebar + Content ─── */}
@@ -132,14 +129,6 @@ export default function AppShell({ children }) {
         <main
           className={`relative flex min-w-0 flex-1 flex-col overflow-hidden transition-[margin] duration-200 ${sidebarExpanded ? 'ml-60' : 'ml-16'}`}
         >
-          {/* Subtle gradient overlay at top (Jira-style depth) */}
-          <div
-            className="pointer-events-none absolute inset-0 z-0"
-            style={{
-              background: 'radial-gradient(circle at top left, color-mix(in srgb, var(--accent-primary) 10%, transparent), transparent 38%), radial-gradient(circle at top right, color-mix(in srgb, var(--shell-ambient-2) 78%, transparent), transparent 28%)',
-            }}
-          />
-
           <div className="relative z-10 flex-1 overflow-y-auto px-6 py-5">
             {children}
           </div>

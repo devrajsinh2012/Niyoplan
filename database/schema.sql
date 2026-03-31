@@ -393,14 +393,19 @@ BEGIN
     new.raw_user_meta_data->>'full_name', 
     new.raw_user_meta_data->>'avatar_url',
     CASE
-      WHEN is_first_user THEN 'admin'::user_role
-      WHEN invited_role IN ('admin', 'pm', 'qa', 'developer', 'member', 'viewer') THEN invited_role::user_role
-      ELSE 'member'::user_role
+      WHEN is_first_user THEN 'admin'::public.user_role
+      WHEN invited_role IN ('admin', 'pm', 'qa', 'developer', 'member', 'viewer') THEN invited_role::public.user_role
+      ELSE 'member'::public.user_role
     END
-  );
+  )
+  ON CONFLICT (id) DO UPDATE
+  SET full_name = COALESCE(EXCLUDED.full_name, public.profiles.full_name),
+      avatar_url = COALESCE(EXCLUDED.avatar_url, public.profiles.avatar_url),
+      role = EXCLUDED.role,
+      updated_at = timezone('utc'::text, now());
   RETURN new;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users

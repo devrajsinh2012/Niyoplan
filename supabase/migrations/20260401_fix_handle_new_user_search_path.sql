@@ -1,3 +1,4 @@
+-- Fix auth signup trigger so Supabase can resolve custom types during user creation.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE

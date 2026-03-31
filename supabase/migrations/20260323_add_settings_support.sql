@@ -58,7 +58,7 @@ BEGIN
   -- Delete auth user
   DELETE FROM auth.users WHERE id = user_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- ============================================
 -- 6. Migrate existing project creators to project_members
@@ -75,6 +75,7 @@ ON CONFLICT (project_id, user_id) DO NOTHING;
 ALTER TABLE project_members ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can view members of projects they belong to
+DROP POLICY IF EXISTS "Users can view project members" ON project_members;
 CREATE POLICY "Users can view project members" ON project_members
   FOR SELECT
   USING (
@@ -84,6 +85,7 @@ CREATE POLICY "Users can view project members" ON project_members
   );
 
 -- Policy: Only project admins can insert members
+DROP POLICY IF EXISTS "Project admins can add members" ON project_members;
 CREATE POLICY "Project admins can add members" ON project_members
   FOR INSERT
   WITH CHECK (
@@ -94,6 +96,7 @@ CREATE POLICY "Project admins can add members" ON project_members
   );
 
 -- Policy: Only project admins can update member roles
+DROP POLICY IF EXISTS "Project admins can update members" ON project_members;
 CREATE POLICY "Project admins can update members" ON project_members
   FOR UPDATE
   USING (
@@ -104,6 +107,7 @@ CREATE POLICY "Project admins can update members" ON project_members
   );
 
 -- Policy: Only project admins can remove members
+DROP POLICY IF EXISTS "Project admins can remove members" ON project_members;
 CREATE POLICY "Project admins can remove members" ON project_members
   FOR DELETE
   USING (
@@ -124,6 +128,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_project_members_updated_at ON project_members;
 CREATE TRIGGER update_project_members_updated_at
   BEFORE UPDATE ON project_members
   FOR EACH ROW

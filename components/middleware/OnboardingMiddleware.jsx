@@ -1,17 +1,20 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { useOrganization } from '@/context/OrganizationContext';
 import { supabase } from '@/lib/supabase';
 import NiyoplanLoader from '@/components/ui/NiyoplanLoader';
 
 export default function OnboardingMiddleware({ children }) {
   const { user, profile, loading: authLoading } = useAuth();
+  const { activeOrganization } = useOrganization();
   const router = useRouter();
   const pathname = usePathname();
   const [checking, setChecking] = useState(true);
-  const [hasOrganization, setHasOrganization] = useState(false);
+  const [hasOrganization, setHasOrganization] = useState(null);
+  const onboardingCacheRef = useRef({ userId: null, status: null });
 
   // Pages that don't require onboarding
   const allowedPaths = [
@@ -38,8 +41,6 @@ export default function OnboardingMiddleware({ children }) {
       return;
     }
 
-    setChecking(true);
-
     if (!user) {
       router.replace('/login');
       return;
@@ -47,8 +48,30 @@ export default function OnboardingMiddleware({ children }) {
 
     // Wait until the profile is available for authenticated users.
     if (!profile?.id) {
+      setChecking(true);
       return;
     }
+
+    if (activeOrganization?.id) {
+      onboardingCacheRef.current = { userId: profile.id, status: true };
+      setHasOrganization(true);
+      setChecking(false);
+      return;
+    }
+
+    const cached = onboardingCacheRef.current;
+    if (cached.userId === profile.id && cached.status !== null) {
+      setHasOrganization(cached.status);
+      setChecking(false);
+
+      if (cached.status === false) {
+        router.replace('/onboarding');
+      }
+
+      return;
+    }
+
+    setChecking(true);
 
     try {
       // Check if user has an active organization membership
@@ -61,6 +84,7 @@ export default function OnboardingMiddleware({ children }) {
         .single();
 
       if (membership) {
+        onboardingCacheRef.current = { userId: profile.id, status: true };
         setHasOrganization(true);
       } else {
         // Check if user has any pending memberships
@@ -74,9 +98,11 @@ export default function OnboardingMiddleware({ children }) {
 
         if (pendingMembership) {
           // User has pending membership, show waiting screen
+          onboardingCacheRef.current = { userId: profile.id, status: 'pending' };
           setHasOrganization('pending');
         } else {
           // No organization at all, need onboarding
+          onboardingCacheRef.current = { userId: profile.id, status: false };
           setHasOrganization(false);
           router.replace('/onboarding');
           return;
@@ -91,7 +117,7 @@ export default function OnboardingMiddleware({ children }) {
     }
 
     setChecking(false);
-  }, [authLoading, isAllowedPath, profile?.id, router, user]);
+  }, [activeOrganization?.id, authLoading, isAllowedPath, profile?.id, router, user]);
 
   useEffect(() => {
     checkOnboardingStatus();

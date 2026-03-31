@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Loader2, TrendingUp, Activity } from 'lucide-react';
-import { getSupabaseAuthHeaders } from '@/lib/apiClient';
+import { apiFetch } from '@/lib/apiClient';
 
 function LineChart({ points = [], lines = [], width = 760, height = 240 }) {
   const padding = { top: 16, right: 16, bottom: 26, left: 36 };
@@ -91,10 +91,8 @@ export default function SprintInsightsModal({ projectId, sprintId, onClose }) {
       setMetrics(null);
 
       try {
-        const headers = await getSupabaseAuthHeaders();
-        const res = await fetch(`/api/projects/${projectId}/sprints/${sprintId}/metrics`, {
+        const res = await apiFetch(`/api/projects/${projectId}/sprints/${sprintId}/metrics`, {
           cache: 'no-store',
-          headers,
         });
 
         if (!res.ok) {

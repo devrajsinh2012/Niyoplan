@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { supabase } from '@/lib/supabase';
+import { apiFetch } from '@/lib/apiClient';
 
 const INITIAL_VIEW_DATA = {
   list: [],
@@ -20,28 +20,12 @@ export default function WorkspaceViewsPanel({ projectId }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const getAuthHeaders = useCallback(async () => {
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
-
-    if (!token) {
-      throw new Error('Your session expired. Please log in again.');
-    }
-
-    return {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`
-    };
-  }, []);
-
   const loadViews = useCallback(async () => {
     setLoading(true);
 
     try {
-      const headers = await getAuthHeaders();
-
       const loadList = async (url, label) => {
-        const res = await fetch(url, { headers });
+        const res = await apiFetch(url);
 
         if (!res.ok) {
           const payload = await res.json().catch(() => null);
@@ -68,7 +52,7 @@ export default function WorkspaceViewsPanel({ projectId }) {
     } finally {
       setLoading(false);
     }
-  }, [getAuthHeaders, projectId]);
+  }, [projectId]);
 
   useEffect(() => {
     if (projectId) {
@@ -84,10 +68,8 @@ export default function WorkspaceViewsPanel({ projectId }) {
 
   const markRead = async (id) => {
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`/api/projects/${projectId}/notifications/${id}/read`, {
+      const res = await apiFetch(`/api/projects/${projectId}/notifications/${id}/read`, {
         method: 'PATCH',
-        headers
       });
 
       if (!res.ok) {

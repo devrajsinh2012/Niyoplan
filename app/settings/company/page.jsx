@@ -21,6 +21,7 @@ import toast from 'react-hot-toast';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import { CompanySettingsPageSkeleton } from '@/components/ui/PageSkeleton';
 import { useOrganization } from '@/context/OrganizationContext';
+import { apiFetch } from '@/lib/apiClient';
 
 export default function CompanySettingsPage() {
   const router = useRouter();
@@ -174,14 +175,8 @@ export default function CompanySettingsPage() {
 
   const handleMemberAction = async (memberId, action, newRole = null) => {
     try {
-      const token = (await supabase.auth.getSession()).data.session?.access_token;
-
-      const response = await fetch(`/api/organizations/${organization.id}/members`, {
+      const response = await apiFetch(`/api/organizations/${organization.id}/members`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({ memberId, action, newRole })
       });
 
@@ -211,13 +206,8 @@ export default function CompanySettingsPage() {
     if (!organization) return;
 
     try {
-      const token = (await supabase.auth.getSession()).data.session?.access_token;
-
-      const response = await fetch(`/api/organizations/${organization.id}/regenerate-code`, {
+      const response = await apiFetch(`/api/organizations/${organization.id}/regenerate-code`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
       });
 
       if (response.ok) {
@@ -244,13 +234,8 @@ export default function CompanySettingsPage() {
     }
 
     try {
-      const token = (await supabase.auth.getSession()).data.session?.access_token;
-
-      const response = await fetch(`/api/organizations/${organization.id}`, {
+      const response = await apiFetch(`/api/organizations/${organization.id}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
       });
 
       if (response.ok) {

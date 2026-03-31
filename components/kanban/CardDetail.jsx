@@ -194,9 +194,8 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
 
   const handleToggleSubtask = async (subtaskId, completed) => {
     try {
-      const res = await fetch(`/api/cards/${card.id}/subtasks/${subtaskId}`, {
+      const res = await apiFetch(`/api/cards/${card.id}/subtasks/${subtaskId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ completed: !completed })
       });
 
@@ -211,7 +210,7 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
 
   const handleDeleteSubtask = async (subtaskId) => {
     try {
-      const res = await fetch(`/api/cards/${card.id}/subtasks/${subtaskId}`, {
+      const res = await apiFetch(`/api/cards/${card.id}/subtasks/${subtaskId}`, {
         method: 'DELETE'
       });
 
@@ -272,7 +271,7 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
   const handleDeleteCard = async () => {
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/cards/${card.id}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/cards/${card.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete card');
       toast.success('Card deleted');
       setShowDeleteConfirm(false);

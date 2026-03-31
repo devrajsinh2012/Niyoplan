@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Plus, ChevronDown, Trash2, Mail, CheckCircle2, XCircle, Clock, Search,
-  MoreHorizontal, AlertCircle
+  Plus, ChevronDown, Trash2, Mail, CheckCircle2, Clock, Search, AlertCircle
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useOrganization } from '@/context/OrganizationContext';
+import { apiFetch } from '@/lib/apiClient';
 import UserAvatar from '@/components/ui/UserAvatar';
-import InputModal from '@/components/ui/InputModal';
 import ConfirmModal from '@/components/ui/ConfirmModal';
+import NiyoplanLoader from '@/components/ui/NiyoplanLoader';
 import toast from 'react-hot-toast';
 import BrandMark from '@/components/ui/BrandMark';
 
@@ -30,9 +30,23 @@ const getRoleColor = (role) => {
   return colors[role] || colors.member;
 };
 
+const normalizeOrgMember = (member) => ({
+  id: member.user_id,
+  user_id: member.user_id,
+  org_member_id: member.id,
+  full_name: member.profiles?.full_name || 'Unknown',
+  email: member.email || 'No email',
+  avatar_url: member.profiles?.avatar_url,
+  role: member.role,
+  org_role: member.role,
+  status: member.status,
+  joined_at: member.joined_at,
+  created_at: member.joined_at,
+});
+
 export default function AdminSettingsPage() {
-  const { profile } = useAuth();
-  const { activeOrganization } = useOrganization();
+  const { profile, loading: authLoading } = useAuth();
+  const { activeOrganization, loading: orgLoading } = useOrganization();
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,29 +59,69 @@ export default function AdminSettingsPage() {
   const [isInvitingSending, setIsInvitingSending] = useState(false);
   const [pendingApprovals, setPendingApprovals] = useState([]);
 
-  // Fetch users scoped to active organization
-  useEffect(() => {
-    const fetchUsers = async () => {
-      setIsLoading(true);
-      try {
-        const orgId = activeOrganization?.id;
-        const url = orgId ? `/api/admin/users?orgId=${orgId}` : '/api/admin/users';
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('Failed to fetch users');
+  const loadUsers = React.useCallback(async () => {
+    if (authLoading || orgLoading) {
+      return;
+    }
+
+    if (!profile?.id) {
+      setUsers([]);
+      setPendingApprovals([]);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      if (activeOrganization?.id) {
+        const res = await apiFetch(`/api/organizations/${activeOrganization.id}/members`);
+
+        if (!res.ok) {
+          throw new Error('Failed to fetch organization members');
+        }
+
         const data = await res.json();
-        setUsers(data || []);
-      } catch (err) {
-        console.error(err);
-        toast.error('Failed to load users');
-      } finally {
-        setIsLoading(false);
+        const normalizedMembers = Array.isArray(data) ? data.map(normalizeOrgMember) : [];
+
+        setUsers(normalizedMembers.filter((member) => member.status === 'active'));
+        setPendingApprovals(normalizedMembers.filter((member) => member.status === 'pending'));
+        return;
       }
-    };
 
-    fetchUsers();
-  }, [activeOrganization?.id]);
+      if (profile?.role === 'admin') {
+        const res = await apiFetch('/api/admin/users');
 
-  // Check if current user is admin of the active organization
+        if (!res.ok) {
+          throw new Error('Failed to fetch users');
+        }
+
+        const data = await res.json();
+        setUsers(Array.isArray(data) ? data : []);
+        setPendingApprovals([]);
+        return;
+      }
+
+      setUsers([]);
+      setPendingApprovals([]);
+    } catch (err) {
+      console.error(err);
+      toast.error(activeOrganization?.id ? 'Failed to load organization members' : 'Failed to load users');
+      setUsers([]);
+      setPendingApprovals([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeOrganization?.id, authLoading, orgLoading, profile?.id, profile?.role]);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
+
+  if (authLoading || orgLoading) {
+    return <NiyoplanLoader />;
+  }
+
   const isAdmin = activeOrganization?.role === 'admin' || profile?.role === 'admin';
   if (!isAdmin) {
     return (
@@ -88,21 +142,33 @@ export default function AdminSettingsPage() {
     (u.email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
   );
 
-  // Display org_role if available, else global role
-  const getUserDisplayRole = (u) => u.org_role || u.role;
-
-  const handleRoleUpdate = async (userId, newRole) => {
+  const handleRoleUpdate = async (user, newRole) => {
     try {
-      const res = await fetch(`/api/admin/users/${userId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: newRole })
-      });
+      if (activeOrganization?.id) {
+        const res = await apiFetch(`/api/organizations/${activeOrganization.id}/members`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            memberId: user.org_member_id,
+            action: 'changeRole',
+            newRole
+          })
+        });
 
-      if (!res.ok) throw new Error('Failed to update role');
-      
-      const updatedUser = await res.json();
-      setUsers(users.map(u => u.id === userId ? updatedUser : u));
+        if (!res.ok) throw new Error('Failed to update role');
+
+        await loadUsers();
+      } else {
+        const res = await apiFetch(`/api/admin/users/${user.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ role: newRole })
+        });
+
+        if (!res.ok) throw new Error('Failed to update role');
+
+        const updatedUser = await res.json();
+        setUsers((currentUsers) => currentUsers.map((currentUser) => currentUser.id === user.id ? updatedUser : currentUser));
+      }
+
       setShowRoleDropdown(null);
       toast.success(`User role updated to ${newRole}`);
     } catch (err) {
@@ -111,25 +177,81 @@ export default function AdminSettingsPage() {
     }
   };
 
-  const handleDeleteUser = async (userId) => {
+  const handleDeleteUser = async (user) => {
     try {
-      const res = await fetch(`/api/admin/users/${userId}`, {
-        method: 'DELETE'
-      });
+      if (activeOrganization?.id) {
+        const res = await apiFetch(`/api/organizations/${activeOrganization.id}/members`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            memberId: user.org_member_id,
+            action: 'remove'
+          })
+        });
 
-      if (!res.ok) throw new Error('Failed to delete user');
-      
-      setUsers(users.filter(u => u.id !== userId));
+        if (!res.ok) throw new Error('Failed to remove user');
+
+        await loadUsers();
+      } else {
+        const res = await apiFetch(`/api/admin/users/${user.id}`, {
+          method: 'DELETE'
+        });
+
+        if (!res.ok) throw new Error('Failed to delete user');
+
+        setUsers((currentUsers) => currentUsers.filter((currentUser) => currentUser.id !== user.id));
+      }
+
       setShowDeleteConfirm(null);
-      toast.success('User removed');
+      toast.success(activeOrganization?.id ? 'Member removed' : 'User removed');
     } catch (err) {
       console.error(err);
       toast.error('Failed to remove user');
     }
   };
 
+  const handleMemberAction = async (member, action, newRole = null) => {
+    if (!activeOrganization?.id) {
+      return;
+    }
+
+    try {
+      const res = await apiFetch(`/api/organizations/${activeOrganization.id}/members`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          memberId: member.org_member_id,
+          action,
+          newRole
+        })
+      });
+
+      if (!res.ok) throw new Error(`Failed to ${action} member`);
+
+      await loadUsers();
+      setShowRoleDropdown(null);
+      setShowDeleteConfirm(null);
+
+      if (action === 'approve') {
+        toast.success('Join request approved');
+      } else if (action === 'reject') {
+        toast.success('Join request declined');
+      } else if (action === 'changeRole') {
+        toast.success(`User role updated to ${newRole}`);
+      } else if (action === 'remove') {
+        toast.success('Member removed');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(action === 'changeRole' ? 'Failed to update user role' : 'Failed to process member action');
+    }
+  };
+
   const handleSendInvites = async (e) => {
     e.preventDefault();
+    if (!canSendGlobalInvites) {
+      toast.error('Use the company settings page to invite teammates for this organization');
+      return;
+    }
+
     if (!inviteEmails.trim()) {
       toast.error('Please enter at least one email');
       return;
@@ -148,9 +270,8 @@ export default function AdminSettingsPage() {
         return;
       }
 
-      const res = await fetch('/api/admin/users', {
+      const res = await apiFetch('/api/admin/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ emails, role: inviteRole })
       });
 
@@ -166,6 +287,8 @@ export default function AdminSettingsPage() {
       setIsInvitingSending(false);
     }
   };
+
+  const canSendGlobalInvites = !activeOrganization?.id || profile?.role === 'admin';
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)]">
@@ -204,7 +327,7 @@ export default function AdminSettingsPage() {
                   : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
-              Pending Invites {pendingApprovals.length > 0 && <span className="inline-flex items-center justify-center w-5 h-5 text-xs bg-orange-100 text-orange-700 rounded-full">{pendingApprovals.length}</span>}
+              Pending Requests {pendingApprovals.length > 0 && <span className="inline-flex items-center justify-center w-5 h-5 text-xs bg-orange-100 text-orange-700 rounded-full">{pendingApprovals.length}</span>}
             </button>
           </div>
         </div>
@@ -224,13 +347,15 @@ export default function AdminSettingsPage() {
                   className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--border-subtle)] bg-white text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0052CC] focus:border-transparent transition-all"
                 />
               </div>
-              <button
-                onClick={() => setShowInviteModal(true)}
-                className="flex items-center gap-2 rounded-lg bg-[#0052CC] px-4 py-2 text-sm font-semibold text-white hover:bg-[#003D99] transition-colors whitespace-nowrap"
-              >
-                <Plus size={16} />
-                Invite Users
-              </button>
+              {canSendGlobalInvites && (
+                <button
+                  onClick={() => setShowInviteModal(true)}
+                  className="flex items-center gap-2 rounded-lg bg-[#0052CC] px-4 py-2 text-sm font-semibold text-white hover:bg-[#003D99] transition-colors whitespace-nowrap"
+                >
+                  <Plus size={16} />
+                  Invite Users
+                </button>
+              )}
             </div>
 
             {/* Users Table */}
@@ -285,7 +410,7 @@ export default function AdminSettingsPage() {
                                     {ROLE_OPTIONS.map((roleOption) => (
                                       <button
                                         key={roleOption.value}
-                                        onClick={() => handleRoleUpdate(user.id, roleOption.value)}
+                                        onClick={() => handleRoleUpdate(user, roleOption.value)}
                                         className={`w-full text-left px-4 py-2.5 text-sm rounded hover:bg-[var(--bg-panel)] transition-colors ${
                                           user.role === roleOption.value ? 'font-semibold bg-blue-50 text-blue-700' : 'text-[var(--text-primary)]'
                                         }`}
@@ -299,8 +424,8 @@ export default function AdminSettingsPage() {
                               </div>
                             </td>
                             <td className="px-6 py-4 text-sm text-[var(--text-muted)]">
-                              {user.created_at
-                                ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                              {user.joined_at || user.created_at
+                                ? new Date(user.joined_at || user.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                                 : 'N/A'}
                             </td>
                             <td className="px-6 py-4 text-right">
@@ -310,7 +435,7 @@ export default function AdminSettingsPage() {
                                 )}
                                 {!isCurrentUser && (
                                   <button
-                                    onClick={() => setShowDeleteConfirm(user.id)}
+                                    onClick={() => setShowDeleteConfirm(user)}
                                     className="p-2 rounded hover:bg-red-50 text-red-600 transition-colors"
                                     title="Remove user"
                                   >
@@ -351,8 +476,8 @@ export default function AdminSettingsPage() {
             {pendingApprovals.length === 0 ? (
               <div className="rounded-lg border border-[var(--border-subtle)] bg-white p-12 text-center">
                 <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-4 opacity-50" />
-                <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">No Pending Approvals</h3>
-                <p className="text-[var(--text-muted)]">All user invitations have been processed</p>
+                <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">No Pending Requests</h3>
+                <p className="text-[var(--text-muted)]">All join requests have been processed</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -361,11 +486,25 @@ export default function AdminSettingsPage() {
                     <div className="flex items-center gap-4">
                       <Clock className="text-amber-500" size={20} />
                       <div>
-                        <p className="font-medium text-[var(--text-primary)]">{approval.email}</p>
-                        <p className="text-sm text-[var(--text-muted)]">Invited on {new Date(approval.invited_at).toLocaleDateString()}</p>
+                        <p className="font-medium text-[var(--text-primary)]">{approval.full_name}</p>
+                        <p className="text-sm text-[var(--text-muted)]">{approval.email}</p>
+                        <p className="text-sm text-[var(--text-muted)]">Requested on {approval.joined_at ? new Date(approval.joined_at).toLocaleDateString() : 'N/A'}</p>
                       </div>
                     </div>
-                    <span className="text-xs font-medium bg-amber-100 text-amber-700 px-3 py-1 rounded">Pending</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleMemberAction(approval, 'approve')}
+                        className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 transition-colors"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleMemberAction(approval, 'reject')}
+                        className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+                      >
+                        Reject
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -375,7 +514,7 @@ export default function AdminSettingsPage() {
       </main>
 
       {/* Invite Modal */}
-      {showInviteModal && (
+      {showInviteModal && canSendGlobalInvites && (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-lg rounded-lg bg-white shadow-xl p-6 animate-fade-in">
             <div className="flex items-center gap-3 mb-4">

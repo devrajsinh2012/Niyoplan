@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import { X, Link as LinkIcon, Trash2, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { supabase } from '@/lib/supabase';
 import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
+import { apiFetch } from '@/lib/apiClient';
 import './DependencyManager.css';
 
 const DEPENDENCY_TYPES = [
@@ -36,19 +36,6 @@ export default function DependencyManager({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const getAuthHeaders = async () => {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData?.session?.access_token;
-    if (!token) {
-      throw new Error('You are not authenticated. Please sign in again.');
-    }
-
-    return {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    };
-  };
-
   // Initialize form when dependency is selected
   React.useEffect(() => {
     if (selectedDependency && isOpen) {
@@ -79,10 +66,8 @@ export default function DependencyManager({
 
     setIsSubmitting(true);
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`/api/projects/${projectId}/dependencies`, {
+      const res = await apiFetch(`/api/projects/${projectId}/dependencies`, {
         method: 'POST',
-        headers,
         body: JSON.stringify({
           predecessor_id: sourceId,
           successor_id: targetId,
@@ -112,10 +97,8 @@ export default function DependencyManager({
 
     setIsSubmitting(true);
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`/api/projects/${projectId}/dependencies/${selectedDependency.id}`, {
+      const res = await apiFetch(`/api/projects/${projectId}/dependencies/${selectedDependency.id}`, {
         method: 'PUT',
-        headers,
         body: JSON.stringify({
           type: depType,
           lead_or_lag_days: leadLagDays,
@@ -145,17 +128,8 @@ export default function DependencyManager({
 
     setIsSubmitting(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      if (!token) {
-        throw new Error('You are not authenticated. Please sign in again.');
-      }
-
-      const res = await fetch(`/api/projects/${projectId}/dependencies/${selectedDependency.id}`, {
+      const res = await apiFetch(`/api/projects/${projectId}/dependencies/${selectedDependency.id}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
 
       if (!res.ok) throw new Error('Failed to delete dependency');

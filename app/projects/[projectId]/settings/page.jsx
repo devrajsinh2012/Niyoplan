@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 import UserAvatar from '@/components/ui/UserAvatar';
 import {
   Settings, Users, Calendar, AlertTriangle, Plus, X, Archive, RefreshCw
@@ -10,6 +9,7 @@ import {
 import toast from 'react-hot-toast';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import { ProjectSettingsPageSkeleton } from '@/components/ui/PageSkeleton';
+import { apiFetch } from '@/lib/apiClient';
 
 const TABS = [
   { id: 'general', label: 'General', icon: Settings },
@@ -55,22 +55,7 @@ export default function ProjectSettingsPage() {
   const [memberToRemove, setMemberToRemove] = useState(null);
 
   const requestWithAuth = useCallback(async (url, options = {}) => {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData?.session?.access_token;
-
-    if (!token) {
-      throw new Error('Your session has expired. Please sign in again.');
-    }
-
-    const hasBody = options.body !== undefined;
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
-        ...(options.headers || {}),
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await apiFetch(url, options);
 
     if (response.status === 204) {
       return null;
@@ -111,30 +96,9 @@ export default function ProjectSettingsPage() {
 
   const fetchMembers = useCallback(async () => {
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-
-      if (!token) {
-        setMembers([]);
-        setMembersLoadError(true);
-        return;
-      }
-
-      const response = await fetch(`/api/projects/${projectId}/members`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const membersData = await response.json();
-        setMembers(membersData || []);
-        setMembersLoadError(false);
-      } else {
-        // Don't throw, just set empty state with error flag
-        setMembers([]);
-        setMembersLoadError(true);
-      }
+      const membersData = await requestWithAuth(`/api/projects/${projectId}/members`);
+      setMembers(membersData || []);
+      setMembersLoadError(false);
     } catch (error) {
       console.error('Error fetching members:', error);
       // Don't show error toast for members - just track the error state

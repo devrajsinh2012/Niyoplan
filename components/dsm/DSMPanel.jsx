@@ -5,6 +5,7 @@ import { formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+import { apiFetch } from '@/lib/apiClient';
 
 const moodOptions = ['great', 'good', 'okay', 'stressed'];
 
@@ -49,8 +50,8 @@ export default function DSMPanel({ projectId }) {
 
       if (entriesError) throw entriesError;
 
-      const latestRes = await fetch(`/api/projects/${projectId}/dsm/latest`);
-      const latestData = await latestRes.json();
+      const latestRes = await apiFetch(`/api/projects/${projectId}/dsm/latest`);
+      const latestData = latestRes.ok ? await latestRes.json() : [];
 
       setEntries(entriesData || []);
       setLatestByMember(Array.isArray(latestData) ? latestData : []);
@@ -141,11 +142,8 @@ export default function DSMPanel({ projectId }) {
 
     setSummarizing(true);
     try {
-      const response = await fetch('/api/ai/dsm-summary', {
+      const response = await apiFetch('/api/ai/dsm-summary', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ entries: entries.slice(0, 20) })
       });
       const data = await response.json();

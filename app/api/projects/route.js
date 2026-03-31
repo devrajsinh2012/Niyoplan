@@ -65,15 +65,24 @@ export async function POST(request) {
     return NextResponse.json({ error: error || 'Unauthorized' }, { status: 401 });
   }
 
-  if (!checkRole(user, 'admin', 'pm')) {
-    return NextResponse.json({ error: 'Forbidden. Requires admin or pm role.' }, { status: 403 });
-  }
-
   try {
     const { name, description, prefix, organizationId } = await request.json();
     
     if (!name || !prefix || !organizationId) {
       return NextResponse.json({ error: 'Name, prefix, and organizationId are required' }, { status: 400 });
+    }
+
+    const { data: membership, error: membershipError } = await supabaseAdmin
+      .from('organization_members')
+      .select('role, status')
+      .eq('user_id', user.id)
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+
+    if (membershipError) throw membershipError;
+
+    if (!membership || membership.status !== 'active' || !checkRole({ role: membership.role }, 'admin', 'pm')) {
+      return NextResponse.json({ error: 'Forbidden. Requires admin or pm role.' }, { status: 403 });
     }
 
     const { data: project, error: projectError } = await supabaseAdmin

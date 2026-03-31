@@ -10,8 +10,6 @@ import { FolderKanban, Plus, Star, Activity, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { ProjectsPageSkeleton } from '@/components/ui/PageSkeleton';
-import { Folder } from 'lucide-react';
-import CreateProjectModal from '@/components/modals/CreateProjectModal';
 
 const DEFAULT_LISTS = [
   { name: 'Backlog', rank: 1000 },
@@ -45,6 +43,7 @@ export default function ProjectsPage() {
   const [apiDocumentationLink, setApiDocumentationLink] = useState('');
   const [starredProjectIds, setStarredProjectIds] = useState([]);
   const [openInfoProjectId, setOpenInfoProjectId] = useState(null);
+  const canCreateProject = ['admin', 'pm'].includes(activeOrganization?.role);
 
   useEffect(() => {
     const incoming = searchParams.get('search') || '';
@@ -285,7 +284,7 @@ export default function ProjectsPage() {
           </div>
         </div>
         
-        {['admin', 'pm'].includes(profile?.role) && (
+        {canCreateProject && (
           <button 
             className="flex items-center gap-2 rounded-[3px] bg-[#0052CC] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#00388D] focus:ring-2 focus:ring-[#0052CC] focus:ring-offset-2 active:scale-95" 
             onClick={() => setShowModal(true)}
@@ -328,13 +327,17 @@ export default function ProjectsPage() {
             <p className="mb-8 max-w-xs text-sm text-[var(--text-muted)] font-medium leading-relaxed font-sans">
               Start by creating your first project to organize your team&apos;s work.
             </p>
-            {['admin', 'pm'].includes(profile?.role) && (
+            {canCreateProject ? (
               <button 
                 className="rounded-[3px] bg-[#0052CC] px-6 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#00388D]"
                 onClick={() => setShowModal(true)}
               >
                 Create Project
               </button>
+            ) : (
+              <p className="text-xs font-medium text-[var(--text-muted)]">
+                Only organization admins and project managers can create projects.
+              </p>
             )}
           </div>
         ) : (

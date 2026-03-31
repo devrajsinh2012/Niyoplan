@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Backspace, Calculator, Percent, RotateCcw } from 'lucide-react';
+import { Calculator, Delete, Percent, RotateCcw } from 'lucide-react';
 import { evaluateCalculatorExpression, formatCalculatorResult } from '../lib/calculator';
 
 const BUTTON_ROWS = [
@@ -165,7 +165,7 @@ export default function CalculatorTool() {
                       : 'border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-heading)] hover:bg-[var(--bg-panel)]'
                 } ${isZero ? 'col-span-2' : ''}`}
               >
-                {buttonValue === '⌫' ? <Backspace size={16} className="mx-auto" /> : buttonValue === '%' ? <Percent size={16} className="mx-auto" /> : buttonValue}
+                {buttonValue === '⌫' ? <Delete size={16} className="mx-auto" /> : buttonValue === '%' ? <Percent size={16} className="mx-auto" /> : buttonValue}
               </button>
             );
           })}

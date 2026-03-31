@@ -124,7 +124,7 @@ export default function OnboardingMiddleware({ children }) {
     }
 
     setChecking(false);
-  }, [activeOrganization?.id, authLoading, initialLoading, isAllowedPath, profile?.id, router, user, pathname]);
+  }, [activeOrganization?.id, authLoading, initialLoading, isAllowedPath, profile, router, user]);
 
   useEffect(() => {
     checkOnboardingStatus();

@@ -120,7 +120,7 @@ export default function AdminSettingsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [activeOrganization?.id, authLoading, orgLoading, profile?.id, profile?.role]);
+  }, [activeOrganization?.id, authLoading, orgLoading, profile?.id, profile?.role, users.length]);
 
   useEffect(() => {
     loadUsers();

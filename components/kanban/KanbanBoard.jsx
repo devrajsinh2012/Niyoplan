@@ -216,7 +216,7 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
 
     setCards(normalizedCards);
     if (sharedCards) setIsLoading(false);
-  }, [storeItems, sharedCards, lists, getListIdFromStatus]);
+  }, [storeItems, sharedCards, sharedLists, lists, getListIdFromStatus]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 10 } }),

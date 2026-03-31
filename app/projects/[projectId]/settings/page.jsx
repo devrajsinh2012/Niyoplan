@@ -146,7 +146,7 @@ export default function ProjectSettingsPage() {
       }
     };
     loadData();
-  }, [fetchProjectData, fetchMembers]);
+  }, [fetchProjectData, fetchMembers, fetchOrgMembers]);
 
   const handleSaveGeneral = async () => {
     if (!name.trim()) {

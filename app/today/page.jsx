@@ -57,7 +57,7 @@ export default function TodayPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [profile?.id, activeOrganization?.id]);
+  }, [profile?.id, activeOrganization?.id, todayItems.length]);
 
   // Fetch real cards assigned to user in THIS organization
   const fetchProjectCards = useCallback(async () => {

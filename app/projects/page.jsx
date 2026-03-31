@@ -174,7 +174,7 @@ export default function ProjectsPage() {
       setIsLoading(true);
     }
     fetchProjects();
-  }, [orgLoading, fetchProjects]);
+  }, [orgLoading, fetchProjects, projects.length]);
 
   if (isLoading) {
     return <ProjectsPageSkeleton />;

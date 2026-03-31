@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS project_members (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member', 'viewer')),
+  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'pm', 'qa', 'developer', 'member', 'viewer')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(project_id, user_id)
@@ -116,6 +116,14 @@ CREATE POLICY "Project admins can remove members" ON project_members
 -- ============================================
 -- 8. Update trigger for project_members
 -- ============================================
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE TRIGGER update_project_members_updated_at
   BEFORE UPDATE ON project_members
   FOR EACH ROW

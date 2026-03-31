@@ -105,7 +105,7 @@ export default function ProjectSettingsPage() {
       setMembers([]);
       setMembersLoadError(true);
     }
-  }, [projectId]);
+  }, [projectId, requestWithAuth]);
 
   const refreshMembers = async () => {
     setMembersLoadError(false);
@@ -200,7 +200,7 @@ export default function ProjectSettingsPage() {
       setShowInviteModal(false);
       setInviteEmail('');
       setInviteRole('member');
-      await fetchProjectData();
+      await fetchMembers();
     } catch (error) {
       console.error('Error inviting member:', error);
       toast.error(error.message || 'Failed to invite member');
@@ -217,7 +217,7 @@ export default function ProjectSettingsPage() {
       });
 
       toast.success('Member removed');
-      await fetchProjectData();
+      await fetchMembers();
     } catch (error) {
       console.error('Error removing member:', error);
       toast.error(error.message || 'Failed to remove member');
@@ -235,7 +235,7 @@ export default function ProjectSettingsPage() {
       });
 
       toast.success('Role updated');
-      await fetchProjectData();
+      await fetchMembers();
     } catch (error) {
       console.error('Error updating role:', error);
       toast.error(error.message || 'Failed to update role');
@@ -509,6 +509,9 @@ export default function ProjectSettingsPage() {
                             className="rounded-md border border-[var(--border-subtle)] bg-white px-3 py-1.5 text-sm text-[var(--text-primary)] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                           >
                             <option value="admin">Admin</option>
+                            <option value="pm">PM</option>
+                            <option value="qa">QA</option>
+                            <option value="developer">Developer</option>
                             <option value="member">Member</option>
                             <option value="viewer">Viewer</option>
                           </select>

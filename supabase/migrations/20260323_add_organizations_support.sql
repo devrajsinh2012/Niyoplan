@@ -6,7 +6,7 @@
 -- ============================================
 DO $$
 BEGIN
-  CREATE TYPE org_role AS ENUM ('admin', 'member', 'viewer');
+  CREATE TYPE org_role AS ENUM ('admin', 'pm', 'qa', 'developer', 'member', 'viewer');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;

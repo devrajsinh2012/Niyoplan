@@ -23,6 +23,15 @@ import { CompanySettingsPageSkeleton } from '@/components/ui/PageSkeleton';
 import { useOrganization } from '@/context/OrganizationContext';
 import { apiFetch } from '@/lib/apiClient';
 
+const ROLE_OPTIONS = [
+  { value: 'admin', label: 'Admin', description: 'Full system access' },
+  { value: 'pm', label: 'PM', description: 'Project management' },
+  { value: 'qa', label: 'QA', description: 'Quality assurance' },
+  { value: 'developer', label: 'Developer', description: 'Builds and ships product work' },
+  { value: 'member', label: 'Member', description: 'Team member' },
+  { value: 'viewer', label: 'Viewer', description: 'Read-only access' }
+];
+
 export default function CompanySettingsPage() {
   const router = useRouter();
   const { activeOrganization, refreshOrganizations } = useOrganization();
@@ -471,6 +480,9 @@ export default function CompanySettingsPage() {
                                   disabled={member.user_id === user?.id}
                                 >
                                   <option value="admin">Admin</option>
+                                  <option value="pm">PM</option>
+                                  <option value="qa">QA</option>
+                                  <option value="developer">Developer</option>
                                   <option value="member">Member</option>
                                   <option value="viewer">Viewer</option>
                                 </select>

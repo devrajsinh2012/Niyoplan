@@ -172,7 +172,7 @@ export async function PATCH(request, { params }) {
     }
 
     if (action === 'changeRole') {
-      if (!['admin', 'member', 'viewer'].includes(newRole)) {
+      if (!['admin', 'pm', 'qa', 'developer', 'member', 'viewer'].includes(newRole)) {
         return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
       }
 

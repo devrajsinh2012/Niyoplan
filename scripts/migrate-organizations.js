@@ -6,7 +6,7 @@ async function runOrganizationMigration() {
 
     // Create custom types
     const types = [
-      `CREATE TYPE IF NOT EXISTS org_role AS ENUM ('admin', 'member', 'viewer')`,
+      `CREATE TYPE IF NOT EXISTS org_role AS ENUM ('admin', 'pm', 'qa', 'developer', 'member', 'viewer')`,
       `CREATE TYPE IF NOT EXISTS member_status AS ENUM ('pending', 'active', 'rejected')`
     ];
 

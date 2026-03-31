@@ -3,7 +3,7 @@ import { getAuthUser } from '@/lib/auth';
 import { getProjectAccessContext } from '@/lib/access';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 
-const PROJECT_MEMBER_ROLES = new Set(['admin', 'member', 'viewer']);
+const PROJECT_MEMBER_ROLES = new Set(['admin', 'pm', 'qa', 'developer', 'member', 'viewer']);
 
 async function getTargetMember(projectId, memberId) {
   const { data, error } = await supabaseAdmin

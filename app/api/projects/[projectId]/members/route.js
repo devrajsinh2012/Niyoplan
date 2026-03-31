@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth';
+import { findAuthUserByEmail, getAuthUser, inviteAuthUserByEmail } from '@/lib/auth';
 import { getProjectAccessContext } from '@/lib/access';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 
-const PROJECT_MEMBER_ROLES = new Set(['admin', 'member', 'viewer']);
+const PROJECT_MEMBER_ROLES = new Set(['admin', 'pm', 'qa', 'developer', 'member', 'viewer']);
 
 async function ensureCreatorMembership(project) {
   if (!project?.id || !project?.created_by) return;
@@ -21,31 +21,6 @@ async function ensureCreatorMembership(project) {
 
   if (error) {
     console.error('Failed to ensure creator membership:', error);
-  }
-}
-
-async function getUsersByEmail(email) {
-  const normalizedEmail = email.toLowerCase();
-  let page = 1;
-  const perPage = 200;
-
-  while (true) {
-    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
-
-    if (error) {
-      throw error;
-    }
-
-    const match = data?.users?.find((candidate) => candidate.email?.toLowerCase() === normalizedEmail);
-    if (match) {
-      return match;
-    }
-
-    if (!data?.users?.length || data.users.length < perPage) {
-      return null;
-    }
-
-    page += 1;
   }
 }
 
@@ -131,6 +106,7 @@ export async function POST(request, { params }) {
     const body = await request.json();
     const email = String(body?.email || '').trim().toLowerCase();
     const role = String(body?.role || 'member');
+    const redirectTo = `${request.nextUrl.origin}/login`;
 
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
@@ -139,26 +115,17 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Invalid member role' }, { status: 400 });
     }
 
-    const authUser = await getUsersByEmail(email);
+    let authUser = await findAuthUserByEmail(email);
+
     if (!authUser?.id) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      authUser = await inviteAuthUserByEmail(email, {
+        redirectTo,
+        data: { role },
+      });
     }
 
-    if (access.project?.organization_id) {
-      const { data: orgMember } = await supabaseAdmin
-        .from('organization_members')
-        .select('id')
-        .eq('organization_id', access.project.organization_id)
-        .eq('user_id', authUser.id)
-        .eq('status', 'active')
-        .maybeSingle();
-
-      if (!orgMember) {
-        return NextResponse.json(
-          { error: 'User must be an active member of your workspace before joining this project' },
-          { status: 400 }
-        );
-      }
+    if (!authUser?.id) {
+      return NextResponse.json({ error: 'Unable to resolve invited user account' }, { status: 500 });
     }
 
     const { data: existingMember } = await supabaseAdmin

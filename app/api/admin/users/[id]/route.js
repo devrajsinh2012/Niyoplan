@@ -52,7 +52,7 @@ export async function PATCH(request, { params }) {
 
     // Allow updating these fields
     if (body.role !== undefined) {
-      const validRoles = ['admin', 'pm', 'member', 'viewer'];
+      const validRoles = ['admin', 'pm', 'qa', 'developer', 'member', 'viewer'];
       if (!validRoles.includes(body.role)) {
         return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
       }

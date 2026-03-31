@@ -16,6 +16,8 @@ import BrandMark from '@/components/ui/BrandMark';
 const ROLE_OPTIONS = [
   { value: 'admin', label: 'Admin', description: 'Full system access' },
   { value: 'pm', label: 'PM', description: 'Project management' },
+  { value: 'qa', label: 'QA', description: 'Quality assurance' },
+  { value: 'developer', label: 'Developer', description: 'Builds and ships product work' },
   { value: 'member', label: 'Member', description: 'Team member' },
   { value: 'viewer', label: 'Viewer', description: 'Read-only access' }
 ];
@@ -24,6 +26,8 @@ const getRoleColor = (role) => {
   const colors = {
     admin: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
     pm: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
+    qa: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+    developer: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' },
     member: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
     viewer: { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200' }
   };
@@ -275,9 +279,11 @@ export default function AdminSettingsPage() {
         body: JSON.stringify({ emails, role: inviteRole })
       });
 
-      if (!res.ok) throw new Error('Failed to send invitations');
-      
-      toast.success(`Invitations sent to ${emails.length} users`);
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) throw new Error(data?.error || 'Failed to send invitations');
+
+      toast.success(data?.message || `Invitations sent to ${emails.length} users`);
       setInviteEmails('');
       setShowInviteModal(false);
     } catch (err) {
@@ -458,6 +464,8 @@ export default function AdminSettingsPage() {
               {[
                 { label: 'Admins', count: users.filter(u => u.role === 'admin').length },
                 { label: 'PMs', count: users.filter(u => u.role === 'pm').length },
+                { label: 'QAs', count: users.filter(u => u.role === 'qa').length },
+                { label: 'Developers', count: users.filter(u => u.role === 'developer').length },
                 { label: 'Members', count: users.filter(u => u.role === 'member').length },
                 { label: 'Viewers', count: users.filter(u => u.role === 'viewer').length }
               ].map((stat, idx) => (

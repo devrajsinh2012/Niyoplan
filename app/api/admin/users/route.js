@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
-import { getAuthUser } from '@/lib/auth';
+import { findAuthUserByEmail, getAuthUser, inviteAuthUserByEmail } from '@/lib/auth';
 import { checkRole } from '@/lib/roles';
 
 export async function GET(request) {
@@ -66,35 +66,67 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const { emails, role = 'member' } = body;
+    const redirectTo = `${request.nextUrl.origin}/login`;
 
     if (!emails || !Array.isArray(emails) || emails.length === 0) {
       return NextResponse.json({ error: 'Emails list is required' }, { status: 400 });
     }
 
-    const validRoles = ['admin', 'pm', 'member', 'viewer'];
+    const validRoles = ['admin', 'pm', 'qa', 'developer', 'member', 'viewer'];
     if (!validRoles.includes(role)) {
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
     }
 
-    // Check if invitations table exists, if not create it
-    // For now, we only support tracking via auth invitations
-    // This would typically integrate with your auth provider (Supabase Auth)
-    
-    // Simple approach: send invitations to emails
-    // Note: Full email integration would need backend email service setup
-    const invitations = emails.map(email => ({
-      email,
-      role,
-      invited_by: user.id,
-      invited_at: new Date().toISOString()
-    }));
+    const invitations = [];
 
-    // Store invitations in a simple audit log for now
-    // In production, integrate with email service and proper auth invite flow
+    for (const rawEmail of emails) {
+      const email = String(rawEmail || '').trim().toLowerCase();
+
+      if (!email) {
+        continue;
+      }
+
+      const existingUser = await findAuthUserByEmail(email);
+
+      if (existingUser?.id) {
+        const { error: updateError } = await supabaseAdmin
+          .from('profiles')
+          .update({
+            role,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingUser.id);
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        invitations.push({
+          email,
+          role,
+          user_id: existingUser.id,
+          action: 'updated',
+        });
+        continue;
+      }
+
+      const invitedUser = await inviteAuthUserByEmail(email, {
+        redirectTo,
+        data: { role },
+      });
+
+      invitations.push({
+        email,
+        role,
+        user_id: invitedUser?.id || null,
+        action: 'invited',
+      });
+    }
+
     return NextResponse.json({
       success: true,
-      message: `Invitations prepared for ${emails.length} users`,
-      invitations: invitations
+      message: `Processed ${invitations.length} user${invitations.length === 1 ? '' : 's'}`,
+      invitations,
     });
   } catch (err) {
     console.error(err);

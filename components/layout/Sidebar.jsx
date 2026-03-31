@@ -10,7 +10,7 @@ import {
   LayoutDashboard, Layers, KanbanSquare,
   BarChart2, Tag, Keyboard,
   Settings, BookOpen, Target,
-  Zap, MessageSquare, Calendar, LogOut, Building2, Sun
+  Zap, MessageSquare, Calendar, LogOut, Building2, Sun, Wrench
 } from 'lucide-react';
 import UserAvatar from '@/components/ui/UserAvatar';
 
@@ -92,6 +92,7 @@ export default function Sidebar({ project, expanded, onExpandedChange }) {
         <div className="space-y-1">
           <SideNavItem href="/" icon={LayoutDashboard} label="Dashboard" expanded={expanded} />
           <SideNavItem href="/today" icon={Sun} label="Today" expanded={expanded} />
+          <SideNavItem href="/tools" icon={Wrench} label="Tools" expanded={expanded} />
           <SideNavItem href="/projects" icon={KanbanSquare} label="Projects" expanded={expanded} />
         </div>
       </nav>

@@ -83,6 +83,21 @@ export async function POST(request, { params }) {
         return NextResponse.json({ narrative: content });
       }
 
+      case 'refine-text': {
+        const { text } = body;
+        if (!text || !String(text).trim()) {
+          return NextResponse.json({ error: 'text is required' }, { status: 400 });
+        }
+
+        const content = await callGroq({
+          systemPrompt: 'Rewrite the provided text into a clear, professional, concise tone while preserving original meaning. Do not add emojis or extra commentary.',
+          userPrompt: String(text).trim(),
+          temperature: 0.2,
+        });
+
+        return NextResponse.json({ result: content });
+      }
+
       case 'dsm-summary': {
         const { entries } = body;
         if (!Array.isArray(entries) || entries.length === 0) {

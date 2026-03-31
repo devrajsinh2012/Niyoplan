@@ -70,55 +70,57 @@ export default function NiyoplanLoader() {
         </g>
       </svg>
 
-      {/* Label and Dots (hidden until theme detected to avoid flash) */}
+      {/* Label and Progress indicator */}
       <div
         style={{
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '6px',
+          gap: '8px',
           opacity: mounted ? 1 : 0,
-          transition: 'opacity 0.2s ease',
+          transition: 'opacity 0.4s ease',
         }}
       >
         <span
           style={{
-            fontSize: '15px',
-            fontWeight: 600,
-            letterSpacing: '0.08em',
+            fontSize: '14px',
+            fontWeight: 500,
+            letterSpacing: '0.05em',
             color: textColor,
-            fontFamily: 'inherit',
+            fontFamily: 'Inter, system-ui, sans-serif',
           }}
         >
-          Loading
+          Loading Niyoplan
         </span>
-        {/* Animated dots */}
-        <div
+        {/* Animated bar indicator for premium feel */}
+        <div 
           style={{
-            display: 'flex',
-            gap: '5px',
-            alignItems: 'center',
+            width: '120px',
+            height: '3px',
+            background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+            borderRadius: '2px',
+            overflow: 'hidden',
+            position: 'relative'
           }}
         >
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              style={{
-                width: '5px',
-                height: '5px',
-                borderRadius: '50%',
-                background: dotColor,
-                animation: `niyoDot 1.2s ${i * 0.2}s infinite ease-in-out both`,
-              }}
-            />
-          ))}
+          <div 
+            style={{
+              position: 'absolute',
+              height: '100%',
+              width: '40%',
+              background: 'linear-gradient(90deg, #0C66E4, #1D7AFC)',
+              borderRadius: '2px',
+              animation: 'niyoProgress 1.8s infinite ease-in-out'
+            }}
+          />
         </div>
       </div>
-
+    
       <style>{`
-        @keyframes niyoDot {
-          0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
-          40%            { opacity: 1;   transform: scale(1.2); }
+        @keyframes niyoProgress {
+          0% { left: -40%; width: 30%; }
+          50% { left: 40%; width: 50%; }
+          100% { left: 100%; width: 30%; }
         }
       `}</style>
     </div>

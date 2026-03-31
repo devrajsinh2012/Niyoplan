@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseServer';
 import { getAuthUser } from '@/lib/auth';
 
 export async function GET(request, { params }) {
-  const { projectId, viewId } = params;
+  const { projectId, viewId } = await params;
 
   try {
     const { data: view, error } = await supabaseAdmin

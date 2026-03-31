@@ -37,7 +37,7 @@ export default function KanbanCard({ card, isOverlay, onOpen }) {
 
   const style = {
     transition,
-    transform: CSS.Transform.toString(transform),
+    transform: isOverlay ? undefined : CSS.Translate.toString(transform),
   };
 
   if (isDragging && !isOverlay) {
@@ -53,12 +53,18 @@ export default function KanbanCard({ card, isOverlay, onOpen }) {
 
   return (
     <div
-      className={`kanban-card ${isOverlay ? 'overlay' : ''} bg-white border border-transparent rounded-[4px] p-3 shadow-[0_1px_2px_0_rgba(9,30,66,0.31)] hover:bg-[#F4F5F7] transition-all relative group`}
-      ref={setNodeRef}
-      style={style}
+      className={`kanban-card ${isOverlay ? 'overlay' : ''} transition-all relative group`}
+      ref={isOverlay ? undefined : setNodeRef}
+      style={isOverlay ? undefined : style}
       role="button"
-      tabIndex={0}
-      onClick={() => { if (!isOverlay && !isDragging && onOpen) onOpen(card); }}
+      tabIndex={isOverlay ? -1 : 0}
+      onClick={(e) => {
+        if (isOverlay || isDragging) return;
+        // Check if the click was actually on the drag handle
+        if (e.target.closest('.kanban-card-drag-handle')) return;
+        
+        if (onOpen) onOpen(card);
+      }}
       onKeyDown={(e) => {
         if ((e.key === 'Enter' || e.key === ' ') && !isOverlay && onOpen) {
           e.preventDefault();
@@ -69,7 +75,7 @@ export default function KanbanCard({ card, isOverlay, onOpen }) {
       {/* Drag handle (visible on hover) */}
       {!isOverlay && (
         <button
-          className="kanban-card-drag-handle absolute top-2 right-2 p-1.5 rounded-md hover:bg-[#EBECF0] text-[#6B778C] opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+          className="kanban-card-drag-handle absolute top-2 right-2 p-1.5 rounded-md hover:bg-[var(--bg-panel-hover)] text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
           ref={setActivatorNodeRef}
           {...attributes}
           {...listeners}
@@ -83,7 +89,7 @@ export default function KanbanCard({ card, isOverlay, onOpen }) {
 
       {/* Card title */}
       <div className="kanban-card-content mb-3 pr-6">
-        <p className="kanban-card-title text-[14px] leading-snug text-[#172B4D] font-normal">{card.title}</p>
+        <p className="kanban-card-title text-[14px] leading-snug">{card.title}</p>
       </div>
 
       {/* Footer: ID + Type Icon (left) and Assignee (right) */}
@@ -95,7 +101,7 @@ export default function KanbanCard({ card, isOverlay, onOpen }) {
             style={{ backgroundColor: issueTypeIcon(card.issue_type).color }}
             title={card.issue_type}
           />
-          <span className="text-[11px] font-medium text-[#6B778C] uppercase tracking-wide">
+          <span className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wide">
             {card.prefix || card.custom_id}
           </span>
         </div>
@@ -103,9 +109,9 @@ export default function KanbanCard({ card, isOverlay, onOpen }) {
         {/* Assignee avatar */}
         <div className="flex -space-x-1">
           {card.assignee ? (
-            <UserAvatar user={card.assignee} size={24} className="border-2 border-white rounded-full bg-blue-600" />
+            <UserAvatar user={card.assignee} size={24} className="border-2 border-[var(--bg-surface)] rounded-full bg-[var(--accent-primary)]" title={card.assignee.full_name} />
           ) : (
-            <div className="w-6 h-6 rounded-full border-2 border-white bg-[#DFE1E6]" />
+            <div className="w-6 h-6 rounded-full border-2 border-[var(--bg-surface)] bg-[var(--bg-panel-hover)]" title="Unassigned" />
           )}
         </div>
       </div>

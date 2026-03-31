@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 import NiyoplanLoader from '@/components/ui/NiyoplanLoader';
 
 export default function OnboardingMiddleware({ children }) {
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading, initialLoading } = useAuth();
   const { activeOrganization } = useOrganization();
   const router = useRouter();
   const pathname = usePathname();
@@ -21,6 +21,8 @@ export default function OnboardingMiddleware({ children }) {
     '/login',
     '/signup',
     '/register',
+    '/forgot-password',
+    '/reset-password',
     '/onboarding',
     '/onboarding/create',
     '/onboarding/join'
@@ -36,7 +38,12 @@ export default function OnboardingMiddleware({ children }) {
       return;
     }
 
-    if (authLoading) {
+    if (authLoading || initialLoading) {
+      // If we already have a user and profile, don't show full page loader just because auth is revalidating in background
+      if (user && profile && activeOrganization?.id) {
+        setChecking(false);
+        return;
+      }
       setChecking(true);
       return;
     }
@@ -117,14 +124,17 @@ export default function OnboardingMiddleware({ children }) {
     }
 
     setChecking(false);
-  }, [activeOrganization?.id, authLoading, isAllowedPath, profile?.id, router, user]);
+  }, [activeOrganization?.id, authLoading, initialLoading, isAllowedPath, profile?.id, router, user, pathname]);
 
   useEffect(() => {
     checkOnboardingStatus();
   }, [checkOnboardingStatus, pathname]);
 
   // Show loading state while checking
-  if (checking || authLoading) {
+  // Only show full loader if it's initial load or we don't have enough context
+  const shouldShowLoader = (checking || authLoading || initialLoading) && (!user || !profile || !activeOrganization?.id);
+
+  if (shouldShowLoader && !isAllowedPath) {
     return <NiyoplanLoader />;
   }
 
@@ -163,11 +173,11 @@ export default function OnboardingMiddleware({ children }) {
     );
   }
 
-  // Render children if user has completed onboarding or is on allowed path
-  if (hasOrganization === true || isAllowedPath) {
+  // Render children if user has completed onboarding, is on allowed path, or we have enough context to continue
+  if (hasOrganization === true || isAllowedPath || (user && profile && activeOrganization?.id)) {
     return children;
   }
 
-  // Return null while redirecting
-  return null;
+  // Return null or loader while initial setup is happening
+  return shouldShowLoader ? <NiyoplanLoader /> : null;
 }

@@ -2,11 +2,10 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { DndContext, closestCorners, TouchSensor, MouseSensor, KeyboardSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
+import { DndContext, closestCorners, PointerSensor, KeyboardSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import KanbanColumn from './KanbanColumn';
 import KanbanCard from './KanbanCard';
-import CardDetail from './CardDetail';
 import './KanbanBoard.css';
 import { supabase } from '@/lib/supabase';
 import { useScheduleStore } from '@/context/ScheduleStore';
@@ -25,12 +24,11 @@ const DEFAULT_LISTS = [
   { name: 'DONE', rank: 5000 }
 ];
 
-export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards = null, onCardUpdated = null }) {
+export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards = null, sharedLists = null, onCardUpdated = null }) {
   const { scheduleItems: storeItems, updateScheduleItem } = useScheduleStore();
   const [lists, setLists] = useState([]);
   const [cards, setCards] = useState([]);
   const [activeCard, setActiveCard] = useState(null);
-  const [selectedCard, setSelectedCard] = useState(null);
   const [isSavingCard, setIsSavingCard] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateCardModal, setShowCreateCardModal] = useState(false);
@@ -181,19 +179,15 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
 
   // Fetch lists and cards
   useEffect(() => {
-    if (projectId) {
+    if (projectId && !sharedLists) {
       fetchBoardData();
+    } else if (sharedLists) {
+      setLists(sharedLists);
+      setIsLoading(false);
     }
-  }, [projectId, refreshNonce, fetchBoardData]);
+  }, [projectId, refreshNonce, fetchBoardData, sharedLists]);
 
-  useEffect(() => {
-    const cardId = searchParams.get('cardId');
-    if (!cardId || cards.length === 0) return;
-    const card = cards.find((item) => item.id === cardId);
-    if (card) {
-      setSelectedCard(card);
-    }
-  }, [cards, searchParams]);
+
 
   useEffect(() => {
     const isTaskLike = (card) => {
@@ -201,11 +195,12 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
       return type !== 'meeting';
     };
 
-    const backlogList = lists.find((list) => {
+    const sourceLists = Array.isArray(sharedLists) ? sharedLists : lists;
+    const backlogList = sourceLists.find((list) => {
       const normalized = (list.name || '').trim().toLowerCase();
       return normalized === 'backlog' || normalized === 'to do' || normalized === 'todo';
     });
-    const fallbackListId = (backlogList || lists[0])?.id;
+    const fallbackListId = (backlogList || sourceLists[0])?.id;
 
     const sourceCards = Array.isArray(storeItems) && storeItems.length > 0
       ? storeItems.filter(isTaskLike)
@@ -220,11 +215,11 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
     }));
 
     setCards(normalizedCards);
+    if (sharedCards) setIsLoading(false);
   }, [storeItems, sharedCards, lists, getListIdFromStatus]);
 
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 10 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
@@ -409,105 +404,55 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
     const maxRank = listCards.length ? Math.max(...listCards.map((item) => item.rank || 0)) : 0;
     const startDate = new Date().toISOString();
 
-    const { data, error } = await supabase
+    const payload = {
+      project_id: projectId,
+      title: title.trim(),
+      issue_type: 'task',
+      priority: 'medium',
+      status: getStatusFromList(createCardListId),
+      list_id: createCardListId,
+      rank: maxRank + 1000,
+      start_date: startDate,
+      due_date: startDate
+    };
+
+    const { data: newCard, error: createError } = await supabase
       .from('cards')
-      .insert({
-        project_id: projectId,
-        title: title.trim(),
-        issue_type: 'task',
-        priority: 'medium',
-        status: getStatusFromList(createCardListId),
-        list_id: createCardListId,
-        rank: maxRank + 1000,
-        start_date: startDate,
-        due_date: startDate
-      })
-      .select('*')
+      .insert(payload)
+      .select(`*, assignee:profiles!cards_assignee_id_fkey(id, full_name, avatar_url), reporter:profiles!cards_reporter_id_fkey(id, full_name, avatar_url)`)
       .single();
 
-    if (error) {
-      toast.error('Failed to add card');
+    if (createError) {
+      toast.error('Failed to create card');
       return;
     }
 
-    setCards((prev) => [...prev, { ...data, prefix: data.custom_id, listId: data.list_id }]);
-    await updateScheduleItem(data.id, {
-      list_id: data.list_id,
-      status: data.status,
-      rank: data.rank,
-      start_date: data.start_date,
-      due_date: data.due_date
-    }, { silent: true });
+    const formattedCard = {
+      ...newCard,
+      prefix: newCard.custom_id,
+      listId: newCard.list_id
+    };
+
+    setCards([formattedCard, ...cards]);
     if (typeof onCardUpdated === 'function') {
-      onCardUpdated({ ...data, list_id: data.list_id });
+      onCardUpdated(formattedCard);
     }
+
+    await updateScheduleItem(newCard.id, {
+      list_id: newCard.list_id,
+      status: newCard.status,
+      rank: newCard.rank,
+      start_date: newCard.start_date,
+      due_date: newCard.due_date
+    }, { silent: true });
+    
     toast.success('Card added');
     setShowCreateCardModal(false);
     setCreateCardListId(null);
   };
 
   const handleSaveCard = async (updates) => {
-    if (!selectedCard?.id) return;
-
-    setIsSavingCard(true);
-    const mappedListId = getListIdFromStatus(updates.status);
-    const payload = {
-      title: updates.title,
-      description: updates.description,
-      priority: updates.priority,
-      status: updates.status,
-      assignee_id: updates.assignee_id || selectedCard.reporter_id || null,
-      story_points: updates.story_points,
-      start_date: updates.start_date || null,
-      due_date: updates.due_date || null,
-      list_id: mappedListId || undefined
-    };
-
-    const { data, error } = await supabase
-      .from('cards')
-      .update(payload)
-      .eq('id', selectedCard.id)
-      .select('*, assignee:profiles!cards_assignee_id_fkey(id, full_name, avatar_url), reporter:profiles!cards_reporter_id_fkey(id, full_name, avatar_url)')
-      .single();
-
-    setIsSavingCard(false);
-
-    if (error) {
-      toast.error('Failed to save card');
-      return;
-    }
-
-    setCards((prev) => prev.map((item) => {
-      if (item.id !== data.id) return item;
-      return {
-        ...item,
-        ...data,
-        prefix: data.custom_id,
-        listId: data.list_id || item.listId
-      };
-    }));
-
-    // Trigger celebration if moved to done via modal
-    if (selectedCard.status !== 'done' && data.status === 'done') {
-      triggerDoneCelebration();
-    }
-
-    setSelectedCard((prev) => (prev && prev.id === data.id ? { ...prev, ...data } : prev));
-    await updateScheduleItem(data.id, {
-      title: data.title,
-      description: data.description,
-      priority: data.priority,
-      status: data.status,
-      assignee_id: data.assignee_id,
-      story_points: data.story_points,
-      start_date: data.start_date,
-      due_date: data.due_date,
-      list_id: data.list_id
-    }, { silent: true });
-    if (typeof onCardUpdated === 'function') {
-      onCardUpdated({ ...data, list_id: data.list_id });
-    }
-    toast.success('Card updated');
+    // Card saving is handled by the parent ProjectDetailPage now.
   };
 
   const handleCreateList = async (title) => {
@@ -550,7 +495,7 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
         <div className="kanban-filters flex-1 pt-1 flex items-center gap-3">
           <div className="relative">
             <select 
-              className="kanban-filter-chip kanban-filter-select appearance-none bg-white border border-[#DFE1E6] rounded-[3px] px-3 py-1.5 text-sm cursor-pointer hover:bg-[#F4F5F7] transition-colors"
+              className="kanban-filter-chip kanban-filter-select appearance-none bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[3px] px-3 py-1.5 text-sm cursor-pointer hover:bg-[var(--bg-panel-hover)] transition-colors text-[var(--text-primary)]"
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
             >
@@ -564,7 +509,7 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
           
           <div className="relative">
             <select 
-              className="kanban-filter-chip kanban-filter-select appearance-none bg-white border border-[#DFE1E6] rounded-[3px] px-3 py-1.5 text-sm cursor-pointer hover:bg-[#F4F5F7] transition-colors"
+              className="kanban-filter-chip kanban-filter-select appearance-none bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[3px] px-3 py-1.5 text-sm cursor-pointer hover:bg-[var(--bg-panel-hover)] transition-colors text-[var(--text-primary)]"
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
             >
@@ -581,7 +526,7 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
             <input 
               type="text"
               placeholder="Search cards..."
-              className="w-full bg-[#FAFBFC] border border-[#DFE1E6] rounded-[3px] px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
+              className="w-full bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-[3px] px-3 py-1.5 text-sm focus:outline-none focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] transition-all text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -589,7 +534,7 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
 
           {(typeFilter || priorityFilter || searchQuery) && (
             <button 
-              className="text-xs font-semibold text-[#0052CC] hover:underline px-2"
+              className="text-xs font-semibold text-[var(--accent-primary)] hover:underline px-2"
               onClick={() => {
                 setTypeFilter('');
                 setPriorityFilter('');
@@ -617,8 +562,7 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
                 list={list}
                 cards={filteredCards.filter(c => c.listId === list.id).sort((a,b) => (a.rank || 0) - (b.rank || 0))}
                 onCardOpen={(card) => {
-                  setSelectedCard(card);
-                  router.replace(`/projects/${projectId}?tab=board&cardId=${card.id}`);
+                  router.replace(`/projects/${projectId}?tab=board&cardId=${card.id}`, { scroll: false });
                 }}
                 onQuickAddCard={(listId) => {
                   setCreateCardListId(listId);
@@ -632,23 +576,16 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
           </div>
         </div>
 
-        <DragOverlay>
-          {activeCard ? <KanbanCard card={activeCard} isOverlay /> : null}
+        <DragOverlay adjustScale={false} dropAnimation={null}>
+          {activeCard ? (
+            <div style={{ pointerEvents: 'none' }}>
+              <KanbanCard card={activeCard} isOverlay />
+            </div>
+          ) : null}
         </DragOverlay>
       </DndContext>
 
-      {selectedCard && (
-        <CardDetail
-          key={selectedCard.id}
-          card={selectedCard}
-          onClose={() => {
-            setSelectedCard(null);
-            router.replace(`/projects/${projectId}?tab=board`);
-          }}
-          onSave={handleSaveCard}
-          isSaving={isSavingCard}
-        />
-      )}
+
 
       {/* Create Card Modal */}
       <InputModal

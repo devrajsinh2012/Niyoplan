@@ -10,7 +10,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { orgId } = params;
+    const { orgId } = await params;
 
     // Check if user is a member of this organization
     const { data: membership } = await supabaseAdmin
@@ -50,7 +50,7 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { orgId } = params;
+    const { orgId } = await params;
     const body = await request.json();
 
     // Check if user is an admin of this organization
@@ -103,7 +103,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { orgId } = params;
+    const { orgId } = await params;
 
     // Check if user is an admin of this organization
     const { data: membership } = await supabaseAdmin

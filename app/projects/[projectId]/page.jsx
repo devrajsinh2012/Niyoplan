@@ -28,6 +28,7 @@ import AIToolsPanel from '@/components/ai/AIToolsPanel';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { ProjectDetailPageSkeleton } from '@/components/ui/PageSkeleton';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
+import confetti from 'canvas-confetti';
 
 
 
@@ -38,6 +39,7 @@ export default function ProjectDetailPage() {
   const searchParams = useSearchParams();
   
   const [project, setProject] = useState(null);
+  const [lists, setLists] = useState([]);
   const [cards, setCards] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -75,6 +77,40 @@ export default function ProjectDetailPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
+  const triggerDoneCelebration = useCallback(() => {
+    const duration = 5 * 1000;
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 10001, colors: ['#22A06B', '#0C66E4', '#E34935', '#FFAB00'] };
+
+    const randomInRange = (min, max) => Math.random() * (max - min) + min;
+
+    const frame = () => {
+      const timeLeft = animationEnd - Date.now();
+
+      if (timeLeft <= 0) return;
+
+      const particleCount = 40 * (timeLeft / duration);
+
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.1, 0.3), y: randomInRange(0.2, 0.4) },
+        angle: randomInRange(55, 125)
+      });
+
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.7, 0.9), y: randomInRange(0.2, 0.4) },
+        angle: randomInRange(55, 125)
+      });
+
+      requestAnimationFrame(frame);
+    };
+
+    frame();
+  }, []);
+
   const fetchProjectAndCards = useCallback(async () => {
     if (!id) return;
     try {
@@ -86,9 +122,17 @@ export default function ProjectDetailPage() {
       if (projError) throw projError;
       setProject(projData);
 
+      const { data: listsData, error: listsError } = await supabase
+        .from('lists')
+        .select('*')
+        .eq('project_id', id)
+        .order('rank', { ascending: true });
+      if (listsError) throw listsError;
+      setLists(listsData);
+
       const { data: cardsData, error: cardsError } = await supabase
         .from('cards')
-        .select(`*, assignee:profiles!cards_assignee_id_fkey(full_name, avatar_url)`)
+        .select(`*, assignee:profiles!cards_assignee_id_fkey(id, full_name, avatar_url), reporter:profiles!cards_reporter_id_fkey(id, full_name, avatar_url)`)
         .eq('project_id', id)
         .order('created_at', { ascending: false });
       if (cardsError) throw cardsError;
@@ -164,11 +208,26 @@ export default function ProjectDetailPage() {
     if (!selectedCard?.id) return;
     setIsSavingCard(true);
 
+    const getListIdFromStatus = (status) => {
+      const s = (status || '').toLowerCase();
+      const match = lists.find((l) => {
+        const name = (l.name || '').toLowerCase();
+        if (s === 'backlog') return name.includes('backlog');
+        if (s === 'todo') return name.includes('todo') || name.includes('to do');
+        if (s === 'in_progress') return name.includes('progress');
+        if (s === 'in_review') return name.includes('review');
+        if (s === 'done') return name.includes('done');
+        return false;
+      });
+      return match?.id;
+    };
+
     const payload = {
       title: updates.title,
       description: updates.description,
       priority: updates.priority,
       status: updates.status,
+      list_id: getListIdFromStatus(updates.status) || selectedCard.list_id,
       assignee_id: updates.assignee_id || selectedCard.reporter_id || profile?.id || null,
       story_points: updates.story_points,
       start_date: updates.start_date || null,
@@ -190,6 +249,11 @@ export default function ProjectDetailPage() {
     }
 
     setCards((prev) => prev.map((item) => (item.id === data.id ? data : item)));
+    
+    if (selectedCard.status !== 'done' && data.status === 'done') {
+      triggerDoneCelebration();
+    }
+    
     setSelectedCard((prev) => (prev?.id === data.id ? data : prev));
     toast.success('Card updated');
   };
@@ -215,21 +279,22 @@ export default function ProjectDetailPage() {
 
   const getStatusColor = (status) => {
     const map = {
-      backlog: 'bg-[#F4F5F7] text-[#42526E]',
-      todo: 'bg-[#F4F5F7] text-[#42526E]',
-      in_progress: 'bg-[#E9F2FF] text-[#0052CC]',
-      in_review: 'bg-[#FFF0B3] text-[#172B4D]',
-      done: 'bg-[#E3FCEF] text-[#006644]'
+      backlog: 'bg-[var(--bg-todo)] text-[var(--status-todo)]',
+      todo: 'bg-[var(--bg-todo)] text-[var(--status-todo)]',
+      in_progress: 'bg-[var(--bg-inprogress)] text-[var(--status-inprogress)]',
+      in_review: 'bg-[var(--bg-review)] text-[var(--status-review)]',
+      done: 'bg-[var(--bg-done)] text-[var(--status-done)]'
     };
     return map[status] || map.backlog;
   };
 
   const getPriorityColor = (priority) => {
     const map = {
-      urgent: 'text-rose-600 bg-rose-50 px-2 py-0.5 rounded text-[10px] font-bold border border-rose-100 uppercase tracking-wider',
-      high: 'text-orange-600 bg-orange-50 px-2 py-0.5 rounded text-[10px] font-bold border border-orange-100 uppercase tracking-wider',
-      medium: 'text-blue-600 bg-blue-50 px-2 py-0.5 rounded text-[10px] font-bold border border-blue-100 uppercase tracking-wider',
-      low: 'text-slate-500 bg-slate-50 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-100 uppercase tracking-wider'
+      highest: 'text-[var(--priority-highest)] bg-[var(--priority-highest)]/10 px-2 py-0.5 rounded text-[10px] font-bold border border-[var(--priority-highest)]/20 uppercase tracking-wider',
+      high: 'text-[var(--priority-high)] bg-[var(--priority-high)]/10 px-2 py-0.5 rounded text-[10px] font-bold border border-[var(--priority-high)]/20 uppercase tracking-wider',
+      medium: 'text-[var(--priority-medium)] bg-[var(--priority-medium)]/10 px-2 py-0.5 rounded text-[10px] font-bold border border-[var(--priority-medium)]/20 uppercase tracking-wider',
+      low: 'text-[var(--priority-low)] bg-[var(--priority-low)]/10 px-2 py-0.5 rounded text-[10px] font-bold border border-[var(--priority-low)]/20 uppercase tracking-wider',
+      lowest: 'text-[var(--priority-lowest)] bg-[var(--priority-lowest)]/10 px-2 py-0.5 rounded text-[10px] font-bold border border-[var(--priority-lowest)]/20 uppercase tracking-wider'
     };
     return map[priority] || map.medium;
   };
@@ -269,7 +334,7 @@ export default function ProjectDetailPage() {
                 setCreateIssueContext({ sprintId: null });
                 setShowModal(true);
               }}
-              className="flex items-center gap-2 rounded-[3px] bg-[#0052CC] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#0065FF] shrink-0 ml-4"
+              className="flex items-center gap-2 rounded-[3px] bg-[var(--accent-primary)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:opacity-90 shrink-0 ml-4"
             >
               <Plus size={16} strokeWidth={2.5} />
               Create Issue
@@ -287,7 +352,7 @@ export default function ProjectDetailPage() {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all whitespace-nowrap border-b-2 -mb-px ${
                 activeTab === tab.id
-                  ? 'border-[#0052CC] text-[#0052CC]'
+                  ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]'
                   : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-subtle)]'
               }`}
             >
@@ -400,6 +465,7 @@ export default function ProjectDetailPage() {
                 projectId={id}
                 refreshNonce={refreshNonce}
                 sharedCards={cards}
+                sharedLists={lists}
                 onCardUpdated={handleBoardCardUpdated}
               />
             </div>
@@ -501,7 +567,10 @@ export default function ProjectDetailPage() {
         <CardDetail
           key={selectedCard.id}
           card={selectedCard}
-          onClose={() => setSelectedCard(null)}
+          onClose={() => {
+            setSelectedCard(null);
+            router.replace(`/projects/${id}?tab=${requestedTab}`, { scroll: false });
+          }}
           onSave={handleSaveCard}
           isSaving={isSavingCard}
         />

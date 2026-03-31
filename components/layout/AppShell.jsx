@@ -75,7 +75,7 @@ export default function AppShell({ children }) {
 
   // Auth and onboarding flows should render without app chrome.
   if (
-    ['/login', '/register'].includes(pathname) ||
+    ['/login', '/register', '/forgot-password', '/reset-password'].includes(pathname) ||
     pathname.startsWith('/onboarding')
   ) {
     return <>{children}</>;

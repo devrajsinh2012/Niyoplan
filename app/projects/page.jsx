@@ -10,6 +10,7 @@ import { FolderKanban, Plus, Star, Activity, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { ProjectsPageSkeleton } from '@/components/ui/PageSkeleton';
+import CreateProjectModal from '@/components/modals/CreateProjectModal';
 
 const DEFAULT_LISTS = [
   { name: 'Backlog', rank: 1000 },
@@ -31,16 +32,8 @@ export default function ProjectsPage() {
   const { activeOrganization, loading: orgLoading } = useOrganization();
   const searchParams = useSearchParams();
   
-  // New Project Form
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [prefix, setPrefix] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [projectScope, setProjectScope] = useState('all');
-  const [projectRequirementLink, setProjectRequirementLink] = useState('');
-  const [designPrototypeLink, setDesignPrototypeLink] = useState('');
-  const [apiDocumentationLink, setApiDocumentationLink] = useState('');
   const [starredProjectIds, setStarredProjectIds] = useState([]);
   const [openInfoProjectId, setOpenInfoProjectId] = useState(null);
   const canCreateProject = ['admin', 'pm'].includes(activeOrganization?.role);
@@ -177,92 +170,11 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     if (orgLoading) return;
-    setIsLoading(true);
+    if (projects.length === 0) {
+      setIsLoading(true);
+    }
     fetchProjects();
   }, [orgLoading, fetchProjects]);
-
-  const handleCreateProject = async (e) => {
-    e.preventDefault();
-    setIsCreating(true);
-
-    try {
-      const organizationId = activeOrganization?.id;
-
-      if (!organizationId) {
-        throw new Error('No active company found. Please complete onboarding first.');
-      }
-
-      const { data: project, error } = await supabase
-        .from('projects')
-        .insert({
-          name,
-          description,
-          prefix: prefix.toUpperCase(),
-          organization_id: organizationId,
-          created_by: profile.id
-        })
-        .select()
-        .single();
-
-      if (error) {
-        if (error.code === '23505') throw new Error('Project prefix must be unique');
-        throw error;
-      }
-
-      await supabase.from('lists').insert(DEFAULT_LISTS.map((list) => ({
-        project_id: project.id,
-        name: list.name,
-        rank: list.rank
-      })));
-
-      const docsToCreate = [
-        { title: 'Project Requirement', content: projectRequirementLink.trim() },
-        { title: 'Design Prototype', content: designPrototypeLink.trim() },
-        { title: 'API Documentation', content: apiDocumentationLink.trim() },
-      ].filter((doc) => doc.content);
-
-      if (docsToCreate.length > 0) {
-        await supabase.from('docs').insert(
-          docsToCreate.map((doc) => ({
-            project_id: project.id,
-            title: doc.title,
-            content: doc.content,
-            created_by: profile.id,
-            updated_by: profile.id,
-          }))
-        );
-      }
-
-      toast.success('Project created!');
-      setShowModal(false);
-      setName('');
-      setDescription('');
-      setPrefix('');
-      setProjectRequirementLink('');
-      setDesignPrototypeLink('');
-      setApiDocumentationLink('');
-      fetchProjects();
-    } catch (err) {
-      toast.error(err?.message || 'Failed to create project');
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
-  const handleNameChange = (e) => {
-    const val = e.target.value;
-    setName(val);
-    if (!prefix || prefix.length < 4) {
-      const words = val.split(' ').filter(w => w.length > 0);
-      let newPrefix = '';
-      if (words.length === 1) {
-        newPrefix = words[0].substring(0, 4).toUpperCase();
-      } else {
-        newPrefix = words.map(w => w[0]).join('').substring(0, 4).toUpperCase();
-      }
-      setPrefix(newPrefix);
-    }
-  };
 
   if (isLoading) {
     return <ProjectsPageSkeleton />;
@@ -459,112 +371,13 @@ export default function ProjectsPage() {
       </div>
 
       {/* ── Create Project Modal ── */}
-      {showModal && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-[#091E42]/60 backdrop-blur-[2px]">
-          <div className="w-full max-w-lg rounded-lg bg-[var(--bg-surface)] p-8 shadow-2xl animate-fade-in ring-1 ring-black/5">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-[var(--text-heading)] tracking-tight">Create Project</h2>
-              <button 
-                onClick={() => setShowModal(false)}
-                className="rounded-full p-2 text-[var(--text-muted)] hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)] transition-colors"
-                aria-label="Close"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <form onSubmit={handleCreateProject} className="flex flex-col gap-6">
-              <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                  Project Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text" 
-                  required
-                  className="w-full rounded-[3px] border-2 border-[var(--border-subtle)] bg-[var(--bg-input)] px-4 py-2.5 text-sm font-medium text-[var(--text-primary)] transition-all focus:border-[#0052CC] focus:bg-[var(--bg-surface)] focus:outline-none"
-                  placeholder="e.g. Website Overhaul"
-                  value={name} 
-                  onChange={handleNameChange}
-                />
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                  Project Key <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text" 
-                  required 
-                  maxLength={6}
-                  className="w-full rounded-[3px] border-2 border-[var(--border-subtle)] bg-[var(--bg-input)] px-4 py-2.5 text-sm font-bold uppercase text-[var(--text-primary)] transition-all focus:border-[#0052CC] focus:bg-[var(--bg-surface)] focus:outline-none placeholder:font-medium tracking-widest"
-                  placeholder="e.g. WEB"
-                  value={prefix} 
-                  onChange={e => setPrefix(e.target.value.toUpperCase())}
-                />
-                <p className="mt-2 text-[11px] font-medium text-[var(--text-muted)]">
-                  Issues will look like <span className="font-bold text-[#0052CC]">{prefix || 'WEB'}-123</span>
-                </p>
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                  Description
-                </label>
-                <textarea
-                  className="w-full min-h-[100px] rounded-[3px] border-2 border-[var(--border-subtle)] bg-[var(--bg-input)] px-4 py-2.5 text-sm font-medium text-[var(--text-primary)] transition-all focus:border-[#0052CC] focus:bg-[var(--bg-surface)] focus:outline-none resize-none"
-                  placeholder="What is this project about?"
-                  value={description} 
-                  onChange={e => setDescription(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-3 border border-[var(--border-subtle)] rounded-[4px] p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                  Project Resources (Optional)
-                </p>
-                <input
-                  type="url"
-                  className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
-                  placeholder="Project Requirement URL (Google Drive / PDF / link)"
-                  value={projectRequirementLink}
-                  onChange={(e) => setProjectRequirementLink(e.target.value)}
-                />
-                <input
-                  type="url"
-                  className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
-                  placeholder="Design Prototype URL"
-                  value={designPrototypeLink}
-                  onChange={(e) => setDesignPrototypeLink(e.target.value)}
-                />
-                <input
-                  type="url"
-                  className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
-                  placeholder="API Documentation URL"
-                  value={apiDocumentationLink}
-                  onChange={(e) => setApiDocumentationLink(e.target.value)}
-                />
-              </div>
-
-              <div className="mt-4 flex items-center justify-end gap-3">
-                <button 
-                  type="button" 
-                  className="rounded-[3px] px-5 py-2 text-sm font-bold text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)]"
-                  onClick={() => setShowModal(false)}
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  className="rounded-[3px] bg-[#0052CC] px-7 py-2 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#00388D] disabled:opacity-50 active:scale-95" 
-                  disabled={isCreating}
-                >
-                  {isCreating ? 'Creating...' : 'Create'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <CreateProjectModal 
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        activeOrganization={activeOrganization}
+        profile={profile}
+        onProjectCreated={() => fetchProjects()}
+      />
 
     </div>
   );

@@ -36,18 +36,26 @@
     --accent-text: #1D4ED8;
     --accent-glow: rgba(37, 99, 235, 0.16);
 
-    /* --- Status Colors --- */
-    --status-todo: #8C9BAB;
-    --status-inprogress: #0C66E4;
-    --status-done: #22A06B;
-    --status-blocked: #E34935;
-    --status-review: #6554C0;
+    /* --- Status Badge Tokens --- */
+    --status-todo-bg: #F4F5F7;
+    --status-todo-text: #42526E;
+    --status-todo-border: #DFE1E6;
 
-    --bg-todo: rgba(140, 155, 171, 0.12);
-    --bg-inprogress: rgba(12, 102, 228, 0.15);
-    --bg-done: rgba(34, 160, 107, 0.15);
-    --bg-blocked: rgba(227, 73, 53, 0.15);
-    --bg-review: rgba(101, 84, 192, 0.15);
+    --status-inprogress-bg: #EAE6FF;
+    --status-inprogress-text: #403294;
+    --status-inprogress-border: #C0B6F2;
+
+    --status-inreview-bg: #DEEBFF;
+    --status-inreview-text: #0052CC;
+    --status-inreview-border: #B3D4FF;
+
+    --status-done-bg: #E3FCEF;
+    --status-done-text: #006644;
+    --status-done-border: #ABF5D1;
+
+    --status-blocked-bg: #FFEBE6;
+    --status-blocked-text: #BF2600;
+    --status-blocked-border: #FFBDAD;
 
     /* --- Priority Colors --- */
     --priority-highest: #E34935;
@@ -110,6 +118,27 @@
     --text-muted: #596773;
     --text-link: #4DABF7;
     --text-inverse: #1D2125;
+
+    /* --- Status Badge Tokens (Dark) --- */
+    --status-todo-bg: #2C333A;
+    --status-todo-text: #8C9BAB;
+    --status-todo-border: rgba(166, 197, 226, 0.15);
+
+    --status-inprogress-bg: rgba(12, 102, 228, 0.2);
+    --status-inprogress-text: #579DFF;
+    --status-inprogress-border: rgba(12, 102, 228, 0.3);
+
+    --status-inreview-bg: rgba(101, 84, 192, 0.2);
+    --status-inreview-text: #998DD9;
+    --status-inreview-border: rgba(101, 84, 192, 0.3);
+
+    --status-done-bg: rgba(34, 160, 107, 0.2);
+    --status-done-text: #4EB886;
+    --status-done-border: rgba(34, 160, 107, 0.3);
+
+    --status-blocked-bg: rgba(227, 73, 53, 0.2);
+    --status-blocked-text: #FF8B66;
+    --status-blocked-border: rgba(227, 73, 53, 0.3);
 
     --accent-primary: #0C66E4;
     --accent-hover: #0055CC;
@@ -232,6 +261,31 @@
   .btn-primary:active {
     transform: translateY(0.5px);
     box-shadow: none;
+  }
+  
+  .card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-md);
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes progress {
+    0% { width: 0%; }
+    100% { width: 100%; }
+  }
+
+  .animate-progress {
+    animation: progress 3s linear forwards;
   }
 }
 

@@ -10,7 +10,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { orgId } = params;
+    const { orgId } = await params;
 
     // Check if user is an admin of this organization
     const { data: membership } = await supabaseAdmin

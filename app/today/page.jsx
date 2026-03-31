@@ -37,7 +37,9 @@ export default function TodayPage() {
   // Fetch today items from backend
   const fetchTodayItems = useCallback(async () => {
     if (!profile?.id || !activeOrganization?.id) return;
-    setIsLoading(true);
+    if (todayItems.length === 0) {
+      setIsLoading(true);
+    }
     try {
       const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase

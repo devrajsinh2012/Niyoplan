@@ -49,7 +49,7 @@ export async function GET(request, { params }) {
 }
 
 export async function POST(request, { params }) {
-  const { projectId } = params;
+  const { projectId } = await params;
   const ip = request.headers.get('x-forwarded-for') || 'anonymous';
 
   if (!rateLimit(ip)) {

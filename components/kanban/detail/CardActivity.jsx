@@ -29,19 +29,19 @@ export default function CardActivity({
     <section>
       <div className="mb-4 flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-sm font-bold text-[var(--text-heading)]">
-          <Activity size={16} className="text-[#42526E]" /> Activity
+          <Activity size={16} className="text-[var(--text-muted)]" /> Activity
         </h3>
       </div>
       
       <div className="mb-6 flex items-center gap-2 border-b border-[var(--border-subtle)]">
         <button 
-          className={`pb-2 text-sm font-bold capitalize transition-all border-b-2 ${activeTab === 'comments' ? 'border-[#0052CC] text-[#0052CC]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`} 
+          className={`pb-2 text-sm font-bold capitalize transition-all border-b-2 ${activeTab === 'comments' ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`} 
           onClick={() => setActiveTab('comments')}
         >
           Comments {comments.length > 0 && `(${comments.length})`}
         </button>
         <button 
-          className={`pb-2 text-sm font-bold capitalize transition-all border-b-2 ${activeTab === 'subtasks' ? 'border-[#0052CC] text-[#0052CC]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`} 
+          className={`pb-2 text-sm font-bold capitalize transition-all border-b-2 ${activeTab === 'subtasks' ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`} 
           onClick={() => setActiveTab('subtasks')}
         >
           Subtasks {subtasks.length > 0 && `(${completedSubtasks}/${subtasks.length})`}
@@ -53,7 +53,7 @@ export default function CardActivity({
           <div className="flex gap-4">
             <UserAvatar user={profile} size={32} className="shrink-0" />
             <div className="flex-1">
-              <div className={`relative rounded-[4px] border-2 transition-all p-0.5 ${newComment ? 'border-[#0052CC] bg-white ring-4 ring-[#0052CC]/10' : 'border-[#DFE1E6] bg-[#fdfdfd] hover:border-[#4C9AFF]'}`}>
+              <div className={`relative rounded-[4px] border-2 transition-all p-0.5 ${newComment ? 'border-[var(--accent-primary)] bg-[var(--bg-surface)] ring-4 ring-[var(--accent-primary)]/10' : 'border-[var(--border-subtle)] bg-[var(--bg-panel)] hover:border-[var(--accent-primary)]'}`}>
                 <textarea 
                   placeholder="Add a comment..."
                   value={newComment}
@@ -62,15 +62,15 @@ export default function CardActivity({
                   rows={newComment ? 3 : 1}
                 />
                 {newComment && (
-                  <div className="flex gap-2 p-2 pt-0 border-t border-[#DFE1E6]">
+                  <div className="flex gap-2 p-2 pt-0 border-t border-[var(--border-subtle)]">
                     <button 
                       onClick={onAddComment}
-                      className="rounded-[3px] bg-[#0052CC] px-4 py-1 text-xs font-bold text-white hover:bg-[#003D99]"
+                      className="rounded-[3px] bg-[var(--accent-primary)] px-4 py-1 text-xs font-bold text-white hover:opacity-90 transition-colors"
                     >
                       Save
                     </button>
                     <button 
-                      className="rounded-[3px] px-4 py-1 text-xs font-bold text-[var(--text-secondary)] hover:bg-[#F4F5F7]" 
+                      className="rounded-[3px] px-4 py-1 text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-panel-hover)]" 
                       onClick={() => setNewComment('')}
                     >
                       Cancel
@@ -83,11 +83,11 @@ export default function CardActivity({
 
           {isLoadingComments ? (
             <div className="flex justify-center py-10">
-              <Loader className="animate-spin text-[#0052CC]" size={20} />
+              <Loader className="animate-spin text-[var(--accent-primary)]" size={20} />
             </div>
           ) : comments.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-[var(--text-muted)]">
-              <div className="mb-3 rounded-full bg-[#f4f5f7] p-4">
+              <div className="mb-3 rounded-full bg-[var(--bg-panel)] p-4">
                 <List size={24} className="opacity-40" />
               </div>
               <p className="text-sm font-medium">No comments yet. Be the first!</p>
@@ -95,7 +95,7 @@ export default function CardActivity({
           ) : (
             <div className="space-y-4">
               {comments.map(comment => (
-                <div key={comment.id} className="flex gap-3 rounded-lg p-4 bg-[#f8f9fa] hover:bg-[#f4f5f7] transition-colors">
+                <div key={comment.id} className="flex gap-3 rounded-lg p-4 bg-[var(--bg-panel)] hover:bg-[var(--bg-panel-hover)] transition-colors">
                   <UserAvatar user={comment.user} size={32} className="shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2">
@@ -116,19 +116,19 @@ export default function CardActivity({
       {activeTab === 'subtasks' && (
         <div className="space-y-4">
           {subtasks.length > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+            <div className="bg-[var(--accent-subtle)] border border-[var(--border-subtle)] rounded-lg p-3 mb-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-semibold text-blue-900">Progress</span>
-                <span className="text-sm font-bold text-blue-700">{completedSubtasks}/{subtasks.length}</span>
+                <span className="text-sm font-semibold text-[var(--accent-text)]">Progress</span>
+                <span className="text-sm font-bold text-[var(--accent-primary)]">{completedSubtasks}/{subtasks.length}</span>
               </div>
-              <div className="w-full bg-blue-200 rounded-full h-2">
-                <div className="bg-blue-600 h-2 rounded-full transition-all" style={{ width: `${subtaskProgress}%` }}></div>
+              <div className="w-full bg-[var(--border-subtle)] rounded-full h-2">
+                <div className="bg-[var(--accent-primary)] h-2 rounded-full transition-all" style={{ width: `${subtaskProgress}%` }}></div>
               </div>
             </div>
           )}
 
           <div className="flex gap-3">
-            <CheckSquare size={18} className="text-[#42526E] shrink-0 mt-2" />
+            <CheckSquare size={18} className="text-[var(--text-muted)] shrink-0 mt-2" />
             <div className="flex-1">
               <div className="flex gap-2">
                 <input
@@ -137,12 +137,12 @@ export default function CardActivity({
                   value={newSubtaskTitle}
                   onChange={e => setNewSubtaskTitle(e.target.value)}
                   onKeyPress={e => e.key === 'Enter' && onAddSubtask()}
-                  className="flex-1 rounded-lg border border-[var(--border-subtle)] bg-white px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0052CC] focus:border-transparent"
+                  className="flex-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/20 focus:border-[var(--accent-primary)]"
                 />
                 <button
                   onClick={onAddSubtask}
                   disabled={isAddingSubtask || !newSubtaskTitle.trim()}
-                  className="rounded-lg bg-[#0052CC] px-4 py-2 text-sm font-semibold text-white hover:bg-[#003D99] disabled:opacity-50 transition-colors"
+                  className="rounded-lg bg-[var(--accent-primary)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-colors"
                 >
                   {isAddingSubtask ? <Loader size={16} className="animate-spin" /> : 'Add'}
                 </button>
@@ -152,11 +152,11 @@ export default function CardActivity({
 
           {isLoadingSubtasks ? (
             <div className="flex justify-center py-10">
-              <Loader className="animate-spin text-[#0052CC]" size={20} />
+              <Loader className="animate-spin text-[var(--accent-primary)]" size={20} />
             </div>
           ) : subtasks.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-[var(--text-muted)]">
-              <div className="mb-3 rounded-full bg-[#f4f5f7] p-4">
+              <div className="mb-3 rounded-full bg-[var(--bg-panel)] p-4">
                 <CheckSquare size={24} className="opacity-40" />
               </div>
               <p className="text-sm font-medium">No subtasks yet</p>
@@ -164,7 +164,7 @@ export default function CardActivity({
           ) : (
             <div className="space-y-2 mt-4">
               {subtasks.map(subtask => (
-                <div key={subtask.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-[#f4f5f7] transition-colors group">
+                <div key={subtask.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-[var(--bg-panel-hover)] transition-colors group">
                   <input
                     type="checkbox"
                     checked={subtask.completed}

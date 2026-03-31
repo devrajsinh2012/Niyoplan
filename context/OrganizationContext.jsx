@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch } from '@/lib/apiClient';
 
@@ -22,7 +22,11 @@ export function OrganizationProvider({ children }) {
 
   const setActiveById = useCallback((orgId, organizations, userId) => {
     const next = organizations.find((org) => org.id === orgId) || organizations[0] || null;
-    setActiveOrganization(next);
+    
+    setActiveOrganization(prev => {
+      if (prev?.id === next?.id) return prev; // Avoid new object reference if same ID
+      return next;
+    });
 
     if (userId) {
       if (next?.id) {
@@ -35,15 +39,23 @@ export function OrganizationProvider({ children }) {
     return next;
   }, []);
 
+  const userOrgsRef = useRef([]);
+
   const refreshOrganizations = useCallback(async () => {
     if (!user?.id) {
       setUserOrganizations([]);
+      userOrgsRef.current = [];
       setActiveOrganization(null);
       setLoading(false);
       return;
     }
 
-    setLoading(true);
+    // Only set loading true if we don't have any organizations yet (initial load)
+    const currentOrgs = userOrgsRef.current;
+    const isInitialLoad = currentOrgs.length === 0;
+    if (isInitialLoad) {
+      setLoading(true);
+    }
 
     try {
       const response = await apiFetch('/api/organizations');
@@ -55,17 +67,23 @@ export function OrganizationProvider({ children }) {
       const organizations = await response.json();
       const normalized = Array.isArray(organizations) ? organizations : [];
       setUserOrganizations(normalized);
+      userOrgsRef.current = normalized;
 
       const storedOrgId = localStorage.getItem(storageKey(user.id));
       setActiveById(storedOrgId, normalized, user.id);
     } catch (error) {
       console.error('Organization load failed:', error);
-      setUserOrganizations([]);
-      setActiveOrganization(null);
+      if (isInitialLoad) {
+        setUserOrganizations([]);
+        userOrgsRef.current = [];
+        setActiveOrganization(null);
+      }
     } finally {
-      setLoading(false);
+      if (isInitialLoad) {
+        setLoading(false);
+      }
     }
-  }, [user?.id, setActiveById]);
+  }, [user?.id, setActiveById]); // Removed userOrganizations.length to break potential loop
 
   useEffect(() => {
     if (authLoading) return;

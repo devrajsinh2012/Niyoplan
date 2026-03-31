@@ -109,7 +109,7 @@ export default function WorkspaceViewsPanel({ projectId }) {
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 py-20 text-center font-medium text-gray-600">
+      <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 py-20 text-center font-medium text-[var(--text-muted)]">
         Loading workspace views...
       </div>
     );
@@ -124,7 +124,7 @@ export default function WorkspaceViewsPanel({ projectId }) {
           type="button"
           onClick={refreshViews}
           disabled={refreshing}
-          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-panel-hover)] disabled:opacity-60"
         >
           <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
           Refresh
@@ -132,13 +132,13 @@ export default function WorkspaceViewsPanel({ projectId }) {
       </div>
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h3 className="text-base font-bold uppercase tracking-widest text-gray-900">My Work View</h3>
+            <h3 className="text-base font-bold uppercase tracking-widest text-[var(--text-heading)]">My Work View</h3>
             <button
               type="button"
               onClick={() => router.push(`/projects/${projectId}?tab=list`)}
-              className="text-xs font-bold uppercase tracking-wider text-blue-600 hover:text-blue-700"
+              className="text-xs font-bold uppercase tracking-wider text-[var(--accent-primary)] hover:opacity-80"
             >
               Open List
             </button>
@@ -149,33 +149,33 @@ export default function WorkspaceViewsPanel({ projectId }) {
                 type="button"
                 key={card.id}
                 onClick={() => openCard(card.id)}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-left transition-colors hover:border-gray-300 hover:bg-white"
+                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-panel)] px-4 py-3 text-left transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-surface)]"
               >
-                <div className="mb-1 text-xs font-bold text-gray-900">
-                  <span className="mr-2 text-blue-600">{card.custom_id}</span>
+                <div className="mb-1 text-xs font-bold text-[var(--text-primary)]">
+                  <span className="mr-2 text-[var(--accent-primary)]">{card.custom_id}</span>
                   {card.title}
                 </div>
-                <div className="flex gap-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                <div className="flex gap-3 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                   <span>Priority: {card.priority}</span>
                   <span>Status: {card.status}</span>
                 </div>
               </button>
             ))}
             {!viewData.myWork.length && (
-              <div className="py-10 text-center text-sm font-medium text-gray-400">
+              <div className="py-10 text-center text-sm font-medium text-[var(--text-muted)] opacity-50">
                 No active cards assigned to you.
               </div>
             )}
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h3 className="text-base font-bold uppercase tracking-widest text-gray-900">Workload View</h3>
+            <h3 className="text-base font-bold uppercase tracking-widest text-[var(--text-heading)]">Workload View</h3>
             <button
               type="button"
               onClick={() => router.push(`/projects/${projectId}?tab=board`)}
-              className="text-xs font-bold uppercase tracking-wider text-blue-600 hover:text-blue-700"
+              className="text-xs font-bold uppercase tracking-wider text-[var(--accent-primary)] hover:opacity-80"
             >
               Open Board
             </button>
@@ -184,15 +184,15 @@ export default function WorkspaceViewsPanel({ projectId }) {
             {viewData.workload.map((member) => (
               <div
                 key={member.id}
-                className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 transition-colors hover:border-gray-300"
+                className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-panel)] px-4 py-3 transition-colors hover:border-[var(--border-strong)]"
               >
                 <div>
-                  <div className="mb-1 text-xs font-bold text-gray-900">{member.full_name || 'Unnamed'}</div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                  <div className="mb-1 text-xs font-bold text-[var(--text-primary)]">{member.full_name || 'Unnamed'}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                     Active: {member.active} | Done: {member.done}
                   </div>
                 </div>
-                <div className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-blue-600">
+                <div className="rounded-full border border-[var(--accent-primary)]/20 bg-[var(--accent-primary)]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--accent-primary)]">
                   Total: {member.total}
                 </div>
               </div>
@@ -207,13 +207,13 @@ export default function WorkspaceViewsPanel({ projectId }) {
       </section>
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h3 className="text-base font-bold uppercase tracking-widest text-gray-900">Calendar View</h3>
+            <h3 className="text-base font-bold uppercase tracking-widest text-[var(--text-heading)]">Calendar View</h3>
             <button
               type="button"
               onClick={() => router.push(`/projects/${projectId}?tab=calendar`)}
-              className="text-xs font-bold uppercase tracking-wider text-blue-600 hover:text-blue-700"
+              className="text-xs font-bold uppercase tracking-wider text-[var(--accent-primary)] hover:opacity-80"
             >
               Open Calendar
             </button>
@@ -224,13 +224,13 @@ export default function WorkspaceViewsPanel({ projectId }) {
                 type="button"
                 key={card.id}
                 onClick={() => openCard(card.id, 'calendar')}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-left transition-colors hover:border-gray-300 hover:bg-white"
+                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-panel)] px-4 py-3 text-left transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-surface)]"
               >
-                <div className="mb-1 text-xs font-bold text-gray-900">
-                  <span className="mr-2 text-blue-600">{card.custom_id}</span>
+                <div className="mb-1 text-xs font-bold text-[var(--text-primary)]">
+                  <span className="mr-2 text-[var(--accent-primary)]">{card.custom_id}</span>
                   {card.title}
                 </div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                   Start: {card.start_date ? new Date(card.start_date).toLocaleDateString() : '-'} | Due: {card.due_date ? new Date(card.due_date).toLocaleDateString() : '-'}
                 </div>
               </button>
@@ -243,10 +243,10 @@ export default function WorkspaceViewsPanel({ projectId }) {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h3 className="text-base font-bold uppercase tracking-widest text-gray-900">Inbox & Notifications</h3>
-            <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-700">
+            <h3 className="text-base font-bold uppercase tracking-widest text-[var(--text-heading)]">Inbox & Notifications</h3>
+            <span className="rounded-full bg-[var(--accent-primary)]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--accent-primary)]">
               {unreadCount} unread
             </span>
           </div>
@@ -254,17 +254,17 @@ export default function WorkspaceViewsPanel({ projectId }) {
             {viewData.notifications.map((notification) => (
               <div
                 key={notification.id}
-                className={`rounded-xl border px-4 py-4 transition-all ${notification.is_read ? 'border-gray-200 bg-gray-50 opacity-60' : 'border-blue-200 bg-blue-50 shadow-sm'}`}
+                className={`rounded-xl border px-4 py-4 transition-all ${notification.is_read ? 'border-[var(--border-subtle)] bg-[var(--bg-panel)] opacity-60' : 'border-[var(--accent-primary)]/20 bg-[var(--accent-primary)]/5 shadow-sm'}`}
               >
-                <div className="mb-1 text-xs font-bold text-gray-900">{notification.title}</div>
-                <div className="mb-3 text-xs font-medium leading-relaxed text-gray-500">
+                <div className="mb-1 text-xs font-bold text-[var(--text-primary)]">{notification.title}</div>
+                <div className="mb-3 text-xs font-medium leading-relaxed text-[var(--text-muted)]">
                   {notification.message || notification.type}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {(notification.metadata?.card_id || notification.card_id) && (
                     <button
                       type="button"
-                      className="rounded-lg bg-slate-800 px-3 py-1.5 text-[10px] font-bold uppercase text-white shadow-lg transition-all hover:bg-slate-700 active:scale-95"
+                      className="rounded-lg bg-[var(--text-heading)] px-3 py-1.5 text-[10px] font-bold uppercase text-[var(--bg-surface)] shadow-lg transition-all hover:opacity-80 active:scale-95"
                       onClick={() => openNotification(notification)}
                     >
                       Open card
@@ -273,7 +273,7 @@ export default function WorkspaceViewsPanel({ projectId }) {
                   {!notification.is_read && (
                     <button
                       type="button"
-                      className="rounded-lg bg-blue-600 px-3 py-1.5 text-[10px] font-bold uppercase text-white shadow-lg transition-all hover:bg-blue-500 active:scale-95"
+                      className="rounded-lg bg-[var(--accent-primary)] px-3 py-1.5 text-[10px] font-bold uppercase text-white shadow-lg transition-all hover:opacity-90 active:scale-95"
                       onClick={() => markRead(notification.id)}
                     >
                       Mark read
@@ -291,20 +291,20 @@ export default function WorkspaceViewsPanel({ projectId }) {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h3 className="text-base font-bold uppercase tracking-widest text-gray-900">List View Snapshot</h3>
+          <h3 className="text-base font-bold uppercase tracking-widest text-[var(--text-heading)]">List View Snapshot</h3>
           <button
             type="button"
             onClick={() => router.push(`/projects/${projectId}?tab=list`)}
-            className="text-xs font-bold uppercase tracking-wider text-blue-600 hover:text-blue-700"
+            className="text-xs font-bold uppercase tracking-wider text-[var(--accent-primary)] hover:opacity-80"
           >
             Open Full List
           </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[800px] text-xs">
-            <thead className="border-b border-gray-200 text-gray-500">
+            <thead className="border-b border-[var(--border-subtle)] text-[var(--text-muted)]">
               <tr className="font-bold uppercase tracking-wider">
                 <th className="px-4 pb-4 text-left font-black">Key</th>
                 <th className="px-4 pb-4 text-left font-black">Title</th>
@@ -317,20 +317,20 @@ export default function WorkspaceViewsPanel({ projectId }) {
               {viewData.list.map((card) => (
                 <tr
                   key={card.id}
-                  className="cursor-pointer border-b border-gray-100 transition-colors hover:bg-gray-50"
+                  className="cursor-pointer border-b border-[var(--border-subtle)] transition-colors hover:bg-[var(--bg-panel-hover)]"
                   onClick={() => openCard(card.id, 'list')}
                 >
-                  <td className="px-4 py-4 font-bold text-blue-600">{card.custom_id}</td>
-                  <td className="px-4 py-4 font-semibold text-gray-700">{card.title}</td>
+                  <td className="px-4 py-4 font-bold text-[var(--accent-primary)]">{card.custom_id}</td>
+                  <td className="px-4 py-4 font-semibold text-[var(--text-primary)]">{card.title}</td>
                   <td className="px-4 py-4">
-                    <span className="rounded border border-gray-200 bg-gray-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-600">
+                    <span className="rounded border border-[var(--border-subtle)] bg-[var(--bg-panel)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--text-primary)]">
                       {card.status}
                     </span>
                   </td>
                   <td className="px-4 py-4">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-600">{card.priority}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{card.priority}</span>
                   </td>
-                  <td className="px-4 py-4 font-medium text-gray-700">{card.assignee?.full_name || 'Unassigned'}</td>
+                  <td className="px-4 py-4 font-medium text-[var(--text-primary)]">{card.assignee?.full_name || 'Unassigned'}</td>
                 </tr>
               ))}
             </tbody>

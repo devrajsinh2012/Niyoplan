@@ -4,7 +4,7 @@ import { getAuthUser } from '@/lib/auth';
 import { checkRole } from '@/lib/roles';
 
 export async function GET(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   const { user, error } = await getAuthUser(request);
   
   if (error || !user) {
@@ -35,7 +35,7 @@ export async function GET(request, { params }) {
 }
 
 export async function PATCH(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   const { user, error } = await getAuthUser(request);
   
   if (error || !user) {
@@ -86,7 +86,7 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   const { user, error } = await getAuthUser(request);
   
   if (error || !user) {

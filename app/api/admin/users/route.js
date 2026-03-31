@@ -129,7 +129,15 @@ export async function POST(request) {
       invitations,
     });
   } catch (err) {
-    console.error(err);
+    console.error('Invite Error:', err);
+    
+    // Handle Supabase email rate limits (429 Too Many Requests)
+    if (err?.status === 429 || err?.message?.toLowerCase().includes('rate limit')) {
+      return NextResponse.json({ 
+        error: 'Email invitation limit reached or database is under high load. Please try again after some time (usually after 1 hour).' 
+      }, { status: 429 });
+    }
+
     return NextResponse.json({ error: 'Failed to send invitations' }, { status: 500 });
   }
 }

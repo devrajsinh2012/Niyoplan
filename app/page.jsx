@@ -214,9 +214,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (orgLoading) return;
-    setIsLoading(true);
+    // Only show skeleton if we have no valid data yet
+    const hasData = stats.open > 0 || stats.resolved > 0 || activities.length > 0;
+    if (!hasData) {
+      setIsLoading(true);
+    }
     fetchDashboardData();
-  }, [fetchDashboardData, orgLoading]);
+  }, [fetchDashboardData, orgLoading, stats.open, stats.resolved, activities.length]);
 
   const relativeTime = (ts) => {
     if (!ts) return '';

@@ -24,6 +24,7 @@ export async function GET(request) {
           slug,
           logo_url,
           invite_code,
+          created_by,
           created_at
         )
       `)

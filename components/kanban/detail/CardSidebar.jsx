@@ -15,12 +15,12 @@ export default function CardSidebar({
   isSaving
 }) {
   return (
-    <div className="flex-[3] lg:min-w-[340px] border-l border-[var(--border-subtle)] bg-[#FAFBFC] p-6 rounded-br-lg flex flex-col max-h-full overflow-y-auto">
+    <div className="flex-[3] lg:min-w-[340px] border-l border-[var(--border-subtle)] bg-[var(--bg-panel)] p-6 rounded-br-lg flex flex-col max-h-full overflow-y-auto">
       <div className="mb-8">
-        <label className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-[#6B778C]">Status</label>
+        <label className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Status</label>
         <div className="relative group/status">
           <select
-            className={`w-full cursor-pointer appearance-none rounded-[3px] border-2 pl-3 pr-9 py-2 text-[12px] font-bold uppercase transition-all focus:outline-none focus:ring-4 focus:ring-[#0052CC]/10 ${getStatusStyle(form.status)}`}
+            className={`w-full cursor-pointer appearance-none rounded-[3px] border-2 pl-3 pr-9 py-2 text-[12px] font-bold uppercase transition-all focus:outline-none focus:ring-4 focus:ring-[var(--accent-primary)]/10 ${getStatusStyle(form.status)}`}
             value={form.status}
             onChange={(e) => {
               const nextForm = { ...form, status: e.target.value };
@@ -44,8 +44,8 @@ export default function CardSidebar({
         
         <div className="space-y-1">
           {/* Assignee Row */}
-          <div className="group flex items-center rounded px-3 py-1.5 transition-colors hover:bg-[#F4F5F7]">
-            <div className="w-28 shrink-0 text-[13px] font-bold text-[#6B778C]">Assignee</div>
+          <div className="group flex items-center rounded px-3 py-1.5 transition-colors hover:bg-[var(--bg-panel-hover)]">
+            <div className="w-28 shrink-0 text-[13px] font-bold text-[var(--text-muted)]">Assignee</div>
             <div className="flex flex-1 items-center gap-3 min-w-0">
               <UserAvatar user={card.assignee} size={24} className="shrink-0" />
               <select
@@ -66,8 +66,8 @@ export default function CardSidebar({
           </div>
 
           {/* Reporter Row */}
-          <div className="group flex items-center rounded px-3 py-1.5 transition-colors hover:bg-[#F4F5F7]">
-            <div className="w-28 shrink-0 text-[13px] font-bold text-[#6B778C]">Reporter</div>
+          <div className="group flex items-center rounded px-3 py-1.5 transition-colors hover:bg-[var(--bg-panel-hover)]">
+            <div className="w-28 shrink-0 text-[13px] font-bold text-[var(--text-muted)]">Reporter</div>
             <div className="flex flex-1 items-center gap-3 min-w-0">
               <UserAvatar user={profile} size={24} className="shrink-0" />
               <span className="truncate text-[13px] font-medium text-[var(--text-primary)]">{profile?.full_name || 'Me'}</span>
@@ -75,8 +75,8 @@ export default function CardSidebar({
           </div>
 
           {/* Priority Row */}
-          <div className="group flex items-center rounded px-3 py-1.5 transition-colors hover:bg-[#F4F5F7]">
-            <div className="w-28 shrink-0 text-[13px] font-bold text-[#6B778C]">Priority</div>
+          <div className="group flex items-center rounded px-3 py-1.5 transition-colors hover:bg-[var(--bg-panel-hover)]">
+            <div className="w-28 shrink-0 text-[13px] font-bold text-[var(--text-muted)]">Priority</div>
             <div className="flex-1">
               <select
                 className="w-full cursor-pointer bg-transparent py-0.5 text-[13px] font-medium text-[var(--text-primary)] transition-all focus:outline-none"
@@ -97,12 +97,12 @@ export default function CardSidebar({
           </div>
 
           {/* Story Points Row */}
-          <div className="group flex items-center rounded px-3 py-1.5 transition-colors hover:bg-[#F4F5F7]">
-            <div className="w-28 shrink-0 text-[13px] font-bold text-[#6B778C]">Story Points</div>
+          <div className="group flex items-center rounded px-3 py-1.5 transition-colors hover:bg-[var(--bg-panel-hover)]">
+            <div className="w-28 shrink-0 text-[13px] font-bold text-[var(--text-muted)]">Story Points</div>
             <div className="flex-1">
               <input
                 type="text"
-                className="w-full bg-transparent py-0.5 text-[13px] font-medium text-[var(--text-primary)] placeholder:text-[#A5ADBA] focus:outline-none"
+                className="w-full bg-transparent py-0.5 text-[13px] font-medium text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
                 value={form.story_points}
                 placeholder="None"
                 onChange={(e) => setForm(p => ({ ...p, story_points: e.target.value }))}
@@ -112,8 +112,8 @@ export default function CardSidebar({
           </div>
 
           {/* Sprint Row */}
-          <div className="group flex items-center rounded px-3 py-1.5 transition-colors hover:bg-[#F4F5F7]">
-            <div className="w-28 shrink-0 text-[13px] font-bold text-[#6B778C]">Sprint</div>
+          <div className="group flex items-center rounded px-3 py-1.5 transition-colors hover:bg-[var(--bg-panel-hover)]">
+            <div className="w-28 shrink-0 text-[13px] font-bold text-[var(--text-muted)]">Sprint</div>
             <div className="flex-1 overflow-hidden">
               <span className="truncate text-[13px] font-medium text-[var(--text-primary)]">
                 {card.sprint_id ? 'In Sprint' : 'None'}

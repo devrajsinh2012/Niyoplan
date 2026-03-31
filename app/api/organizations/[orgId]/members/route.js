@@ -10,7 +10,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { orgId } = params;
+    const { orgId } = await params;
 
     // Check if user is a member of this organization
     const { data: membership } = await supabaseAdmin
@@ -74,7 +74,7 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { orgId } = params;
+    const { orgId } = await params;
     const body = await request.json();
     const { memberId, action, newRole } = body;
 
@@ -176,6 +176,24 @@ export async function PATCH(request, { params }) {
         return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
       }
 
+      // Get organization to check creator
+      const { data: org } = await supabaseAdmin
+        .from('organizations')
+        .select('created_by')
+        .eq('id', orgId)
+        .single();
+
+      // Get member getting updated
+      const { data: memberToUpdate } = await supabaseAdmin
+        .from('organization_members')
+        .select('user_id')
+        .eq('id', memberId)
+        .single();
+
+      if (org && memberToUpdate && memberToUpdate.user_id === org.created_by) {
+        return NextResponse.json({ error: 'Cannot change role of the company creator' }, { status: 400 });
+      }
+
       const { error } = await supabaseAdmin
         .from('organization_members')
         .update({ role: newRole })
@@ -190,6 +208,23 @@ export async function PATCH(request, { params }) {
     }
 
     if (action === 'remove') {
+      // Get organization to check creator
+      const { data: org } = await supabaseAdmin
+        .from('organizations')
+        .select('created_by')
+        .eq('id', orgId)
+        .single();
+
+      const { data: memberToRemove } = await supabaseAdmin
+        .from('organization_members')
+        .select('role, user_id')
+        .eq('id', memberId)
+        .single();
+
+      if (org && memberToRemove && memberToRemove.user_id === org.created_by) {
+        return NextResponse.json({ error: 'Cannot remove the company creator' }, { status: 400 });
+      }
+
       // Don't allow removing the last admin
       const { data: adminCount } = await supabaseAdmin
         .from('organization_members')
@@ -197,12 +232,6 @@ export async function PATCH(request, { params }) {
         .eq('organization_id', orgId)
         .eq('role', 'admin')
         .eq('status', 'active');
-
-      const { data: memberToRemove } = await supabaseAdmin
-        .from('organization_members')
-        .select('role')
-        .eq('id', memberId)
-        .single();
 
       if (memberToRemove?.role === 'admin' && adminCount?.length === 1) {
         return NextResponse.json({ error: 'Cannot remove the last admin' }, { status: 400 });

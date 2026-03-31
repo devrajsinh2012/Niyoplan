@@ -171,9 +171,9 @@ export default function LoginPage() {
                 </label>
                 <Link
                   href="/forgot-password"
-                  style={{ fontSize: 13, color: 'var(--accent-text)', textDecoration: 'none', fontWeight: 500 }}
+                  className="text-[13px] font-semibold text-[var(--accent-text)] hover:underline transition-all"
                 >
-                  Forgot?
+                  Forgot password?
                 </Link>
               </div>
               <div style={{ position: 'relative' }}>

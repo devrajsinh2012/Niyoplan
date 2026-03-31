@@ -68,21 +68,31 @@ export default function CompanySettingsPage() {
           full_name,
           avatar_url,
           email
+        ),
+        organizations:organization_id (
+          created_by
         )
       `)
       .eq('organization_id', orgId)
       .order('joined_at', { ascending: false });
 
     if (allMembers) {
-      const membersWithEmail = allMembers.map((member) => ({
-        ...member,
-        email: member.profiles?.email || 'Unknown'
-      }));
+      const membersWithEmail = allMembers.map((member) => {
+        // Try multiple ways to identify the owner/creator
+        const orgCreatorId = member.organizations?.created_by || organization?.created_by;
+        const isOwner = member.user_id && orgCreatorId && String(member.user_id) === String(orgCreatorId);
+
+        return {
+          ...member,
+          email: member.profiles?.email || 'Unknown',
+          isOwner: !!isOwner
+        };
+      });
 
       setPendingMembers(membersWithEmail.filter(m => m.status === 'pending'));
       setMembers(membersWithEmail.filter(m => m.status === 'active'));
     }
-  }, []);
+  }, [organization?.created_by]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -465,19 +475,28 @@ export default function CompanySettingsPage() {
                           members.map(member => (
                             <tr key={member.id}>
                               <td className="px-6 py-4">
-                                <div>
-                                  <p className="font-medium text-gray-900">
-                                    {member.profiles?.full_name || member.email || 'Unknown'}
-                                  </p>
-                                  <p className="text-sm text-gray-500">{member.email || 'No email available'}</p>
+                                <div className="flex items-center gap-2">
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-medium text-gray-900">
+                                        {member.profiles?.full_name || member.email || 'Unknown'}
+                                      </p>
+                                      {member.isOwner && (
+                                        <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                          Owner
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-sm text-gray-500">{member.email || 'No email available'}</p>
+                                  </div>
                                 </div>
                               </td>
                               <td className="px-6 py-4">
                                 <select
                                   value={member.role}
                                   onChange={(e) => handleMemberAction(member.id, 'changeRole', e.target.value)}
-                                  className="px-3 py-1 border border-gray-300 rounded-lg text-sm"
-                                  disabled={member.user_id === user?.id}
+                                  className="px-3 py-1 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
+                                  disabled={member.isOwner === true}
                                 >
                                   <option value="admin">Admin</option>
                                   <option value="pm">PM</option>

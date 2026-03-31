@@ -31,6 +31,8 @@ export default function ProjectSettingsPage() {
     canManageSettings: false,
     canDeleteProject: false,
   });
+  const [orgMembers, setOrgMembers] = useState([]);
+  const [isLoadingOrgMembers, setIsLoadingOrgMembers] = useState(false);
 
   // General Settings
   const [name, setName] = useState('');
@@ -87,6 +89,7 @@ export default function ProjectSettingsPage() {
       setStatus(projectData.status || 'active');
       setSprintDuration(projectData.sprint_duration || '2');
       setSprintNaming(projectData.sprint_naming || 'Sprint {n}');
+      return projectData;
     } catch (error) {
       console.error('Error fetching project data:', error);
       toast.error(error.message || 'Failed to load project settings');
@@ -107,16 +110,35 @@ export default function ProjectSettingsPage() {
     }
   }, [projectId, requestWithAuth]);
 
+  const fetchOrgMembers = useCallback(async (orgId) => {
+    if (!orgId) return;
+    setIsLoadingOrgMembers(true);
+    try {
+      const data = await requestWithAuth(`/api/organizations/${orgId}/members`);
+      setOrgMembers(data || []);
+    } catch (error) {
+      console.error('Error fetching organization members:', error);
+    } finally {
+      setIsLoadingOrgMembers(false);
+    }
+  }, [requestWithAuth]);
+
   const refreshMembers = async () => {
     setMembersLoadError(false);
     await fetchMembers();
+    if (project?.organization_id) {
+      await fetchOrgMembers(project.organization_id);
+    }
   };
 
   useEffect(() => {
     // Fetch project data first, then members
     const loadData = async () => {
       try {
-        await fetchProjectData();
+        const projectData = await fetchProjectData();
+        if (projectData?.organization_id) {
+          await fetchOrgMembers(projectData.organization_id);
+        }
       } finally {
         // Always try to fetch members, but don't block on failure
         await fetchMembers();
@@ -683,6 +705,49 @@ export default function ProjectSettingsPage() {
                   <option value="viewer">Viewer - Read only</option>
                 </select>
               </div>
+
+              {/* Organization Members Suggestion */}
+              {orgMembers.length > 0 && (
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                    Quick Add from Organization
+                  </label>
+                  <div className="max-h-48 overflow-y-auto rounded-md border border-gray-200 bg-gray-50">
+                    {orgMembers
+                      .filter(om => !members.some(pm => pm.user_id === om.user_id))
+                      .map((om) => (
+                        <button
+                          key={om.user_id}
+                          onClick={() => {
+                            setInviteEmail(om.email);
+                            setInviteRole(om.role || 'member');
+                          }}
+                          className={`flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-gray-100 transition-colors ${
+                            inviteEmail === om.email ? 'bg-blue-50 ring-1 ring-inset ring-blue-500' : ''
+                          }`}
+                        >
+                          <UserAvatar user={om.profiles} size={28} />
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-medium text-gray-900">
+                              {om.profiles?.full_name || 'Unknown User'}
+                            </div>
+                            <div className="truncate text-xs text-gray-500">
+                              {om.email}
+                            </div>
+                          </div>
+                          <div className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-bold uppercase text-gray-600">
+                            {om.role || 'member'}
+                          </div>
+                        </button>
+                      ))}
+                    {orgMembers.filter(om => !members.some(pm => pm.user_id === om.user_id)).length === 0 && (
+                      <div className="px-3 py-4 text-center text-xs text-gray-500">
+                        All organization members are already in this project.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="mt-6 flex gap-3">

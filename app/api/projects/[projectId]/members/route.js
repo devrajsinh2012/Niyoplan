@@ -154,6 +154,11 @@ export async function POST(request, { params }) {
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (err) {
     console.error('Failed to invite project member:', err);
+    if (err?.status === 429 || err?.message?.toLowerCase().includes('rate limit')) {
+      return NextResponse.json({
+        error: 'Email invitation limit reached or database is under high load. Please try again after some time (usually after 1 hour).'
+      }, { status: 429 });
+    }
     return NextResponse.json({ error: 'Failed to invite project member' }, { status: 500 });
   }
 }

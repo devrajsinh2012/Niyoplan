@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext({});
@@ -10,6 +10,10 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  const userRef = useRef(null);
+  const profileRef = useRef(null);
 
   const fetchProfile = useCallback(async (userId, attempt = 0) => {
     let shouldRetry = false;
@@ -22,19 +26,23 @@ export const AuthProvider = ({ children }) => {
 
       if (!error && data) {
         const { data: authData } = await supabase.auth.getUser();
-        setProfile({ ...data, email: authData?.user?.email || data.email || '' });
+        const profileData = { ...data, email: authData?.user?.email || data.email || '' };
+        setProfile(profileData);
+        profileRef.current = profileData;
       } else if (error && error.code === 'PGRST116' && attempt < 5) {
         // Profile trigger can lag right after first sign-in.
         shouldRetry = true;
         setTimeout(() => fetchProfile(userId, attempt + 1), 800);
       } else {
         setProfile(null);
+        profileRef.current = null;
       }
     } catch (err) {
       console.error('Error fetching profile:', err);
     } finally {
       if (!shouldRetry) {
         setLoading(false);
+        setInitialLoading(false);
       }
     }
   }, []);
@@ -42,25 +50,42 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      userRef.current = currentUser;
+      if (currentUser) {
         setLoading(true);
-        fetchProfile(session.user.id);
+        fetchProfile(currentUser.id);
+      } else {
+        setLoading(false);
+        setInitialLoading(false);
       }
-      else setLoading(false);
     });
 
     // Listen for changes on auth state
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        if (_event === 'INITIAL_SESSION' || _event === 'SIGNED_IN') {
+      const nextUser = session?.user ?? null;
+      
+      // Prevent full page loaders on focus if we already have a user
+      const isRevalidation = _event === 'INITIAL_SESSION' || _event === 'SIGNED_IN';
+      
+      const prevUser = userRef.current;
+      const prevProfile = profileRef.current;
+
+      setUser(nextUser);
+      userRef.current = nextUser;
+
+      if (nextUser) {
+        // Only trigger visible loading if it's the first load or if we had no user
+        if (isRevalidation && !prevUser && !prevProfile) {
           setLoading(true);
         }
-        fetchProfile(session.user.id);
+        fetchProfile(nextUser.id);
       } else {
         setProfile(null);
+        profileRef.current = null;
         setLoading(false);
+        setInitialLoading(false);
       }
     });
 
@@ -112,7 +137,7 @@ export const AuthProvider = ({ children }) => {
   }, [user?.id, fetchProfile]);
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signUp, signIn, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, initialLoading, signUp, signIn, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

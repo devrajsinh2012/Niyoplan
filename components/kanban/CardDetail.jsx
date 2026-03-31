@@ -249,12 +249,12 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
 
   const getStatusStyle = (status) => {
     switch(status) {
-      case 'backlog': return 'bg-[#F4F5F7] text-[#42526E] border-[#DFE1E6] hover:bg-[#EBECF0]';
-      case 'todo': return 'bg-[#F4F5F7] text-[#42526E] border-[#DFE1E6] hover:bg-[#EBECF0]';
-      case 'in_progress': return 'bg-[#EAE6FF] text-[#403294] border-[#C0B6F2] hover:bg-[#DED9FB]';
-      case 'in_review': return 'bg-[#DEEBFF] text-[#0052CC] border-[#B3D4FF] hover:bg-[#CCE0FF]';
-      case 'done': return 'bg-[#E3FCEF] text-[#006644] border-[#ABF5D1] hover:bg-[#D3F9E9]';
-      default: return 'bg-[#F4F5F7] text-[#42526E] border-[#DFE1E6]';
+      case 'backlog': return 'bg-[var(--bg-panel)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:bg-[var(--bg-panel-hover)]';
+      case 'todo': return 'bg-[var(--bg-panel)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:bg-[var(--bg-panel-hover)]';
+      case 'in_progress': return 'bg-[var(--status-inprogress-bg)] text-[var(--status-inprogress-text)] border-[var(--status-inprogress-border)] hover:opacity-90';
+      case 'in_review': return 'bg-[var(--status-inreview-bg)] text-[var(--status-inreview-text)] border-[var(--status-inreview-border)] hover:opacity-90';
+      case 'done': return 'bg-[var(--status-done-bg)] text-[var(--status-done-text)] border-[var(--status-done-border)] hover:opacity-90';
+      default: return 'bg-[var(--bg-panel)] text-[var(--text-secondary)] border-[var(--border-subtle)]';
     }
   };
 
@@ -286,33 +286,33 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
 
   return (
     <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-[#091E42]/60 p-4 md:p-10 backdrop-blur-[2px]" onClick={onClose}>
-      <div className="relative max-h-[90vh] min-h-[500px] w-full max-w-6xl animate-fade-in flex flex-col overflow-hidden rounded-lg bg-white shadow-2xl ring-1 ring-black/5" onClick={(e) => e.stopPropagation()}>
+      <div className="relative max-h-[90vh] min-h-[500px] w-full max-w-6xl animate-fade-in flex flex-col overflow-hidden rounded-lg bg-[var(--bg-surface)] shadow-2xl ring-1 ring-black/5" onClick={(e) => e.stopPropagation()}>
         
         {/* Header - Breadcrumb & Actions */}
-        <header className="flex items-center justify-between border-b border-[var(--border-subtle)] px-6 py-4 bg-[#fdfdfd] rounded-t-lg">
+        <header className="flex items-center justify-between border-b border-[var(--border-subtle)] px-6 py-4 bg-[var(--bg-header)] rounded-t-lg">
           <div className="flex items-center gap-2 text-[13px] font-medium text-[var(--text-muted)]">
-            <span className="hover:text-[#0052CC] cursor-pointer">Projects</span>
+            <span className="hover:text-[var(--accent-primary)] cursor-pointer">Projects</span>
             <span className="opacity-40">/</span>
-            <span className="hover:text-[#0052CC] cursor-pointer">Workspace</span>
+            <span className="hover:text-[var(--accent-primary)] cursor-pointer">Workspace</span>
             <span className="opacity-40">/</span>
             <span className="font-mono text-[var(--text-primary)] font-bold tracking-tight">{card.prefix || card.custom_id}</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <button className="flex items-center justify-center p-2 rounded-[3px] text-[var(--text-secondary)] hover:bg-[#F4F5F7] transition-colors" title="Watch" onClick={() => toast('Watch feature coming soon', { icon: '👀' })}><Eye size={16} /></button>
+            <button className="flex items-center justify-center p-2 rounded-[3px] text-[var(--text-secondary)] hover:bg-[var(--bg-panel-hover)] transition-colors" title="Watch" onClick={() => toast('Watch feature coming soon', { icon: '👀' })}><Eye size={16} /></button>
             <div className="relative" ref={menuRef}>
-              <button className="flex items-center justify-center p-2 rounded-[3px] text-[var(--text-secondary)] hover:bg-[#F4F5F7] transition-colors" onClick={() => setShowMenu(!showMenu)}><MoreHorizontal size={16} /></button>
+              <button className="flex items-center justify-center p-2 rounded-[3px] text-[var(--text-secondary)] hover:bg-[var(--bg-panel-hover)] transition-colors" onClick={() => setShowMenu(!showMenu)}><MoreHorizontal size={16} /></button>
               {showMenu && (
-                <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-[var(--border-subtle)] z-50">
-                  <button className="w-full text-left px-4 py-2 hover:bg-[#F4F5F7] transition-colors flex items-center gap-2 text-sm text-[var(--text-secondary)] first:rounded-t-lg" onClick={handleCopyLink}>
+                <div className="absolute right-0 mt-1 w-48 bg-[var(--bg-surface)] rounded-lg shadow-lg border border-[var(--border-subtle)] z-50">
+                  <button className="w-full text-left px-4 py-2 hover:bg-[var(--bg-panel-hover)] transition-colors flex items-center gap-2 text-sm text-[var(--text-secondary)] first:rounded-t-lg" onClick={handleCopyLink}>
                     <Copy size={14} /> Copy link
                   </button>
-                  <button className="w-full text-left px-4 py-2 hover:bg-[#F4F5F7] transition-colors flex items-center gap-2 text-sm text-red-600 last:rounded-b-lg" onClick={() => { setShowMenu(false); setShowDeleteConfirm(true); }}>
+                  <button className="w-full text-left px-4 py-2 hover:bg-[var(--bg-panel-hover)] transition-colors flex items-center gap-2 text-sm text-red-600 last:rounded-b-lg" onClick={() => { setShowMenu(false); setShowDeleteConfirm(true); }}>
                     <Trash2 size={14} /> Delete card
                   </button>
                 </div>
               )}
             </div>
-            <button className="ml-2 flex items-center justify-center p-2 rounded-[3px] text-[var(--text-secondary)] hover:bg-[#F4F5F7] transition-colors" onClick={onClose}><X size={18} /></button>
+            <button className="ml-2 flex items-center justify-center p-2 rounded-[3px] text-[var(--text-secondary)] hover:bg-[var(--bg-panel-hover)] transition-colors" onClick={onClose}><X size={18} /></button>
           </div>
         </header>
         
@@ -320,7 +320,7 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
           {/* Main Column */}
           <div className="flex-[7] min-w-0 p-6 md:p-8 overflow-y-auto">
             <textarea
-              className="w-full resize-none overflow-hidden rounded-[3px] border-2 border-transparent bg-transparent px-2 py-1 text-2xl font-bold text-[var(--text-heading)] transition-all hover:bg-[#F4F5F7] focus:border-[#0052CC] focus:bg-white focus:outline-none"
+              className="w-full resize-none overflow-hidden rounded-[3px] border-2 border-transparent bg-transparent px-2 py-1 text-2xl font-bold text-[var(--text-heading)] transition-all hover:bg-[var(--bg-panel-hover)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-surface)] focus:outline-none"
               value={form.title}
               onChange={(e) => {
                 setForm(p => ({ ...p, title: e.target.value }));
@@ -333,25 +333,25 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
 
             <div className="mt-6 mb-10 flex flex-wrap gap-2">
               <button 
-                className="flex items-center gap-2 rounded-[3px] bg-[#091E42]/[0.04] px-3 py-1.5 text-sm font-semibold text-[#42526E] transition-colors hover:bg-[#091E42]/[0.08] active:bg-[#091E42]/[0.12]"
+                className="flex items-center gap-2 rounded-[3px] bg-[var(--bg-panel)] px-3 py-1.5 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-panel-hover)] active:bg-[var(--border-subtle)]"
                 onClick={() => toast('Attach feature coming soon', { icon: '📎' })}
               >
                 <Paperclip size={14} /> Attach
               </button>
               <button 
-                className="flex items-center gap-2 rounded-[3px] bg-[#091E42]/[0.04] px-3 py-1.5 text-sm font-semibold text-[#42526E] transition-colors hover:bg-[#091E42]/[0.08]"
+                className="flex items-center gap-2 rounded-[3px] bg-[var(--bg-panel)] px-3 py-1.5 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-panel-hover)]"
                 onClick={() => setActiveTab('subtasks')}
               >
                 <CheckSquare size={14} /> Subtasks
               </button>
               <button 
-                className="flex items-center gap-2 rounded-[3px] bg-[#091E42]/[0.04] px-3 py-1.5 text-sm font-semibold text-[#42526E] transition-colors hover:bg-[#091E42]/[0.08]"
+                className="flex items-center gap-2 rounded-[3px] bg-[var(--bg-panel)] px-3 py-1.5 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-panel-hover)]"
                 onClick={() => toast('Link issue coming soon', { icon: '🔗' })}
               >
                 <Link size={14} /> Link issue
               </button>
               <button 
-                className="flex items-center gap-2 rounded-[3px] bg-[#091E42]/[0.04] px-3 py-1.5 text-sm font-semibold text-[#42526E] transition-colors hover:bg-[#091E42]/[0.08]"
+                className="flex items-center gap-2 rounded-[3px] bg-[var(--bg-panel)] px-3 py-1.5 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-panel-hover)]"
                 onClick={() => toast('More options coming soon')}
               >
                 <span>More</span> <ChevronDown size={14} />

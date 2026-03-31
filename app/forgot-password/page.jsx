@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Mail } from 'lucide-react';
+import { ArrowLeft, Mail, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import BrandMark from '@/components/ui/BrandMark';
 import { supabase } from '@/lib/supabase';
@@ -10,9 +10,12 @@ import { supabase } from '@/lib/supabase';
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSent, setIsSent] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!email) return;
+
     setIsSubmitting(true);
 
     try {
@@ -28,7 +31,8 @@ export default function ForgotPasswordPage() {
 
       if (error) throw error;
 
-      toast.success('Password reset link sent. Please check your email.');
+      setIsSent(true);
+      toast.success('Check your email for the reset link');
     } catch (error) {
       toast.error(error?.message || 'Failed to send reset email');
     } finally {
@@ -37,140 +41,82 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        width: '100%',
-        background: 'var(--bg-app)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 20,
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-      className="animate-fade-in text-primary"
-    >
-      <div
-        style={{
-          position: 'absolute',
-          top: '-10%',
-          right: '-10%',
-          width: '40%',
-          height: '40%',
-          borderRadius: '50%',
-          background: 'var(--accent-primary)',
-          opacity: 0.1,
-          filter: 'blur(120px)',
-          pointerEvents: 'none',
-        }}
-      />
+    <div className="min-h-screen w-full flex items-center justify-center p-5 relative overflow-hidden bg-[var(--bg-app)]">
+      {/* Decorative gradients */}
+      <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-[var(--accent-primary)] opacity-10 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] left-[-10%] w-[35%] h-[35%] rounded-full bg-[#6554C0] opacity-5 blur-[100px] pointer-events-none" />
 
-      <div style={{ width: '100%', maxWidth: 420, position: 'relative', zIndex: 10 }}>
-        <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <BrandMark size={64} className="mx-auto mb-6 rounded-2xl" />
-          <h1
-            style={{
-              fontSize: 28,
-              fontWeight: 700,
-              color: 'var(--text-heading)',
-              margin: '0 0 8px',
-              letterSpacing: '-0.03em',
-            }}
-          >
-            Reset Password
+      <div className="w-full max-w-[420px] relative z-10 animate-fade-in">
+        <div className="text-center mb-10">
+          <BrandMark size={64} className="mx-auto mb-6 rounded-2xl shadow-lg ring-1 ring-black/5" />
+          <h1 className="text-3xl font-bold text-[var(--text-heading)] tracking-tight mb-2">
+            Forgot password?
           </h1>
-          <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: 14 }}>
-            Enter your email and we will send you a reset link
+          <p className="text-[var(--text-secondary)] text-sm">
+            {isSent 
+              ? "We've sent reset instructions to your email." 
+              : "No worries, we'll send you reset instructions."}
           </p>
         </div>
 
-        <div className="card" style={{ padding: 32 }}>
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            <div>
-              <label
-                style={{
-                  display: 'block',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: 'var(--text-secondary)',
-                  marginBottom: 8,
-                }}
+        <div className="card p-8 sm:p-10">
+          {!isSent ? (
+            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+              <div>
+                <label className="block text-[13px] font-semibold text-[var(--text-secondary)] mb-2">
+                  Email address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={18} />
+                  <input
+                    type="email"
+                    required
+                    className="w-full pl-11 pr-4 py-3 bg-[var(--bg-panel)] border-2 border-[var(--border-strong)] rounded-[var(--radius-lg)] text-[var(--text-primary)] text-sm transition-all focus:border-[var(--accent-primary)] outline-none"
+                    placeholder="name@company.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="btn-primary w-full py-3.5 text-[15px] flex justify-center items-center gap-2 rounded-[var(--radius-lg)]"
               >
-                Email
-              </label>
-              <input
-                type="email"
-                required
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  background: 'var(--bg-panel)',
-                  border: '2px solid var(--border-strong)',
-                  borderRadius: 'var(--radius-md)',
-                  color: 'var(--text-primary)',
-                  fontSize: 14,
-                  transition: 'var(--transition-fast)',
-                }}
-                placeholder="name@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onFocus={(e) => {
-                  e.target.style.borderColor = 'var(--accent-primary)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = 'var(--border-strong)';
-                }}
-              />
+                {isSubmitting ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  "Reset password"
+                )}
+              </button>
+            </form>
+          ) : (
+            <div className="text-center py-4">
+              <div className="w-16 h-16 bg-[var(--bg-done)] flex items-center justify-center rounded-full mx-auto mb-6">
+                <CheckCircle2 className="text-[var(--status-done)]" size={32} />
+              </div>
+              <h2 className="text-xl font-bold text-[var(--text-heading)] mb-2">Check your email</h2>
+              <p className="text-[var(--text-secondary)] text-sm mb-8 leading-relaxed">
+                We&apos;ve sent a password reset link to <span className="font-semibold text-[var(--text-primary)]">{email}</span>.
+              </p>
+              <button
+                onClick={() => setIsSent(false)}
+                className="text-[var(--accent-text)] text-sm font-semibold hover:underline"
+              >
+                Didn&apos;t receive the email? Click to try again
+              </button>
             </div>
+          )}
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="btn-primary"
-              style={{
-                width: '100%',
-                padding: '12px',
-                fontSize: 15,
-                display: 'flex',
-                justifyContent: 'center',
-                gap: 8,
-              }}
-            >
-              {isSubmitting ? (
-                <div
-                  style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: '50%',
-                    border: '2px solid rgba(255,255,255,0.3)',
-                    borderTopColor: '#fff',
-                  }}
-                  className="animate-spin"
-                />
-              ) : (
-                <>
-                  <Mail size={18} /> Send Reset Link
-                </>
-              )}
-            </button>
-          </form>
-
-          <p style={{ textAlign: 'center', margin: '24px 0 0', fontSize: 14 }}>
+          <div className="mt-8 pt-6 border-t border-[var(--border-subtle)] text-center">
             <Link
               href="/login"
-              style={{
-                color: 'var(--accent-text)',
-                textDecoration: 'none',
-                fontWeight: 600,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent-text)] hover:gap-3 transition-all"
             >
               <ArrowLeft size={16} /> Back to sign in
             </Link>
-          </p>
+          </div>
         </div>
       </div>
     </div>

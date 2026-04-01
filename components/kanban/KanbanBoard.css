@@ -47,7 +47,7 @@
   font-size: 14px;
   font-weight: 400;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
 }
 
 .kanban-filter-arrow {
@@ -94,7 +94,7 @@
 .kanban-view-toggle button.active {
   background: var(--bg-surface);
   color: var(--accent-primary);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 /* ── Board Container ── */
@@ -120,12 +120,13 @@
   max-height: 100%;
   flex-shrink: 0;
   border: 1px solid var(--border-subtle);
-  transition: all 0.2s;
+  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s, opacity 0.2s;
+  will-change: transform;
 }
 
 .kanban-column.dragging {
   opacity: 0.5;
-  background: #EBECF0;
+  background: var(--bg-panel-hover);
 }
 
 .kanban-column-header {
@@ -177,7 +178,7 @@
   line-height: 1;
 }
 .column-menu-btn:hover {
-  background: rgba(9, 30, 66, 0.08);
+  background: var(--bg-panel-hover);
   color: var(--text-primary);
 }
 
@@ -196,10 +197,17 @@
   border: 1px solid var(--border-subtle);
   border-radius: 3px;
   padding: 10px 12px;
-  cursor: pointer;
+  cursor: grab;
   box-shadow: var(--shadow-sm);
-  transition: all 0.2s ease-in-out;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
   position: relative;
+  will-change: transform;
+  touch-action: none;
+  user-select: none;
+}
+
+.kanban-card:active {
+  cursor: grabbing;
 }
 
 .kanban-card.deleting {
@@ -237,7 +245,7 @@
 .kanban-card:hover {
   background: var(--bg-surface-hover);
   box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   border-color: var(--border-strong);
 }
 
@@ -251,12 +259,13 @@
 
 .kanban-card.overlay {
   box-shadow: var(--shadow-lg);
-  opacity: 0.9;
+  opacity: 0.98;
   border: 1px solid var(--accent-primary);
   z-index: 10000;
   cursor: grabbing;
   pointer-events: none;
-  transform: rotate(1deg);
+  transform: scale(1.02) translateZ(0);
+  transition: none;
 }
 
 .kanban-card.dragging-placeholder {
@@ -264,6 +273,7 @@
   background: var(--bg-panel-hover);
   border: 2px dashed var(--border-strong);
   box-shadow: none;
+  will-change: transform, opacity;
 }
 
 /* ── Quick-add & Add-list ── */
@@ -330,10 +340,10 @@
 }
 
 :root[data-theme='dark'] .kanban-board::-webkit-scrollbar-track {
-  background: #161A1D;
+  background: var(--bg-panel);
 }
 :root[data-theme='dark'] .kanban-board::-webkit-scrollbar-thumb {
-  background: #2C333A;
+  background: var(--border-strong);
 }
 
 .kanban-board {

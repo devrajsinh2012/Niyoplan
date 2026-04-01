@@ -4,6 +4,47 @@ import { supabaseAdmin } from '@/lib/supabaseServer';
 import { getAuthUser } from '@/lib/auth';
 import { checkRole } from '@/lib/roles';
 
+async function validateDocHierarchy({ projectId, spaceId, folderId }) {
+  let resolvedSpaceId = spaceId || null;
+  const resolvedFolderId = folderId || null;
+
+  if (resolvedSpaceId) {
+    const { data: space, error: spaceError } = await supabaseAdmin
+      .from('spaces')
+      .select('id, project_id')
+      .eq('id', resolvedSpaceId)
+      .maybeSingle();
+
+    if (spaceError) throw spaceError;
+    if (!space || space.project_id !== projectId) {
+      return { error: 'Invalid space for this project' };
+    }
+  }
+
+  if (resolvedFolderId) {
+    const { data: folder, error: folderError } = await supabaseAdmin
+      .from('folders')
+      .select('id, project_id, space_id')
+      .eq('id', resolvedFolderId)
+      .maybeSingle();
+
+    if (folderError) throw folderError;
+    if (!folder || folder.project_id !== projectId) {
+      return { error: 'Invalid folder for this project' };
+    }
+
+    if (resolvedSpaceId && folder.space_id !== resolvedSpaceId) {
+      return { error: 'Folder does not belong to selected space' };
+    }
+
+    if (!resolvedSpaceId) {
+      resolvedSpaceId = folder.space_id;
+    }
+  }
+
+  return { space_id: resolvedSpaceId, folder_id: resolvedFolderId };
+}
+
 export async function GET(request, { params }) {
   const { projectId } = await params;
   const { user, error } = await getAuthUser(request);
@@ -49,17 +90,28 @@ export async function POST(request, { params }) {
 
   try {
     const { title, content, space_id, folder_id } = await request.json();
+    const normalizedTitle = typeof title === 'string' ? title.trim() : '';
 
-    if (!title) return NextResponse.json({ error: 'title is required' }, { status: 400 });
+    if (!normalizedTitle) return NextResponse.json({ error: 'title is required' }, { status: 400 });
+
+    const hierarchy = await validateDocHierarchy({
+      projectId,
+      spaceId: space_id,
+      folderId: folder_id
+    });
+
+    if (hierarchy.error) {
+      return NextResponse.json({ error: hierarchy.error }, { status: 400 });
+    }
 
     const { data, error: insertError } = await supabaseAdmin
       .from('docs')
       .insert({
         project_id: projectId,
-        title,
+        title: normalizedTitle,
         content: content || '',
-        space_id: space_id || null,
-        folder_id: folder_id || null,
+        space_id: hierarchy.space_id,
+        folder_id: hierarchy.folder_id,
         created_by: user.id,
         updated_by: user.id
       })

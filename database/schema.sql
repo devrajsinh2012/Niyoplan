@@ -215,6 +215,7 @@ CREATE TABLE IF NOT EXISTS public.hr_reviews (
 -- 16. Spaces and Folders hierarchy
 CREATE TABLE IF NOT EXISTS public.spaces (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
   name VARCHAR(120) NOT NULL,
   description TEXT,
   created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,

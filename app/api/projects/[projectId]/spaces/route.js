@@ -18,7 +18,11 @@ export async function GET(request, { params }) {
 
   try {
     const [{ data: spaces, error: spaceErr }, { data: folders, error: folderErr }] = await Promise.all([
-      supabaseAdmin.from('spaces').select('*').order('created_at', { ascending: false }),
+      supabaseAdmin
+        .from('spaces')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false }),
       supabaseAdmin.from('folders').select('*').eq('project_id', projectId).order('created_at', { ascending: false })
     ]);
 
@@ -50,11 +54,17 @@ export async function POST(request, { params }) {
 
   try {
     const { name, description } = await request.json();
-    if (!name) return NextResponse.json({ error: 'name is required' }, { status: 400 });
+    const normalizedName = typeof name === 'string' ? name.trim() : '';
+    if (!normalizedName) return NextResponse.json({ error: 'name is required' }, { status: 400 });
 
     const { data, error: insertError } = await supabaseAdmin
       .from('spaces')
-      .insert({ name, description: description || null, created_by: user.id })
+      .insert({
+        name: normalizedName,
+        description: typeof description === 'string' && description.trim() ? description.trim() : null,
+        project_id: projectId,
+        created_by: user.id
+      })
       .select()
       .single();
 

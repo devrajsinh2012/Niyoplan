@@ -86,7 +86,7 @@ async function verify() {
     console.log('\n✨ Verification complete!');
     console.log('\nYou can now:');
     console.log('  📅 Visit the Calendar Grid tab in your project');
-    console.log('  📊 View Gantt timeline with progress bars');
+    console.log('  📊 View Timeline with progress bars');
     console.log('  🔗 Create dependencies with types and lead/lag\n');
 
   } catch (error) {

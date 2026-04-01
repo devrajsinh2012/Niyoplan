@@ -22,11 +22,26 @@ export async function POST(request, { params }) {
 
   try {
     const { name, space_id } = await request.json();
-    if (!name || !space_id) return NextResponse.json({ error: 'name and space_id are required' }, { status: 400 });
+    const normalizedName = typeof name === 'string' ? name.trim() : '';
+    if (!normalizedName || !space_id) {
+      return NextResponse.json({ error: 'name and space_id are required' }, { status: 400 });
+    }
+
+    const { data: parentSpace, error: parentSpaceError } = await supabaseAdmin
+      .from('spaces')
+      .select('id')
+      .eq('id', space_id)
+      .eq('project_id', projectId)
+      .maybeSingle();
+
+    if (parentSpaceError) throw parentSpaceError;
+    if (!parentSpace) {
+      return NextResponse.json({ error: 'Invalid space for this project' }, { status: 400 });
+    }
 
     const { data, error: insertError } = await supabaseAdmin
       .from('folders')
-      .insert({ name, space_id, project_id: projectId, created_by: user.id })
+      .insert({ name: normalizedName, space_id, project_id: projectId, created_by: user.id })
       .select()
       .single();
 

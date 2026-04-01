@@ -34,7 +34,7 @@ The app is built with Next.js 15, React 19, Supabase, Tailwind CSS v4, and optio
 
 - Dashboard: organization-level overview, recent activity, sprint health, recent issues, and today stats.
 - Projects: searchable, filterable project directory with star support and quick project creation.
-- Project workspace: list view, Kanban board, sprint backlog, Gantt timeline, calendar, DSM, meetings, goals and OKRs, docs workspace, saved views and inbox, and AI tools.
+- Project workspace: list view, Kanban board, sprint backlog, Timeline, calendar, DSM, meetings, goals and OKRs, docs workspace, saved views and inbox, and AI tools.
 - Today: daily task tracking with custom items and imported issues.
 - Meetings: PM review sheets, HR review sheets, meeting calendars, and action-item conversion into cards.
 - Goals: goal and key-result tracking with AI-generated stakeholder narratives.

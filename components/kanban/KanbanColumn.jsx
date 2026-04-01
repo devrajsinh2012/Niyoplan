@@ -3,11 +3,11 @@
 import React, { useMemo } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { SortableContext } from '@dnd-kit/sortable';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import KanbanCard from './KanbanCard';
 import toast from 'react-hot-toast';
 
-export default function KanbanColumn({ list, cards, deletingCardIdsSet, onCardOpen, onQuickAddCard }) {
+function KanbanColumn({ list, cards, deletingCardIdsSet, onCardOpen, onQuickAddCard }) {
   const {
     attributes,
     listeners,
@@ -16,7 +16,7 @@ export default function KanbanColumn({ list, cards, deletingCardIdsSet, onCardOp
     transition,
     isDragging,
   } = useSortable({
-    id: list.id,
+    id: String(list.id),
     data: {
       type: 'List',
       list,
@@ -28,7 +28,7 @@ export default function KanbanColumn({ list, cards, deletingCardIdsSet, onCardOp
     transform: CSS.Transform.toString(transform),
   };
 
-  const cardIds = useMemo(() => cards.map(c => c.id), [cards]);
+  const cardIds = useMemo(() => cards.map((c) => String(c.id)), [cards]);
 
   if (isDragging) {
     return (
@@ -61,7 +61,7 @@ export default function KanbanColumn({ list, cards, deletingCardIdsSet, onCardOp
       </div>
 
       <div className="kanban-column-body">
-        <SortableContext items={cardIds}>
+        <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
           {cards.map(card => (
             <KanbanCard
               key={card.id}
@@ -76,3 +76,5 @@ export default function KanbanColumn({ list, cards, deletingCardIdsSet, onCardOp
     </div>
   );
 }
+
+export default React.memo(KanbanColumn);

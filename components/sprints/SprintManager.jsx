@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, DragOverlay, closestCorners, pointerWithin, MouseSensor, TouchSensor, KeyboardSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core';
+import { createPortal } from 'react-dom';
 import { CSS } from '@dnd-kit/utilities';
 import './SprintManager.css';
 import { supabase } from '@/lib/supabase';
@@ -17,13 +18,13 @@ import confetti from 'canvas-confetti';
 
 const issueTypeIcon = (type) => {
   const t = (type || '').toLowerCase();
-  if (t === 'bug') return { color: '#E34935', bg: 'rgba(227,73,53,0.15)', icon: '🐛' };
-  if (t === 'story') return { color: '#22A06B', bg: 'rgba(34,160,107,0.15)', icon: '📖' };
-  if (t === 'epic') return { color: '#6554C0', bg: 'rgba(101,84,192,0.15)', icon: '⚡' };
-  return { color: '#0C66E4', bg: 'rgba(12,102,228,0.15)', icon: '✅' }; // task
+  if (t === 'bug') return { color: 'var(--priority-highest)', bg: 'color-mix(in srgb, var(--priority-highest) 16%, transparent)', icon: '🐛' };
+  if (t === 'story') return { color: 'var(--status-done-text)', bg: 'var(--status-done-bg)', icon: '📖' };
+  if (t === 'epic') return { color: 'var(--status-inreview-text)', bg: 'var(--status-inreview-bg)', icon: '⚡' };
+  return { color: 'var(--accent-primary)', bg: 'var(--accent-subtle)', icon: '✅' }; // task
 };
 
-function DraggableIssue({ issue }) {
+const DraggableIssue = React.memo(function DraggableIssue({ issue }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `card-${issue.id}`,
     data: { issueId: issue.id }
@@ -84,18 +85,18 @@ function DraggableIssue({ issue }) {
       </div>
     </div>
   );
-}
+});
 
-function DropZone({ id, children }) {
+const DropZone = React.memo(function DropZone({ id, children }) {
   const { isOver, setNodeRef } = useDroppable({ id });
   return (
     <div ref={setNodeRef} className={`sprint-dropzone ${isOver ? 'dropzone-over' : ''}`}>
       {children}
     </div>
   );
-}
+});
 
-function DragIssueOverlay({ issue }) {
+const DragIssueOverlay = React.memo(function DragIssueOverlay({ issue }) {
   if (!issue) return null;
   const typeData = issueTypeIcon(issue.issue_type);
   return (
@@ -109,7 +110,7 @@ function DragIssueOverlay({ issue }) {
       </div>
     </div>
   );
-}
+});
 
 export default function SprintManager({ projectId, refreshNonce = 0 }) {
   const { profile } = useAuth();
@@ -131,8 +132,21 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
   const [pendingCompleteSprint, setPendingCompleteSprint] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 8 } }),
+    useSensor(KeyboardSensor)
+  );
+
+  const collisionDetectionStrategy = useCallback((args) => {
+    const pointerCollisions = pointerWithin(args);
+    if (pointerCollisions.length > 0) {
+      return pointerCollisions;
+    }
+    return closestCorners(args);
+  }, []);
 
   const toggleCollapse = id => setCollapsed(prev => ({ ...prev, [id]: !prev[id] }));
 
@@ -159,6 +173,10 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
   useEffect(() => {
     if (projectId) fetchSprintsAndBacklog();
   }, [projectId, refreshNonce, fetchSprintsAndBacklog]);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handleCreateSprint = async (name) => {
     if (!name?.trim()) return;
@@ -264,6 +282,25 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
     return ids.size;
   }, [filteredCards, profile?.id]);
 
+  const statusCounts = useMemo(() => {
+    let todo = 0;
+    let inProgress = 0;
+    let done = 0;
+
+    cards.forEach((issue) => {
+      const status = (issue.status || '').toLowerCase();
+      if (status === 'done') {
+        done += 1;
+      } else if (status.includes('progress') || status.includes('review')) {
+        inProgress += 1;
+      } else {
+        todo += 1;
+      }
+    });
+
+    return { todo, inProgress, done };
+  }, [cards]);
+
   const dispatchCreateIssue = (sprintId = null) => {
     if (typeof window === 'undefined') return;
     window.dispatchEvent(new CustomEvent('niyoplan:create-issue', { detail: { sprintId } }));
@@ -363,16 +400,26 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
   };
 
   const assignCardToSprint = async (cardId, sprintId) => {
-    const previousCards = cards;
-    setCards((prev) => prev.map((card) => (card.id === cardId ? { ...card, sprint_id: sprintId } : card)));
+    const previousCards = typeof structuredClone === 'function'
+      ? structuredClone(cards)
+      : cards.map((card) => ({ ...card }));
 
-    const { error } = await supabase.from('cards').update({ sprint_id: sprintId }).eq('id', cardId);
-    if (error) {
+    setCards((prev) => prev.map((card) => (String(card.id) === String(cardId) ? { ...card, sprint_id: sprintId } : card)));
+
+    try {
+      const { error } = await supabase.from('cards').update({ sprint_id: sprintId }).eq('id', cardId);
+      if (error) throw error;
+    } catch (error) {
       setCards(previousCards);
       toast.error('Failed to update sprint assignment');
       return;
     }
+
     toast.success(sprintId ? 'Issue moved to sprint' : 'Issue moved to backlog');
+  };
+
+  const handleDragCancel = () => {
+    setActiveIssue(null);
   };
 
   const handleDragEnd = async (event) => {
@@ -382,26 +429,30 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
 
     const activeId = String(active.id);
     if (!activeId.startsWith('card-')) return;
-    const cardId = activeId.replace('card-', '');
 
     const overId = String(over.id);
     let targetSprintId = null;
     if (overId.startsWith('sprint-')) {
-      targetSprintId = overId.replace('sprint-', '');
+      const targetToken = overId.replace('sprint-', '');
+      targetSprintId = sprints.find((sprint) => String(sprint.id) === targetToken)?.id ?? targetToken;
     } else if (overId !== 'backlog') {
       return;
     }
 
-    const currentCard = cards.find((card) => card.id === cardId);
-    if (!currentCard || currentCard.sprint_id === targetSprintId) return;
-    await assignCardToSprint(cardId, targetSprintId);
+    const currentCard = cards.find((card) => `card-${card.id}` === activeId);
+    if (!currentCard) return;
+
+    const currentSprintId = currentCard.sprint_id == null ? null : String(currentCard.sprint_id);
+    const nextSprintId = targetSprintId == null ? null : String(targetSprintId);
+    if (currentSprintId === nextSprintId) return;
+
+    await assignCardToSprint(currentCard.id, targetSprintId);
   };
 
   const handleDragStart = (event) => {
     const activeId = String(event?.active?.id || '');
     if (!activeId.startsWith('card-')) return;
-    const cardId = activeId.replace('card-', '');
-    const issue = cards.find((card) => card.id === cardId) || null;
+    const issue = cards.find((card) => `card-${card.id}` === activeId) || null;
     setActiveIssue(issue);
   };
 
@@ -413,16 +464,11 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
     );
   }
 
-  const getStatusCounts = (issues) => {
-    let todo = 0, inProgress = 0, done = 0;
-    issues.forEach(i => {
-      const s = (i.status || '').toLowerCase();
-      if (s === 'done') done++;
-      else if (s.includes('progress') || s.includes('review')) inProgress++;
-      else todo++;
-    });
-    return { todo, inProgress, done };
-  };
+  const sprintDragOverlay = (
+    <DragOverlay adjustScale={false} dropAnimation={null}>
+      <DragIssueOverlay issue={activeIssue} />
+    </DragOverlay>
+  );
 
   return (
     <div className="backlog-wrapper animate-fade-in">
@@ -460,13 +506,13 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
         <div className="filter-spacer" />
         
         <div className="filter-stats">
-          <span className="stat-pill"><span className="dot todo" /> {getStatusCounts(cards).todo} Issues</span>
-          <span className="stat-pill"><span className="dot inprogress" /> {getStatusCounts(cards).inProgress} In Progress</span>
-          <span className="stat-pill"><span className="dot done" /> {getStatusCounts(cards).done} Done</span>
+          <span className="stat-pill"><span className="dot todo" /> {statusCounts.todo} Issues</span>
+          <span className="stat-pill"><span className="dot inprogress" /> {statusCounts.inProgress} In Progress</span>
+          <span className="stat-pill"><span className="dot done" /> {statusCounts.done} Done</span>
         </div>
       </div>
 
-      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={collisionDetectionStrategy} onDragStart={handleDragStart} onDragCancel={handleDragCancel} onDragEnd={handleDragEnd}>
         <div className="sprint-list">
           {sprints.map(sprint => {
             const sprintIssues = cardsBySprint.get(sprint.id) || [];
@@ -546,9 +592,7 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
             </DropZone>
           )}
         </div>
-        <DragOverlay dropAnimation={null}>
-          <DragIssueOverlay issue={activeIssue} />
-        </DragOverlay>
+        {isClient ? createPortal(sprintDragOverlay, document.body) : null}
       </DndContext>
 
       {editingSprint && (

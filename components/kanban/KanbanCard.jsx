@@ -15,33 +15,73 @@ const priorityColorMap = {
 
 const issueTypeIcon = (type) => {
   const t = (type || '').toLowerCase();
-  if (t === 'bug') return { color: '#E34935', label: '🐛' };
-  if (t === 'story') return { color: '#22A06B', label: '📗' };
-  if (t === 'epic') return { color: '#6554C0', label: '⚡' };
-  return { color: '#0C66E4', label: '✓' }; // task
+  if (t === 'bug') return { color: 'var(--priority-highest)', label: '🐛' };
+  if (t === 'story') return { color: 'var(--status-done-text)', label: '📗' };
+  if (t === 'epic') return { color: 'var(--status-inreview-text)', label: '⚡' };
+  return { color: 'var(--accent-primary)', label: '✓' }; // task
 };
 
-export default function KanbanCard({ card, isOverlay, isDeleting = false, onOpen }) {
+function KanbanCardContent({ card }) {
+  return (
+    <>
+      <div className="kanban-card-content mb-3">
+        <p className="kanban-card-title text-[14px] leading-snug">{card.title}</p>
+      </div>
+
+      <div className="kanban-card-footer flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div
+            className="w-3 h-3 rounded-[2px]"
+            style={{ backgroundColor: issueTypeIcon(card.issue_type).color }}
+            title={card.issue_type}
+          />
+          <span className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wide">
+            {card.prefix || card.custom_id}
+          </span>
+        </div>
+
+        <div className="flex -space-x-1">
+          {card.assignee ? (
+            <UserAvatar user={card.assignee} size={24} className="border-2 border-[var(--bg-surface)] rounded-full bg-[var(--accent-primary)]" title={card.assignee.full_name} />
+          ) : (
+            <div className="w-6 h-6 rounded-full border-2 border-[var(--bg-surface)] bg-[var(--bg-panel-hover)]" title="Unassigned" />
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+export function KanbanCardOverlay({ card }) {
+  if (!card) return null;
+
+  return (
+    <div className="kanban-card overlay relative" role="presentation">
+      <KanbanCardContent card={card} />
+    </div>
+  );
+}
+
+export default function KanbanCard({ card, isDeleting = false, onOpen }) {
   const {
     attributes,
     listeners,
     setNodeRef,
-    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
   } = useSortable({
-    id: card.id,
+    id: String(card.id),
     disabled: isDeleting,
     data: { type: 'Card', card },
   });
 
   const style = {
     transition,
-    transform: isOverlay ? undefined : CSS.Translate.toString(transform),
+    transform: CSS.Translate.toString(transform),
   };
 
-  if (isDragging && !isOverlay) {
+  if (isDragging) {
     return (
       <div
         className="kanban-card dragging-placeholder"
@@ -54,68 +94,25 @@ export default function KanbanCard({ card, isOverlay, isDeleting = false, onOpen
 
   return (
     <div
-      className={`kanban-card ${isOverlay ? 'overlay' : ''} ${isDeleting ? 'deleting' : ''} transition-all relative group`}
-      ref={isOverlay ? undefined : setNodeRef}
-      style={isOverlay ? undefined : style}
+      className={`kanban-card ${isDeleting ? 'deleting' : ''} relative`}
+      ref={setNodeRef}
+      style={style}
+      {...(!isDeleting ? attributes : {})}
+      {...(!isDeleting ? listeners : {})}
       role="button"
-      tabIndex={isOverlay ? -1 : 0}
-      onClick={(e) => {
-        if (isOverlay || isDragging || isDeleting) return;
-        // Check if the click was actually on the drag handle
-        if (e.target.closest('.kanban-card-drag-handle')) return;
-        
+      tabIndex={0}
+      onClick={() => {
+        if (isDragging || isDeleting) return;
         if (onOpen) onOpen(card);
       }}
       onKeyDown={(e) => {
-        if ((e.key === 'Enter' || e.key === ' ') && !isOverlay && !isDeleting && onOpen) {
+        if ((e.key === 'Enter' || e.key === ' ') && !isDeleting && onOpen) {
           e.preventDefault();
           onOpen(card);
         }
       }}
     >
-      {/* Drag handle (visible on hover) */}
-      {!isOverlay && !isDeleting && (
-        <button
-          className="kanban-card-drag-handle absolute top-2 right-2 p-1.5 rounded-md hover:bg-[var(--bg-panel-hover)] text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
-          ref={setActivatorNodeRef}
-          {...attributes}
-          {...listeners}
-          onClick={(e) => e.stopPropagation()}
-          aria-label="Drag card"
-          title="Drag card"
-        >
-          ⠿
-        </button>
-      )}
-
-      {/* Card title */}
-      <div className="kanban-card-content mb-3 pr-6">
-        <p className="kanban-card-title text-[14px] leading-snug">{card.title}</p>
-      </div>
-
-      {/* Footer: ID + Type Icon (left) and Assignee (right) */}
-      <div className="kanban-card-footer flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          {/* Issue Type Indicator (colored square) */}
-          <div 
-            className="w-3 h-3 rounded-[2px]" 
-            style={{ backgroundColor: issueTypeIcon(card.issue_type).color }}
-            title={card.issue_type}
-          />
-          <span className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wide">
-            {card.prefix || card.custom_id}
-          </span>
-        </div>
-
-        {/* Assignee avatar */}
-        <div className="flex -space-x-1">
-          {card.assignee ? (
-            <UserAvatar user={card.assignee} size={24} className="border-2 border-[var(--bg-surface)] rounded-full bg-[var(--accent-primary)]" title={card.assignee.full_name} />
-          ) : (
-            <div className="w-6 h-6 rounded-full border-2 border-[var(--bg-surface)] bg-[var(--bg-panel-hover)]" title="Unassigned" />
-          )}
-        </div>
-      </div>
+      <KanbanCardContent card={card} />
     </div>
   );
 }

@@ -17,6 +17,14 @@ import { apiFetch } from '@/lib/apiClient';
 
 export const ScheduleStoreContext = createContext();
 
+const DEFAULT_LISTS = [
+  { name: 'Backlog', rank: 1000 },
+  { name: 'To Do', rank: 2000 },
+  { name: 'In Progress', rank: 3000 },
+  { name: 'In Review', rank: 4000 },
+  { name: 'Done', rank: 5000 }
+];
+
 function normalizeCardAsScheduleItem(cardLike) {
   if (!cardLike) return cardLike;
   const start = cardLike.start_date || cardLike.created_at || new Date().toISOString();
@@ -178,6 +186,51 @@ export function ScheduleStoreProvider({ children, projectId }) {
     }
   }, []);
 
+  const getOrCreateLists = useCallback(async () => {
+    const { data: existingLists, error: listFetchError } = await supabase
+      .from('lists')
+      .select('id, name, rank')
+      .eq('project_id', projectId)
+      .order('rank', { ascending: true });
+
+    if (listFetchError) throw listFetchError;
+
+    let lists = existingLists || [];
+
+    if (lists.length === 0) {
+      const { data: createdLists, error: createListsError } = await supabase
+        .from('lists')
+        .insert(
+          DEFAULT_LISTS.map((list) => ({
+            project_id: projectId,
+            name: list.name,
+            rank: list.rank
+          }))
+        )
+        .select('id, name, rank')
+        .order('rank', { ascending: true });
+
+      if (createListsError) throw createListsError;
+      lists = createdLists || [];
+    }
+
+    return lists;
+  }, [projectId]);
+
+  const resolveListIdForStatus = useCallback((lists, status) => {
+    const normalizedStatus = (status || '').trim().toLowerCase();
+    const match = lists.find((list) => {
+      const normalizedName = (list.name || '').trim().toLowerCase();
+      if (normalizedStatus === 'done') return normalizedName === 'done';
+      if (normalizedStatus === 'in_review') return normalizedName === 'in review';
+      if (normalizedStatus === 'in_progress') return normalizedName === 'in progress';
+      if (normalizedStatus === 'todo') return normalizedName === 'to do' || normalizedName === 'todo';
+      return normalizedName === 'backlog';
+    });
+
+    return match?.id || lists[0]?.id || null;
+  }, []);
+
   /**
    * Update a schedule item (card)
    * Used by Gantt drag/drop, Calendar drag/drop, and detail edits
@@ -220,6 +273,76 @@ export function ScheduleStoreProvider({ children, projectId }) {
       }
     },
     []
+  );
+
+  /**
+   * Create a schedule item (task) with list fallback.
+   */
+  const createScheduleItem = useCallback(
+    async (payload, options = {}) => {
+      const { silent = false } = options;
+
+      try {
+        if (!projectId) throw new Error('Missing project context');
+        if (!payload?.title?.trim()) throw new Error('Title is required');
+
+        const lists = await getOrCreateLists();
+        const status = payload.status || 'backlog';
+
+        const normalizedStart = payload.start_date || new Date().toISOString();
+        const normalizedDue = payload.due_date || payload.end_date || normalizedStart;
+
+        const insertPayload = {
+          project_id: projectId,
+          title: payload.title.trim(),
+          description: payload.description || '',
+          issue_type: payload.issue_type || 'task',
+          status,
+          priority: payload.priority || 'medium',
+          story_points: payload.story_points ?? null,
+          assignee_id: payload.assignee_id || payload.reporter_id || null,
+          reporter_id: payload.reporter_id || null,
+          sprint_id: payload.sprint_id || null,
+          list_id: payload.list_id || resolveListIdForStatus(lists, status),
+          start_date: normalizedStart,
+          due_date: normalizedDue,
+          rank: Date.now()
+        };
+
+        const { data, error } = await supabase
+          .from('cards')
+          .insert(insertPayload)
+          .select(`
+            id, custom_id, title, description,
+            start_date, due_date, status, priority,
+            story_points, issue_type,
+            progress_percent, actual_start, actual_end, is_critical_path,
+            assignee_id, reporter_id, sprint_id, list_id,
+            created_at, updated_at,
+            assignee:assignee_id(id, full_name, avatar_url),
+            reporter:reporter_id(id, full_name, avatar_url)
+          `)
+          .single();
+
+        if (error) throw error;
+
+        const normalized = normalizeCardAsScheduleItem({
+          ...data,
+          end_date: data.due_date
+        });
+
+        setScheduleItems((prev) => [normalized, ...prev]);
+
+        if (!silent) toast.success('Task created');
+
+        return normalized;
+      } catch (err) {
+        console.error('Failed to create schedule item:', err);
+        if (!silent) toast.error(err.message || 'Failed to create item');
+        throw err;
+      }
+    },
+    [projectId, getOrCreateLists, resolveListIdForStatus]
   );
 
   /**
@@ -368,6 +491,7 @@ export function ScheduleStoreProvider({ children, projectId }) {
 
     // Actions
     updateScheduleItem,
+    createScheduleItem,
     removeScheduleItem,
     createDependency,
     updateDependency,

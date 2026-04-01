@@ -8,7 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ScheduleStoreProvider } from '@/context/ScheduleStore';
 import { 
   ChevronLeft, Plus, Settings2, Search, List as ListIcon, 
-  KanbanSquare, Network, Calendar, Target, FileText, Sparkles, LayoutGrid 
+  KanbanSquare, Network, Calendar, Target, FileText, Sparkles, LayoutGrid, ChartGantt 
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -66,7 +66,7 @@ export default function ProjectDetailPage() {
     { id: 'list', name: 'List View', icon: ListIcon },
     { id: 'board', name: 'Kanban Board', icon: KanbanSquare },
     { id: 'backlog', name: 'Sprint', icon: Network },
-    { id: 'gantt', name: 'Gantt Timeline', icon: Calendar },
+    { id: 'gantt', name: 'Timeline', icon: ChartGantt },
     { id: 'calendar', name: 'Calendar', icon: Calendar },
     { id: 'dsm', name: 'DSM Module', icon: Settings2 },
     { id: 'meetings', name: 'Meetings', icon: FileText },

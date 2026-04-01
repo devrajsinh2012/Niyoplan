@@ -2,10 +2,11 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { DndContext, closestCorners, PointerSensor, KeyboardSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
-import { SortableContext, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { DndContext, closestCorners, pointerWithin, MouseSensor, TouchSensor, KeyboardSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, horizontalListSortingStrategy } from '@dnd-kit/sortable';
+import { createPortal } from 'react-dom';
 import KanbanColumn from './KanbanColumn';
-import KanbanCard from './KanbanCard';
+import { KanbanCardOverlay } from './KanbanCard';
 import './KanbanBoard.css';
 import { supabase } from '@/lib/supabase';
 import { useScheduleStore } from '@/context/ScheduleStore';
@@ -37,9 +38,14 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
   const [typeFilter, setTypeFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isClient, setIsClient] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
   const dragSourceRef = useRef({ status: null, listId: null });
+  const lastDragOverTargetRef = useRef(null);
+  const dragOverAnimationFrameRef = useRef(null);
+  const pendingDragOverRef = useRef(null);
+  const suppressCardOpenUntilRef = useRef(0);
   const deletingCardIdSet = useMemo(() => new Set(deletingCardIds), [deletingCardIds]);
 
   const isTaskLike = useCallback((card) => {
@@ -54,7 +60,7 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
   }, []);
 
   const getStatusFromList = useCallback((listId) => {
-    const list = lists.find((item) => item.id === listId);
+    const list = lists.find((item) => String(item.id) === String(listId));
     const normalized = (list?.name || '').trim().toLowerCase();
     if (normalized === 'done' || normalized === 'completed' || normalized === 'resolved' || normalized === 'finished') return 'done';
     if (normalized === 'in review' || normalized === 'testing') return 'in_review';
@@ -236,20 +242,85 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
   }, [projectId, refreshNonce, fetchBoardData, sharedLists]);
 
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
     if (!hasExternalCardSource) return;
     setCards(sourceCards);
     setIsLoading(false);
   }, [sourceCards, hasExternalCardSource]);
 
+  useEffect(() => () => {
+    if (dragOverAnimationFrameRef.current !== null) {
+      cancelAnimationFrame(dragOverAnimationFrameRef.current);
+      dragOverAnimationFrameRef.current = null;
+    }
+    pendingDragOverRef.current = null;
+  }, []);
+
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 10 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  const processQueuedDragOver = useCallback(() => {
+    const queued = pendingDragOverRef.current;
+    pendingDragOverRef.current = null;
+    dragOverAnimationFrameRef.current = null;
+
+    if (!queued) return;
+
+    const { activeId, overId, isOverACard, isOverAList } = queued;
+
+    if (isOverACard) {
+      setCards((prev) => {
+        const activeIndex = prev.findIndex((c) => String(c.id) === activeId);
+        const overIndex = prev.findIndex((c) => String(c.id) === overId);
+        if (activeIndex < 0 || overIndex < 0 || activeIndex === overIndex) return prev;
+
+        if (prev[activeIndex].listId !== prev[overIndex].listId) {
+          const newCards = [...prev];
+          newCards[activeIndex] = {
+            ...prev[activeIndex],
+            listId: prev[overIndex].listId,
+            status: prev[overIndex].status
+          };
+          return arrayMove(newCards, activeIndex, overIndex);
+        }
+
+        return arrayMove(prev, activeIndex, overIndex);
+      });
+    }
+
+    if (isOverAList) {
+      setCards((prev) => {
+        const activeIndex = prev.findIndex((c) => String(c.id) === activeId);
+        if (activeIndex < 0) return prev;
+        if (prev[activeIndex].listId === overId) return prev;
+
+        const newCards = [...prev];
+        newCards[activeIndex] = {
+          ...prev[activeIndex],
+          listId: overId,
+          status: getStatusFromList(overId)
+        };
+        return newCards;
+      });
+    }
+
+    if (pendingDragOverRef.current) {
+      dragOverAnimationFrameRef.current = requestAnimationFrame(processQueuedDragOver);
+    }
+  }, [getStatusFromList]);
+
   const handleDragStart = (event) => {
     const { active } = event;
+    lastDragOverTargetRef.current = null;
     if (active.data.current?.type === 'Card') {
-      const draggedCard = cards.find(c => c.id === active.id) || null;
+      suppressCardOpenUntilRef.current = Date.now() + 220;
+      const draggedCard = cards.find((c) => String(c.id) === String(active.id)) || null;
       dragSourceRef.current = {
         status: draggedCard?.status || null,
         listId: draggedCard?.listId || null
@@ -262,10 +333,17 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
     const { active, over } = event;
     if (!over) return;
     
-    const activeId = active.id;
-    const overId = over.id;
+    const activeId = String(active.id);
+    const rawOverId = String(over.id);
+    const resolvedOverListId = lists.find((item) => String(item.id) === rawOverId)?.id;
+    const overId = over.data.current?.type === 'List' ? (resolvedOverListId ?? rawOverId) : rawOverId;
     
     if (activeId === overId) return;
+
+    const overType = over.data.current?.type || 'unknown';
+    const overTargetKey = `${overType}:${String(overId)}`;
+    if (lastDragOverTargetRef.current === overTargetKey) return;
+    lastDragOverTargetRef.current = overTargetKey;
 
     const isActiveACard = active.data.current?.type === 'Card';
     const isOverACard = over.data.current?.type === 'Card';
@@ -273,39 +351,26 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
 
     if (!isActiveACard) return;
 
-    // Dropping a card over another card
-    if (isActiveACard && isOverACard) {
-      setCards((prev) => {
-        const activeIndex = prev.findIndex(c => c.id === activeId);
-        const overIndex = prev.findIndex(c => c.id === overId);
-        if (activeIndex < 0 || overIndex < 0) return prev;
-        
-        if (prev[activeIndex].listId !== prev[overIndex].listId) {
-          const newCards = [...prev];
-          newCards[activeIndex] = {
-            ...prev[activeIndex],
-            listId: prev[overIndex].listId,
-            status: prev[overIndex].status
-          };
-          return arrayMove(newCards, activeIndex, overIndex);
-        }
-        return arrayMove(prev, activeIndex, overIndex);
-      });
-    }
+    pendingDragOverRef.current = {
+      activeId,
+      overId,
+      isOverACard,
+      isOverAList
+    };
 
-    // Dropping a card over an empty list
-    if (isActiveACard && isOverAList) {
-      setCards((prev) => {
-        const activeIndex = prev.findIndex(c => c.id === activeId);
-        if (activeIndex < 0) return prev;
-        const newCards = [...prev];
-        newCards[activeIndex] = {
-          ...prev[activeIndex],
-          listId: overId,
-          status: getStatusFromList(overId)
-        };
-        return arrayMove(newCards, activeIndex, activeIndex);
-      });
+    if (dragOverAnimationFrameRef.current === null) {
+      dragOverAnimationFrameRef.current = requestAnimationFrame(processQueuedDragOver);
+    }
+  };
+
+  const handleDragCancel = () => {
+    setActiveCard(null);
+    dragSourceRef.current = { status: null, listId: null };
+    lastDragOverTargetRef.current = null;
+    pendingDragOverRef.current = null;
+    if (dragOverAnimationFrameRef.current !== null) {
+      cancelAnimationFrame(dragOverAnimationFrameRef.current);
+      dragOverAnimationFrameRef.current = null;
     }
   };
 
@@ -313,10 +378,16 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
     const { active, over } = event;
     const dragSource = dragSourceRef.current;
     setActiveCard(null);
+    lastDragOverTargetRef.current = null;
+    pendingDragOverRef.current = null;
+    if (dragOverAnimationFrameRef.current !== null) {
+      cancelAnimationFrame(dragOverAnimationFrameRef.current);
+      dragOverAnimationFrameRef.current = null;
+    }
     if (!over) return;
     
-    const activeId = active.id;
-    const overId = over.id;
+    const activeId = String(active.id);
+    const overId = String(over.id);
     
     if (activeId === overId) return;
 
@@ -326,8 +397,9 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
     if (isActiveAList) {
       // Handle List Reordering
       setLists((prev) => {
-        const activeIndex = prev.findIndex(l => l.id === activeId);
-        const overIndex = prev.findIndex(l => l.id === overId);
+        const activeIndex = prev.findIndex((l) => String(l.id) === activeId);
+        const overIndex = prev.findIndex((l) => String(l.id) === overId);
+        if (activeIndex < 0 || overIndex < 0) return prev;
         const newLists = arrayMove(prev, activeIndex, overIndex);
         
         // Optimistically calculate new rank (average of neighbors)
@@ -342,7 +414,8 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
         newLists[overIndex].rank = newRank;
 
         // Persist to DB
-        supabase.from('lists').update({ rank: newRank }).eq('id', activeId).then(({error}) => {
+        const movedList = newLists[overIndex];
+        supabase.from('lists').update({ rank: newRank }).eq('id', movedList.id).then(({error}) => {
           if (error) toast.error('Failed to save list order');
         });
 
@@ -351,20 +424,20 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
     }
 
     if (isActiveACard) {
-       const card = cards.find((item) => item.id === activeId);
+       const card = cards.find((item) => String(item.id) === activeId);
        if (!card) return;
        
        // Use the drag-start snapshot so hover updates do not change the transition check.
       const sourceStatus = dragSource.status || getStatusFromList(dragSource.listId) || activeCard?.status || getStatusFromList(activeCard?.listId);
        const destinationListId = over.data.current?.type === 'List'
-         ? over.id
-         : cards.find((item) => item.id === over.id)?.listId || card.listId;
+         ? (lists.find((item) => String(item.id) === overId)?.id || card.listId)
+         : cards.find((item) => String(item.id) === overId)?.listId || card.listId;
        const destinationStatus = getStatusFromList(destinationListId);
 
        const listCards = cards
-         .filter((item) => (item.id === activeId ? destinationListId : item.listId) === destinationListId)
+         .filter((item) => (String(item.id) === activeId ? destinationListId : item.listId) === destinationListId)
          .sort((a, b) => (a.rank || 0) - (b.rank || 0));
-       const targetIndex = listCards.findIndex((item) => item.id === activeId);
+       const targetIndex = listCards.findIndex((item) => String(item.id) === activeId);
 
        const prevCard = listCards[targetIndex - 1];
        const nextCard = listCards[targetIndex + 1];
@@ -381,7 +454,7 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
        }
 
        setCards((prev) => prev.map((item) => {
-         if (item.id !== activeId) return item;
+         if (String(item.id) !== activeId) return item;
          return {
            ...item,
            listId: destinationListId,
@@ -392,7 +465,7 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
 
         const { error } = await supabase.from('cards')
           .update({ list_id: destinationListId, rank: newRank, status: destinationStatus })
-          .eq('id', activeId);
+          .eq('id', card.id);
 
         if (error) {
           toast.error('Failed to save card position');
@@ -401,7 +474,7 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
           if (sourceStatus !== 'done' && destinationStatus === 'done') {
             triggerDoneCelebration();
           }
-          await updateScheduleItem(activeId, {
+          await updateScheduleItem(card.id, {
           list_id: destinationListId,
           status: destinationStatus,
           rank: newRank
@@ -418,6 +491,7 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
     }
 
      dragSourceRef.current = { status: null, listId: null };
+    lastDragOverTargetRef.current = null;
   };
 
   const handleQuickAddCard = async (title) => {
@@ -498,19 +572,61 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
     }
   };
 
+  const filteredCards = useMemo(() => cards.filter(card => {
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+    const matchesType = !typeFilter || card.issue_type?.toLowerCase() === typeFilter.toLowerCase();
+    const matchesPriority = !priorityFilter || card.priority?.toLowerCase() === priorityFilter.toLowerCase();
+    const matchesSearch = !normalizedSearch || card.title.toLowerCase().includes(normalizedSearch);
+    return matchesType && matchesPriority && matchesSearch;
+  }), [cards, typeFilter, priorityFilter, searchQuery]);
+
+  const cardsByList = useMemo(() => {
+    const grouped = new Map();
+    lists.forEach((list) => grouped.set(String(list.id), []));
+
+    filteredCards.forEach((card) => {
+      const listCards = grouped.get(String(card.listId));
+      if (listCards) {
+        listCards.push(card);
+      }
+    });
+
+    return grouped;
+  }, [lists, filteredCards]);
+
+  const collisionDetectionStrategy = useCallback((args) => {
+    const pointerCollisions = pointerWithin(args);
+    if (pointerCollisions.length > 0) {
+      return pointerCollisions;
+    }
+    return closestCorners(args);
+  }, []);
+
+  const displayLists = useMemo(() => lists.map((list) => ({ ...list, title: list.name })), [lists]);
+
+  const handleOpenCard = useCallback((card) => {
+    if (Date.now() < suppressCardOpenUntilRef.current) return;
+    router.replace(`/projects/${projectId}?tab=board&cardId=${card.id}`, { scroll: false });
+  }, [router, projectId]);
+
+  const handleQuickAddFromColumn = useCallback((listId) => {
+    setCreateCardListId(listId);
+    setShowCreateCardModal(true);
+  }, []);
+
   if (isLoading) {
     return <KanbanPanelSkeleton />;
   }
 
-  // Map db 'name' to component 'title' expected by KanbanColumn
-  const displayLists = lists.map(l => ({...l, title: l.name}));
-
-  const filteredCards = cards.filter(card => {
-    const matchesType = !typeFilter || card.issue_type?.toLowerCase() === typeFilter.toLowerCase();
-    const matchesPriority = !priorityFilter || card.priority?.toLowerCase() === priorityFilter.toLowerCase();
-    const matchesSearch = !searchQuery || card.title.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesType && matchesPriority && matchesSearch;
-  });
+  const dragOverlay = (
+    <DragOverlay adjustScale={false} dropAnimation={null}>
+      {activeCard ? (
+        <div style={{ pointerEvents: 'none' }}>
+          <KanbanCardOverlay card={activeCard} />
+        </div>
+      ) : null}
+    </DragOverlay>
+  );
 
   return (
     <div className="kanban-wrapper">
@@ -572,26 +688,22 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
       
       <DndContext 
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={collisionDetectionStrategy}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
+        onDragCancel={handleDragCancel}
         onDragEnd={handleDragEnd}
       >
         <div className="kanban-board">
-          <SortableContext items={displayLists.map(l => l.id)}>
+          <SortableContext items={displayLists.map((l) => String(l.id))} strategy={horizontalListSortingStrategy}>
             {displayLists.map(list => (
               <KanbanColumn
                 key={list.id}
                 list={list}
-                cards={filteredCards.filter(c => c.listId === list.id).sort((a,b) => (a.rank || 0) - (b.rank || 0))}
+                cards={cardsByList.get(String(list.id)) || []}
                 deletingCardIdsSet={deletingCardIdSet}
-                onCardOpen={(card) => {
-                  router.replace(`/projects/${projectId}?tab=board&cardId=${card.id}`, { scroll: false });
-                }}
-                onQuickAddCard={(listId) => {
-                  setCreateCardListId(listId);
-                  setShowCreateCardModal(true);
-                }}
+                onCardOpen={handleOpenCard}
+                onQuickAddCard={handleQuickAddFromColumn}
               />
             ))}
           </SortableContext>
@@ -600,13 +712,7 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
           </div>
         </div>
 
-        <DragOverlay adjustScale={false} dropAnimation={null}>
-          {activeCard ? (
-            <div style={{ pointerEvents: 'none' }}>
-              <KanbanCard card={activeCard} isOverlay />
-            </div>
-          ) : null}
-        </DragOverlay>
+        {isClient ? createPortal(dragOverlay, document.body) : null}
       </DndContext>
 
 

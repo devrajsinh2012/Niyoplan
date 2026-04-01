@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   X, MoreHorizontal, Paperclip, CheckSquare, Link, ChevronDown,
-  AlignLeft, Activity, List, Clock, Send, Eye, Loader, Trash2
+  AlignLeft, Activity, List, Clock, Send, Loader, Trash2
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useScheduleStore } from '@/context/ScheduleStore';
@@ -28,18 +28,22 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
   const { profile } = useAuth();
   const { removeScheduleItem } = useScheduleStore();
   const [users, setUsers] = useState([]);
+  const [sprints, setSprints] = useState([]);
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showEditCardForm, setShowEditCardForm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const menuRef = useRef(null);
   
   const [form, setForm] = useState({
     title: card?.title || '',
     description: card?.description || '',
+    issue_type: card?.issue_type || 'task',
     status: card?.status || 'todo',
     priority: card?.priority || 'medium',
     story_points: card?.story_points ?? '',
     assignee_id: card?.assignee_id || '',
+    sprint_id: card?.sprint_id || '',
     start_date: toDateInput(card?.start_date),
     due_date: toDateInput(card?.due_date)
   });
@@ -109,14 +113,41 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
     }
   }, [card?.project_id]);
 
+  const fetchSprints = useCallback(async () => {
+    if (!card?.project_id) return;
+
+    try {
+      const res = await apiFetch(`/api/projects/${card.project_id}/sprints`);
+
+      if (!res.ok) {
+        let message = 'Failed to fetch project sprints';
+        try {
+          const errorBody = await res.json();
+          message = errorBody?.error || message;
+        } catch {
+          // Ignore JSON parse failures and keep the generic message.
+        }
+        throw new Error(message);
+      }
+
+      const data = await res.json();
+      const normalizedSprints = Array.isArray(data) ? data : [];
+      setSprints(normalizedSprints);
+    } catch (err) {
+      console.error('Failed to load card sprints:', err);
+      setSprints([]);
+    }
+  }, [card?.project_id]);
+
   // Fetch comments and subtasks
   useEffect(() => {
     if (card?.id) {
       fetchComments();
       fetchSubtasks();
       fetchUsers();
+      fetchSprints();
     }
-  }, [card?.id, fetchComments, fetchSubtasks, fetchUsers]);
+  }, [card?.id, fetchComments, fetchSubtasks, fetchUsers, fetchSprints]);
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -132,10 +163,12 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
     setForm({
       title: card?.title || '',
       description: card?.description || '',
+      issue_type: card?.issue_type || 'task',
       status: card?.status || 'todo',
       priority: card?.priority || 'medium',
       story_points: card?.story_points ?? '',
       assignee_id: card?.assignee_id || '',
+      sprint_id: card?.sprint_id || '',
       start_date: toDateInput(card?.start_date),
       due_date: toDateInput(card?.due_date)
     });
@@ -143,10 +176,12 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
     card?.id,
     card?.title,
     card?.description,
+    card?.issue_type,
     card?.status,
     card?.priority,
     card?.story_points,
     card?.assignee_id,
+    card?.sprint_id,
     card?.start_date,
     card?.due_date
   ]);
@@ -229,7 +264,9 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
 
   const buildPayload = (source) => ({
     ...source,
+    issue_type: source.issue_type || 'task',
     assignee_id: source.assignee_id || card?.reporter_id || profile?.id || null,
+    sprint_id: source.sprint_id || null,
     story_points: source.story_points === '' ? null : Number(source.story_points),
     start_date: source.start_date || null,
     due_date: source.due_date || null
@@ -296,6 +333,15 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
     }
   };
 
+  const handleEditCardSubmit = async (event) => {
+    event.preventDefault();
+    const success = await submitForm(form);
+    if (success !== false) {
+      setShowEditCardForm(false);
+      setShowMenu(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-[#091E42]/60 p-4 md:p-10 backdrop-blur-[2px]" onClick={onClose}>
       <div className="relative max-h-[90vh] min-h-[500px] w-full max-w-6xl animate-fade-in flex flex-col overflow-hidden rounded-lg bg-[var(--bg-surface)] shadow-2xl ring-1 ring-black/5" onClick={(e) => e.stopPropagation()}>
@@ -310,13 +356,21 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
             <span className="font-mono text-[var(--text-primary)] font-bold tracking-tight">{card.prefix || card.custom_id}</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <button className="flex items-center justify-center p-2 rounded-[3px] text-[var(--text-secondary)] hover:bg-[var(--bg-panel-hover)] transition-colors" title="Watch" onClick={() => toast('Watch feature coming soon', { icon: '👀' })}><Eye size={16} /></button>
             <div className="relative" ref={menuRef}>
               <button className="flex items-center justify-center p-2 rounded-[3px] text-[var(--text-secondary)] hover:bg-[var(--bg-panel-hover)] transition-colors" onClick={() => setShowMenu(!showMenu)}><MoreHorizontal size={16} /></button>
               {showMenu && (
                 <div className="absolute right-0 mt-1 w-48 bg-[var(--bg-surface)] rounded-lg shadow-lg border border-[var(--border-subtle)] z-50">
                   <button className="w-full text-left px-4 py-2 hover:bg-[var(--bg-panel-hover)] transition-colors flex items-center gap-2 text-sm text-red-600 last:rounded-b-lg" onClick={() => { setShowMenu(false); setShowDeleteConfirm(true); }}>
                     <Trash2 size={14} /> Delete card
+                  </button>
+                  <button
+                    className="w-full text-left px-4 py-2 hover:bg-[var(--bg-panel-hover)] transition-colors flex items-center gap-2 text-sm text-[var(--text-primary)] border-t border-[var(--border-subtle)] rounded-b-lg"
+                    onClick={() => {
+                      setShowEditCardForm(true);
+                      setShowMenu(false);
+                    }}
+                  >
+                    <AlignLeft size={14} /> Edit card details
                   </button>
                 </div>
               )}
@@ -401,6 +455,7 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
             form={form}
             setForm={setForm}
             submitForm={submitForm}
+            onOpenEditForm={() => setShowEditCardForm(true)}
             getStatusStyle={getStatusStyle}
             card={card}
             profile={profile}
@@ -418,6 +473,166 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
         onCancel={() => setShowDeleteConfirm(false)}
         isLoading={isDeleting}
       />
+
+      {showEditCardForm && (
+        <div className="fixed inset-0 z-[2100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" onClick={() => setShowEditCardForm(false)}>
+          <div className="w-full max-w-3xl rounded-xl border border-gray-200 bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-gray-200 p-5">
+              <h2 className="text-lg font-bold text-gray-900">Edit Card</h2>
+              <button type="button" onClick={() => setShowEditCardForm(false)} className="rounded p-1 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditCardSubmit} className="space-y-4 p-5">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Title</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  value={form.title}
+                  onChange={(event) => setForm((previous) => ({ ...previous, title: event.target.value }))}
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Description</label>
+                <textarea
+                  className="min-h-[120px] w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  value={form.description}
+                  onChange={(event) => setForm((previous) => ({ ...previous, description: event.target.value }))}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Issue Type</label>
+                  <select
+                    className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    value={form.issue_type}
+                    onChange={(event) => setForm((previous) => ({ ...previous, issue_type: event.target.value }))}
+                  >
+                    <option value="task">Task</option>
+                    <option value="story">Story</option>
+                    <option value="bug">Bug</option>
+                    <option value="epic">Epic</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
+                  <select
+                    className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    value={form.status}
+                    onChange={(event) => setForm((previous) => ({ ...previous, status: event.target.value }))}
+                  >
+                    <option value="backlog">Backlog</option>
+                    <option value="todo">To Do</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="in_review">In Review</option>
+                    <option value="done">Done</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Priority</label>
+                  <select
+                    className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    value={form.priority}
+                    onChange={(event) => setForm((previous) => ({ ...previous, priority: event.target.value }))}
+                  >
+                    <option value="highest">Highest</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                    <option value="lowest">Lowest</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Assignee</label>
+                  <select
+                    className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    value={form.assignee_id}
+                    onChange={(event) => setForm((previous) => ({ ...previous, assignee_id: event.target.value }))}
+                  >
+                    <option value="">Auto (Reporter)</option>
+                    {users.map((user) => (
+                      <option key={user.id} value={user.id}>{user.full_name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Sprint</label>
+                  <select
+                    className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    value={form.sprint_id}
+                    onChange={(event) => setForm((previous) => ({ ...previous, sprint_id: event.target.value }))}
+                  >
+                    <option value="">Unplanned</option>
+                    {sprints.map((sprint) => (
+                      <option key={sprint.id} value={sprint.id}>
+                        {sprint.name}{sprint.status ? ` (${sprint.status})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Story Points</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    value={form.story_points}
+                    onChange={(event) => setForm((previous) => ({ ...previous, story_points: event.target.value }))}
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Start Date</label>
+                  <input
+                    type="date"
+                    className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    value={form.start_date}
+                    onChange={(event) => setForm((previous) => ({ ...previous, start_date: event.target.value }))}
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Due Date</label>
+                  <input
+                    type="date"
+                    className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    value={form.due_date}
+                    onChange={(event) => setForm((previous) => ({ ...previous, due_date: event.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowEditCardForm(false)}
+                  className="rounded-lg px-4 py-2 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isSaving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

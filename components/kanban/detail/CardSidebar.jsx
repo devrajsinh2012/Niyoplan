@@ -8,6 +8,7 @@ export default function CardSidebar({
   form,
   setForm,
   submitForm,
+  onOpenEditForm,
   getStatusStyle,
   card,
   profile,
@@ -124,6 +125,13 @@ export default function CardSidebar({
       </div>
 
       <div className="mt-auto pt-6 border-t border-[var(--border-subtle)]">
+         <button
+           type="button"
+           onClick={onOpenEditForm}
+           className="mb-4 w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-panel-hover)]"
+         >
+           Edit card details
+         </button>
          <div className="space-y-2">
            <div className="flex justify-between text-[11px] font-medium text-[var(--text-muted)]">
              <span>Created</span>

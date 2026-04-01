@@ -25,6 +25,14 @@ const DEFAULT_LISTS = [
   { name: 'DONE', rank: 5000 }
 ];
 
+const CORE_STATUS_LISTS = [
+  { status: 'backlog', name: 'BACKLOG', rank: 1000 },
+  { status: 'todo', name: 'TO DO', rank: 2000 },
+  { status: 'in_progress', name: 'IN PROGRESS', rank: 3000 },
+  { status: 'in_review', name: 'IN REVIEW', rank: 4000 },
+  { status: 'done', name: 'DONE', rank: 5000 }
+];
+
 export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards = null, sharedLists = null, deletingCardIds = [], onCardUpdated = null }) {
   const { scheduleItems: storeItems, updateScheduleItem } = useScheduleStore();
   const [lists, setLists] = useState([]);
@@ -47,6 +55,26 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
   const pendingDragOverRef = useRef(null);
   const suppressCardOpenUntilRef = useRef(0);
   const deletingCardIdSet = useMemo(() => new Set(deletingCardIds), [deletingCardIds]);
+  const hasSharedLists = Array.isArray(sharedLists) && sharedLists.length > 0;
+  const hasSharedCards = Array.isArray(sharedCards) && sharedCards.length > 0;
+
+  const getListStatusKey = useCallback((name) => {
+    const normalized = String(name || '').trim().toLowerCase();
+    if (normalized === 'done' || normalized === 'completed' || normalized === 'resolved' || normalized === 'finished') return 'done';
+    if (normalized === 'in review' || normalized === 'review' || normalized === 'testing' || normalized === 'qa') return 'in_review';
+    if (normalized === 'in progress' || normalized === 'progress' || normalized === 'doing' || normalized === 'active') return 'in_progress';
+    if (normalized === 'to do' || normalized === 'todo' || normalized === 'to-do' || normalized === 'upcoming') return 'todo';
+    if (normalized === 'backlog') return 'backlog';
+    return `custom:${normalized}`;
+  }, []);
+
+  const hasAllCoreStatusLists = useCallback((items) => {
+    if (!Array.isArray(items) || items.length === 0) return false;
+    const statusSet = new Set(items.map((item) => getListStatusKey(item?.name)));
+    return CORE_STATUS_LISTS.every((entry) => statusSet.has(entry.status));
+  }, [getListStatusKey]);
+
+  const shouldUseSharedLists = hasSharedLists && hasAllCoreStatusLists(sharedLists);
 
   const isTaskLike = useCallback((card) => {
     const type = (card?.item_type || card?.type || card?.issue_type || '').toString().toLowerCase();
@@ -61,32 +89,34 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
 
   const getStatusFromList = useCallback((listId) => {
     const list = lists.find((item) => String(item.id) === String(listId));
-    const normalized = (list?.name || '').trim().toLowerCase();
-    if (normalized === 'done' || normalized === 'completed' || normalized === 'resolved' || normalized === 'finished') return 'done';
-    if (normalized === 'in review' || normalized === 'testing') return 'in_review';
-    if (normalized === 'in progress' || normalized === 'doing' || normalized === 'active') return 'in_progress';
-    if (normalized === 'to do' || normalized === 'todo' || normalized === 'upcoming') return 'todo';
+    const statusKey = getListStatusKey(list?.name);
+    if (statusKey === 'done' || statusKey === 'in_review' || statusKey === 'in_progress' || statusKey === 'todo' || statusKey === 'backlog') {
+      return statusKey;
+    }
     return 'backlog';
-  }, [lists]);
+  }, [lists, getListStatusKey]);
 
-  const getListIdFromStatus = useCallback((status) => {
+  const getListIdFromStatus = useCallback((status, listCollection = lists) => {
     const normalizedStatus = (status || '').trim().toLowerCase();
-    const match = lists.find((item) => {
-      const name = (item.name || '').trim().toLowerCase();
-      if (normalizedStatus === 'done') return name === 'done';
-      if (normalizedStatus === 'in_review') return name === 'in review';
-      if (normalizedStatus === 'in_progress') return name === 'in progress';
-      if (normalizedStatus === 'todo') return name === 'to do' || name === 'todo';
-      return name === 'backlog';
+    const canonicalStatus = (
+      normalizedStatus === 'done' ||
+      normalizedStatus === 'in_review' ||
+      normalizedStatus === 'in_progress' ||
+      normalizedStatus === 'todo'
+    ) ? normalizedStatus : 'backlog';
+
+    const match = (listCollection || []).find((item) => {
+      return getListStatusKey(item?.name) === canonicalStatus;
     });
+
     return match?.id;
-  }, [lists]);
+  }, [lists, getListStatusKey]);
 
   const sourceCards = useMemo(() => {
-    const sourceLists = Array.isArray(sharedLists) ? sharedLists : lists;
+    const sourceLists = shouldUseSharedLists ? sharedLists : lists;
     const backlogList = sourceLists.find((list) => {
-      const normalized = (list.name || '').trim().toLowerCase();
-      return normalized === 'backlog' || normalized === 'to do' || normalized === 'todo';
+      const statusKey = getListStatusKey(list?.name);
+      return statusKey === 'backlog' || statusKey === 'todo';
     });
     const fallbackListId = (backlogList || sourceLists[0])?.id;
 
@@ -98,7 +128,7 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
       const normalizedCard = {
         ...card,
         prefix: card.custom_id,
-        listId: card.list_id || getListIdFromStatus(card.status) || fallbackListId || card.listId
+        listId: getListIdFromStatus(card.status, sourceLists) || card.list_id || fallbackListId || card.listId
       };
 
       const existingCard = mergedCards.get(card.id);
@@ -111,22 +141,22 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
       storeItems.filter(isTaskLike).forEach(upsertCard);
     }
 
-    if (Array.isArray(sharedCards)) {
+    if (hasSharedCards) {
       sharedCards.filter(Boolean).forEach(upsertCard);
     }
 
     return Array.from(mergedCards.values());
-  }, [storeItems, sharedCards, lists, getListIdFromStatus, getCardTimestamp, isTaskLike, sharedLists]);
-  const hasExternalCardSource = Array.isArray(sharedCards) || (Array.isArray(storeItems) && storeItems.length > 0);
+  }, [storeItems, sharedCards, lists, getListIdFromStatus, getCardTimestamp, isTaskLike, sharedLists, hasSharedCards, shouldUseSharedLists, getListStatusKey]);
+  const hasExternalCardSource = hasSharedCards || (Array.isArray(storeItems) && storeItems.length > 0);
 
   const triggerDoneCelebration = useCallback(() => {
-    const duration = 2200;
+    const duration = 900;
     const animationEnd = Date.now() + duration;
     const defaults = {
-      startVelocity: 38,
-      spread: 300,
-      ticks: 80,
-      zIndex: 1000,
+      startVelocity: 28,
+      spread: 260,
+      ticks: 48,
+      zIndex: 12000,
       colors: ['#0052CC', '#22A06B', '#E34935', '#6554C0']
     };
 
@@ -139,7 +169,7 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
         return;
       }
 
-      const particleCount = 40 * (timeLeft / duration);
+      const particleCount = 22 * (timeLeft / duration);
 
       confetti({
         ...defaults,
@@ -173,10 +203,14 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
 
       let boardLists = listsRes.data || [];
 
-      if (boardLists.length === 0) {
+      const missingCoreStatuses = CORE_STATUS_LISTS.filter((entry) => {
+        return !boardLists.some((list) => getListStatusKey(list?.name) === entry.status);
+      });
+
+      if (missingCoreStatuses.length > 0) {
         const { data: createdLists, error: createdListsError } = await supabase
           .from('lists')
-          .insert(DEFAULT_LISTS.map((list) => ({
+          .insert(missingCoreStatuses.map((list) => ({
             project_id: projectId,
             name: list.name,
             rank: list.rank
@@ -185,35 +219,40 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
           .order('rank', { ascending: true });
 
         if (createdListsError) throw createdListsError;
-        boardLists = createdLists || [];
+        boardLists = [...boardLists, ...(createdLists || [])];
       }
 
+      boardLists = [...boardLists].sort((a, b) => (a.rank || 0) - (b.rank || 0));
+
       const backlogList = boardLists.find((list) => {
-        const normalized = (list.name || '').trim().toLowerCase();
-        return normalized === 'backlog' || normalized === 'to do' || normalized === 'todo';
+        const statusKey = getListStatusKey(list?.name);
+        return statusKey === 'backlog' || statusKey === 'todo';
       });
       const fallbackListId = (backlogList || boardLists[0])?.id;
 
-      // Ensure cards have prefix property matching Phase 2 mock expectations (using custom_id)
+      const listSyncUpdates = [];
+
       const formattedCards = cardsRes.data.map(c => ({
         ...c,
         prefix: c.custom_id, 
-        listId: c.list_id || fallbackListId // Map DB column to component prop
+        listId: getListIdFromStatus(c.status, boardLists) || c.list_id || fallbackListId
       }));
 
-      const orphanCardIds = cardsRes.data
-        .filter((card) => !card.list_id && fallbackListId)
-        .map((card) => card.id);
-
-      if (orphanCardIds.length > 0) {
-        const { error: reassignError } = await supabase
-          .from('cards')
-          .update({ list_id: fallbackListId })
-          .in('id', orphanCardIds);
-
-        if (reassignError) {
-          console.error(reassignError);
+      formattedCards.forEach((card) => {
+        if (card.id && card.listId && card.list_id !== card.listId) {
+          listSyncUpdates.push({ id: card.id, list_id: card.listId });
         }
+      });
+
+      if (listSyncUpdates.length > 0) {
+        await Promise.allSettled(
+          listSyncUpdates.map((entry) => {
+            return supabase
+              .from('cards')
+              .update({ list_id: entry.list_id })
+              .eq('id', entry.id);
+          })
+        );
       }
 
       setLists(boardLists);
@@ -230,16 +269,18 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, onCardUpdated]);
+  }, [projectId, onCardUpdated, getListStatusKey, getListIdFromStatus]);
 
   // Fetch lists and cards
   useEffect(() => {
-    if (projectId && !sharedLists) {
+    if (!projectId) return;
+
+    if (!shouldUseSharedLists) {
       fetchBoardData();
-    } else if (sharedLists) {
+    } else {
       setLists(sharedLists);
     }
-  }, [projectId, refreshNonce, fetchBoardData, sharedLists]);
+  }, [projectId, refreshNonce, fetchBoardData, sharedLists, shouldUseSharedLists]);
 
   useEffect(() => {
     setIsClient(true);
@@ -247,9 +288,14 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
 
   useEffect(() => {
     if (!hasExternalCardSource) return;
+
+    // When we rely on internally loaded lists, wait until at least one list exists
+    // so cards can be mapped into visible columns.
+    if (!shouldUseSharedLists && lists.length === 0) return;
+
     setCards(sourceCards);
     setIsLoading(false);
-  }, [sourceCards, hasExternalCardSource]);
+  }, [sourceCards, hasExternalCardSource, shouldUseSharedLists, lists.length]);
 
   useEffect(() => () => {
     if (dragOverAnimationFrameRef.current !== null) {
@@ -335,8 +381,10 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
     
     const activeId = String(active.id);
     const rawOverId = String(over.id);
+    const overIdIsList = listIdSet.has(rawOverId);
     const resolvedOverListId = lists.find((item) => String(item.id) === rawOverId)?.id;
-    const overId = over.data.current?.type === 'List' ? (resolvedOverListId ?? rawOverId) : rawOverId;
+    const isOverAList = over.data.current?.type === 'List' || overIdIsList;
+    const overId = isOverAList ? (resolvedOverListId ?? rawOverId) : rawOverId;
     
     if (activeId === overId) return;
 
@@ -347,7 +395,6 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
 
     const isActiveACard = active.data.current?.type === 'Card';
     const isOverACard = over.data.current?.type === 'Card';
-    const isOverAList = over.data.current?.type === 'List';
 
     if (!isActiveACard) return;
 
@@ -388,6 +435,7 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
     
     const activeId = String(active.id);
     const overId = String(over.id);
+    const overIdIsList = listIdSet.has(overId);
     
     if (activeId === overId) return;
 
@@ -429,10 +477,16 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
        
        // Use the drag-start snapshot so hover updates do not change the transition check.
       const sourceStatus = dragSource.status || getStatusFromList(dragSource.listId) || activeCard?.status || getStatusFromList(activeCard?.listId);
-       const destinationListId = over.data.current?.type === 'List'
-         ? (lists.find((item) => String(item.id) === overId)?.id || card.listId)
+       const isDropOnList = over.data.current?.type === 'List' || overIdIsList;
+       const destinationListId = isDropOnList
+         ? (lists.find((item) => String(item.id) === overId)?.id || overId || card.listId)
          : cards.find((item) => String(item.id) === overId)?.listId || card.listId;
        const destinationStatus = getStatusFromList(destinationListId);
+      const sourceStatusNormalized = String(sourceStatus || '').trim().toLowerCase();
+      const sourceListStatus = getStatusFromList(dragSource.listId);
+      const movedIntoDoneColumn = destinationStatus === 'done' && (
+        (sourceStatusNormalized ? sourceStatusNormalized !== 'done' : sourceListStatus !== 'done')
+      );
 
        const listCards = cards
          .filter((item) => (String(item.id) === activeId ? destinationListId : item.listId) === destinationListId)
@@ -471,7 +525,7 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
           toast.error('Failed to save card position');
           await fetchBoardData();
         } else {
-          if (sourceStatus !== 'done' && destinationStatus === 'done') {
+          if (movedIntoDoneColumn) {
             triggerDoneCelebration();
           }
           await updateScheduleItem(card.id, {
@@ -593,6 +647,10 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
 
     return grouped;
   }, [lists, filteredCards]);
+
+  const listIdSet = useMemo(() => {
+    return new Set(lists.map((list) => String(list.id)));
+  }, [lists]);
 
   const collisionDetectionStrategy = useCallback((args) => {
     const pointerCollisions = pointerWithin(args);

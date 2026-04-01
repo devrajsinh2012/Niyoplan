@@ -81,9 +81,9 @@ export default function ProjectDetailPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const triggerDoneCelebration = useCallback(() => {
-    const duration = 5 * 1000;
+    const duration = 900;
     const animationEnd = Date.now() + duration;
-    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 10001, colors: ['#22A06B', '#0C66E4', '#E34935', '#FFAB00'] };
+    const defaults = { startVelocity: 26, spread: 260, ticks: 46, zIndex: 10001, colors: ['#22A06B', '#0C66E4', '#E34935', '#FFAB00'] };
 
     const randomInRange = (min, max) => Math.random() * (max - min) + min;
 
@@ -92,7 +92,7 @@ export default function ProjectDetailPage() {
 
       if (timeLeft <= 0) return;
 
-      const particleCount = 40 * (timeLeft / duration);
+      const particleCount = 22 * (timeLeft / duration);
 
       confetti({
         ...defaults,
@@ -213,7 +213,7 @@ export default function ProjectDetailPage() {
   };
 
   const handleSaveCard = async (updates) => {
-    if (!selectedCard?.id) return;
+    if (!selectedCard?.id) return false;
     setIsSavingCard(true);
 
     const getListIdFromStatus = (status) => {
@@ -233,10 +233,12 @@ export default function ProjectDetailPage() {
     const payload = {
       title: updates.title,
       description: updates.description,
+      issue_type: updates.issue_type || selectedCard.issue_type || 'task',
       priority: updates.priority,
       status: updates.status,
       list_id: getListIdFromStatus(updates.status) || selectedCard.list_id,
       assignee_id: updates.assignee_id || selectedCard.reporter_id || profile?.id || null,
+      sprint_id: updates.sprint_id || null,
       story_points: updates.story_points,
       start_date: updates.start_date || null,
       due_date: updates.due_date || null,
@@ -253,7 +255,7 @@ export default function ProjectDetailPage() {
 
     if (error) {
       toast.error('Failed to save card');
-      return;
+      return false;
     }
 
     setCards((prev) => prev.map((item) => (item.id === data.id ? data : item)));
@@ -265,6 +267,7 @@ export default function ProjectDetailPage() {
     setSelectedCard((prev) => (prev?.id === data.id ? data : prev));
     setRefreshNonce((prev) => prev + 1);
     toast.success('Card updated');
+    return true;
   };
 
   const handleBoardCardUpdated = useCallback((updatedCard) => {
@@ -490,8 +493,8 @@ export default function ProjectDetailPage() {
               <KanbanBoard
                 projectId={id}
                 refreshNonce={refreshNonce}
-                sharedCards={cards}
-                sharedLists={lists}
+                sharedCards={cards.length > 0 ? cards : null}
+                sharedLists={lists.length > 0 ? lists : null}
                 deletingCardIds={deletingCardIds}
                 onCardUpdated={handleBoardCardUpdated}
               />

@@ -263,15 +263,15 @@ export default function ProjectsPage() {
             <Link 
               href={`/projects/${project.id}`} 
               key={project.id}
-              className="group flex flex-col rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm transition-all hover:border-[var(--accent-primary)] hover:shadow-md active:translate-y-0.5"
+              className="group flex min-w-0 flex-col rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm transition-all hover:border-[var(--accent-primary)] hover:shadow-md active:translate-y-0.5"
             >
-              <div className="mb-5 flex items-start justify-between">
-                <div className="flex items-center gap-4">
+              <div className="mb-5 flex items-start justify-between gap-3">
+                <div className="flex min-w-0 flex-1 items-center gap-4">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-panel-hover)] font-mono text-[11px] font-bold text-[var(--accent-primary)] uppercase tracking-wider shadow-sm transition-all group-hover:border-[var(--accent-primary)] group-hover:bg-[var(--accent-subtle)]/30">
                     {project.prefix?.substring(0, 3) || project.name?.substring(0, 2).toUpperCase() || 'PR'}
                   </div>
                   <div className="min-w-0">
-                    <h3 className="truncate text-base font-bold text-[var(--text-heading)] group-hover:text-[#0052CC] transition-colors">
+                    <h3 className="min-h-[2.5rem] break-words text-base font-bold leading-snug text-[var(--text-heading)] transition-colors line-clamp-2 [overflow-wrap:anywhere] group-hover:text-[#0052CC]">
                       {project.name}
                     </h3>
                     <div className="mt-0.5 text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
@@ -283,7 +283,7 @@ export default function ProjectsPage() {
                   type="button"
                   aria-label={isStarred ? `Unstar ${project.name}` : `Star ${project.name}`}
                   aria-pressed={isStarred}
-                  className={`rounded-md p-1.5 transition-all hover:bg-[var(--bg-panel-hover)] ${
+                  className={`shrink-0 self-start rounded-md p-1.5 transition-all hover:bg-[var(--bg-panel-hover)] ${
                     isStarred
                       ? 'bg-yellow-50 text-yellow-500 opacity-100'
                       : 'text-[var(--text-muted)] opacity-0 hover:text-yellow-500 group-hover:opacity-100'
@@ -294,7 +294,7 @@ export default function ProjectsPage() {
                 </button>
               </div>
               
-              <p className="mb-6 h-10 line-clamp-2 text-sm font-medium leading-relaxed text-[var(--text-secondary)]">
+              <p className="mb-5 min-h-[2.25rem] break-words text-sm font-medium leading-snug text-[var(--text-secondary)] line-clamp-2 [overflow-wrap:anywhere]">
                 {project.description || 'Manage tasks, bugs, and features for this project with ease.'}
               </p>
               

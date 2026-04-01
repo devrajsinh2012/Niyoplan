@@ -75,9 +75,7 @@ export async function GET(request, { params }) {
         assignee:assignee_id(id, full_name, avatar_url),
         reporter:reporter_id(id, full_name, avatar_url)
       `)
-      .eq('project_id', projectId)
-      .gte('start_date', paddedFrom.toISOString())
-      .lte('start_date', paddedTo.toISOString());
+      .eq('project_id', projectId);
 
     // Apply status filter
     if (statuses && statuses.length > 0) {
@@ -133,20 +131,26 @@ export async function GET(request, { params }) {
       meetings = meetingsData;
     }
 
+    const isWithinRange = (value, fromBoundary, toBoundary) => {
+      if (!value) return false;
+      const parsed = new Date(value);
+      return !Number.isNaN(parsed.getTime()) && parsed >= fromBoundary && parsed <= toBoundary;
+    };
+
     // Normalize cards to ScheduleItem interface
     const scheduleItems = [
       ...cards
         .filter(card => {
-          // Fallback dates to created_at if missing
-          const startDate = card.start_date || card.created_at;
-          return startDate && new Date(startDate) >= from && new Date(startDate) <= to;
+          // Fall back to due_date / created_at so tasks without explicit start_date still render.
+          const startDate = card.start_date || card.due_date || card.created_at;
+          return isWithinRange(startDate, from, to);
         })
         .map(card => ({
           id: card.id,
           type: 'task',
           title: card.title,
           description: card.description,
-          start_date: card.start_date || card.created_at,
+          start_date: card.start_date || card.due_date || card.created_at,
           end_date: card.due_date || card.start_date || card.created_at,
           is_all_day: false,
           status: card.status,

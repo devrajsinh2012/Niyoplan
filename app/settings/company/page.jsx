@@ -4,18 +4,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Building2,
-  Users,
   Key,
-  Plus,
-  Mail,
   AlertTriangle,
   Save,
   Copy,
   RefreshCw,
   Check,
-  X,
   Loader2,
-  ChevronDown,
   Trash2
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -31,7 +26,6 @@ const ROLE_OPTIONS = [
   { value: 'pm', label: 'PM', description: 'Project management' },
   { value: 'qa', label: 'QA', description: 'Quality assurance' },
   { value: 'developer', label: 'Developer', description: 'Builds and ships product work' },
-  { value: 'member', label: 'Member', description: 'Team member' },
   { value: 'viewer', label: 'Viewer', description: 'Read-only access' }
 ];
 
@@ -42,18 +36,8 @@ export default function CompanySettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [organization, setOrganization] = useState(null);
-  const [members, setMembers] = useState([]);
-  const [pendingMembers, setPendingMembers] = useState([]);
-  const [user, setUser] = useState(null);
   const [copied, setCopied] = useState(false);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
-  const [memberToRemove, setMemberToRemove] = useState(null);
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteEmails, setInviteEmails] = useState('');
-  const [inviteRole, setInviteRole] = useState('member');
-  const [isInviteSending, setIsInviteSending] = useState(false);
-  const [showRoleDropdown, setShowRoleDropdown] = useState(null);
-  const [roleDropdownPosition, setRoleDropdownPosition] = useState(null);
 
   // Form states
   const [formData, setFormData] = useState({
@@ -64,72 +48,6 @@ export default function CompanySettingsPage() {
   });
   const [deleteConfirm, setDeleteConfirm] = useState('');
 
-  const closeRoleDropdown = useCallback(() => {
-    setShowRoleDropdown(null);
-    setRoleDropdownPosition(null);
-  }, []);
-
-  const toggleRoleDropdown = useCallback((event, memberId) => {
-    if (showRoleDropdown === memberId) {
-      closeRoleDropdown();
-      return;
-    }
-
-    const rect = event.currentTarget.getBoundingClientRect();
-    const dropdownWidth = 240;
-    const viewportPadding = 12;
-    const left = Math.max(
-      viewportPadding,
-      Math.min(rect.left, window.innerWidth - dropdownWidth - viewportPadding)
-    );
-
-    setRoleDropdownPosition({
-      top: rect.bottom + 8,
-      left,
-      width: dropdownWidth
-    });
-    setShowRoleDropdown(memberId);
-  }, [closeRoleDropdown, showRoleDropdown]);
-
-  const loadMembers = useCallback(async (orgId) => {
-    const { data: allMembers } = await supabase
-      .from('organization_members')
-      .select(`
-        id,
-        role,
-        status,
-        joined_at,
-        user_id,
-        profiles:user_id (
-          full_name,
-          avatar_url,
-          email
-        ),
-        organizations:organization_id (
-          created_by
-        )
-      `)
-      .eq('organization_id', orgId)
-      .order('joined_at', { ascending: false });
-
-    if (allMembers) {
-      const membersWithEmail = allMembers.map((member) => {
-        // Try multiple ways to identify the owner/creator
-        const orgCreatorId = member.organizations?.created_by || organization?.created_by;
-        const isOwner = member.user_id && orgCreatorId && String(member.user_id) === String(orgCreatorId);
-
-        return {
-          ...member,
-          email: member.profiles?.email || 'Unknown',
-          isOwner: !!isOwner
-        };
-      });
-
-      setPendingMembers(membersWithEmail.filter(m => m.status === 'pending'));
-      setMembers(membersWithEmail.filter(m => m.status === 'active'));
-    }
-  }, [organization?.created_by]);
-
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
@@ -139,8 +57,6 @@ export default function CompanySettingsPage() {
         router.push('/login');
         return;
       }
-      setUser(currentUser);
-
       if (!activeOrganization?.id) {
         toast.error('No active company selected.');
         router.push('/projects');
@@ -178,44 +94,17 @@ export default function CompanySettingsPage() {
         });
       }
 
-      // Load members
-      await loadMembers(activeOrganization.id);
-
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Failed to load organization data');
     } finally {
       setLoading(false);
     }
-  }, [loadMembers, router, activeOrganization?.id]);
+  }, [router, activeOrganization?.id]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  useEffect(() => {
-    if (!showRoleDropdown) {
-      return;
-    }
-
-    const handleWindowChange = () => {
-      closeRoleDropdown();
-    };
-
-    window.addEventListener('resize', handleWindowChange);
-    window.addEventListener('scroll', handleWindowChange, true);
-
-    return () => {
-      window.removeEventListener('resize', handleWindowChange);
-      window.removeEventListener('scroll', handleWindowChange, true);
-    };
-  }, [closeRoleDropdown, showRoleDropdown]);
-
-  useEffect(() => {
-    if (activeTab !== 'members' && showRoleDropdown) {
-      closeRoleDropdown();
-    }
-  }, [activeTab, closeRoleDropdown, showRoleDropdown]);
 
   const handleSaveGeneral = async () => {
     if (!organization) return;
@@ -249,75 +138,6 @@ export default function CompanySettingsPage() {
       toast.error('An error occurred');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleMemberAction = async (memberId, action, newRole = null) => {
-    try {
-      const response = await apiFetch(`/api/organizations/${organization.id}/members`, {
-        method: 'PATCH',
-        body: JSON.stringify({ memberId, action, newRole })
-      });
-
-      if (response.ok) {
-        toast.success(`Member ${action} successfully`);
-        await loadMembers(organization.id);
-      } else {
-        const data = await response.json();
-        toast.error(data.error || 'Action failed');
-      }
-    } catch (error) {
-      console.error('Error performing member action:', error);
-      toast.error('An error occurred');
-    }
-  };
-
-  const handleSendInvites = async (e) => {
-    e.preventDefault();
-
-    if (!organization?.id) {
-      toast.error('Organization context is missing');
-      return;
-    }
-
-    if (!inviteEmails.trim()) {
-      toast.error('Please enter at least one email');
-      return;
-    }
-
-    setIsInviteSending(true);
-
-    try {
-      const emails = inviteEmails
-        .split(/[\n,;]/)
-        .map((email) => email.trim())
-        .filter((email) => email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
-
-      if (!emails.length) {
-        toast.error('No valid emails provided');
-        return;
-      }
-
-      const response = await apiFetch(`/api/organizations/${organization.id}/members`, {
-        method: 'POST',
-        body: JSON.stringify({ emails, role: inviteRole })
-      });
-
-      const data = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        throw new Error(data?.error || 'Failed to send invites');
-      }
-
-      toast.success(data?.message || `Processed ${emails.length} invite${emails.length === 1 ? '' : 's'}`);
-      setInviteEmails('');
-      setShowInviteModal(false);
-      await loadMembers(organization.id);
-    } catch (error) {
-      console.error('Error sending organization invites:', error);
-      toast.error(error.message || 'Failed to send invites');
-    } finally {
-      setIsInviteSending(false);
     }
   };
 
@@ -389,14 +209,12 @@ export default function CompanySettingsPage() {
 
   const tabs = [
     { id: 'general', label: 'General', icon: Building2 },
-    { id: 'members', label: 'Members', icon: Users },
     { id: 'invite', label: 'Invite Code', icon: Key },
     { id: 'danger', label: 'Danger Zone', icon: AlertTriangle }
   ];
 
   const industries = ['Software', 'Marketing', 'Design', 'Finance', 'Education', 'Healthcare', 'Manufacturing', 'Other'];
   const sizes = ['1-10', '11-50', '51-200', '200+'];
-  const activeMemberCount = members.length;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -404,7 +222,7 @@ export default function CompanySettingsPage() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Company Settings</h1>
-          <p className="text-gray-600 mt-2">Manage your organization and team members</p>
+          <p className="text-gray-600 mt-2">Manage your organization settings</p>
         </div>
 
         {/* Tabs */}
@@ -425,11 +243,6 @@ export default function CompanySettingsPage() {
                   >
                     <Icon className="w-5 h-5" />
                     {tab.label}
-                    {tab.id === 'members' && pendingMembers.length > 0 && (
-                      <span className="bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full">
-                        {pendingMembers.length}
-                      </span>
-                    )}
                   </button>
                 );
               })}
@@ -508,143 +321,6 @@ export default function CompanySettingsPage() {
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   Save Changes
                 </button>
-              </div>
-            )}
-
-            {/* Members Tab */}
-            {activeTab === 'members' && (
-              <div className="space-y-6">
-                {/* Pending Requests */}
-                {pendingMembers.length > 0 && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                    <h3 className="font-semibold text-amber-900 mb-4 flex items-center gap-2">
-                      <AlertTriangle className="w-5 h-5" />
-                      {pendingMembers.length} pending join request{pendingMembers.length > 1 ? 's' : ''}
-                    </h3>
-                    <div className="space-y-3">
-                      {pendingMembers.map(member => (
-                        <div key={member.id} className="flex items-center justify-between bg-white p-3 rounded-lg">
-                          <div>
-                            <p className="font-medium text-gray-900">
-                              {member.profiles?.full_name || 'Unknown'}
-                            </p>
-                            <p className="text-sm text-gray-600">{member.email}</p>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleMemberAction(member.id, 'approve')}
-                              className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
-                            >
-                              <Check className="w-4 h-4" />
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => handleMemberAction(member.id, 'reject')}
-                              className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
-                            >
-                              <X className="w-4 h-4" />
-                              Reject
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Active Members */}
-                <div>
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <h3 className="font-semibold text-gray-900">Active Members</h3>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium text-gray-500">
-                        {activeMemberCount} member{activeMemberCount === 1 ? '' : 's'}
-                      </span>
-                      <button
-                        onClick={() => setShowInviteModal(true)}
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Invite Members
-                      </button>
-                    </div>
-                  </div>
-                  <div className="border border-gray-200 rounded-lg overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Member</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {activeMemberCount === 0 ? (
-                          <tr>
-                            <td colSpan={4} className="px-6 py-12 text-center">
-                              <p className="text-sm font-medium text-gray-900">0 members</p>
-                              <p className="mt-1 text-sm text-gray-500">
-                                Invite teammates with your company invite code to see them here.
-                              </p>
-                            </td>
-                          </tr>
-                        ) : (
-                          members.map(member => (
-                            <tr key={member.id}>
-                              <td className="px-6 py-4">
-                                <div className="flex items-center gap-2">
-                                  <div>
-                                    <div className="flex items-center gap-2">
-                                      <p className="font-medium text-gray-900">
-                                        {member.profiles?.full_name || member.email || 'Unknown'}
-                                      </p>
-                                      {member.isOwner && (
-                                        <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
-                                          Owner
-                                        </span>
-                                      )}
-                                    </div>
-                                    <p className="text-sm text-gray-500">{member.email || 'No email available'}</p>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4">
-                                {member.isOwner ? (
-                                  <span className="inline-flex rounded-lg border border-blue-200 bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
-                                    {ROLE_OPTIONS.find((role) => role.value === member.role)?.label || member.role}
-                                  </span>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={(event) => toggleRoleDropdown(event, member.id)}
-                                    className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-800 transition-colors hover:border-blue-300 hover:bg-blue-50"
-                                  >
-                                    <span>{ROLE_OPTIONS.find((role) => role.value === member.role)?.label || member.role}</span>
-                                    <ChevronDown className="text-gray-500" size={14} />
-                                  </button>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 text-sm text-gray-600">
-                                {member.joined_at ? new Date(member.joined_at).toLocaleDateString() : 'Not available'}
-                              </td>
-                              <td className="px-6 py-4 text-right">
-                                {member.user_id !== user?.id && (
-                                  <button
-                                    onClick={() => setMemberToRemove(member)}
-                                    className="text-red-600 hover:text-red-700"
-                                  >
-                                    Remove
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
               </div>
             )}
 
@@ -735,125 +411,6 @@ export default function CompanySettingsPage() {
         confirmLabel="Regenerate"
       />
 
-      {showRoleDropdown && roleDropdownPosition && (
-        <Portal>
-          <div
-            className="fixed inset-0 z-[2200]"
-            onClick={closeRoleDropdown}
-          >
-            <div
-              className="absolute overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl"
-              style={{
-                top: `${roleDropdownPosition.top}px`,
-                left: `${roleDropdownPosition.left}px`,
-                width: `${roleDropdownPosition.width}px`
-              }}
-              onClick={(event) => event.stopPropagation()}
-            >
-              {ROLE_OPTIONS.map((role) => {
-                const selectedMember = members.find((member) => member.id === showRoleDropdown);
-                const isCurrentRole = selectedMember?.role === role.value;
-
-                return (
-                  <button
-                    key={role.value}
-                    type="button"
-                    onClick={async () => {
-                      if (isCurrentRole || !showRoleDropdown) {
-                        closeRoleDropdown();
-                        return;
-                      }
-
-                      closeRoleDropdown();
-                      await handleMemberAction(showRoleDropdown, 'changeRole', role.value);
-                    }}
-                    className={`block w-full px-4 py-2.5 text-left transition-colors ${
-                      isCurrentRole ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="text-sm font-medium">{role.label}</div>
-                    <div className="text-xs text-gray-500">{role.description}</div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </Portal>
-      )}
-
-      {showInviteModal && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-lg bg-white shadow-xl p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <Mail className="w-5 h-5 text-blue-600" />
-              <h2 className="text-lg font-bold text-gray-900">Invite Members</h2>
-            </div>
-
-            <form onSubmit={handleSendInvites} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Addresses
-                </label>
-                <textarea
-                  value={inviteEmails}
-                  onChange={(e) => setInviteEmails(e.target.value)}
-                  placeholder="user1@example.com&#10;user2@example.com&#10;&#10;One email per line, separated by comma or semicolon"
-                  rows={6}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Assign Role
-                </label>
-                <select
-                  value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  {ROLE_OPTIONS.map((role) => (
-                    <option key={role.value} value={role.value}>
-                      {role.label} - {role.description}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowInviteModal(false)}
-                  className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isInviteSending}
-                  className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                >
-                  {isInviteSending ? 'Sending...' : 'Send Invites'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      <ConfirmModal
-        isOpen={Boolean(memberToRemove)}
-        onClose={() => setMemberToRemove(null)}
-        onConfirm={async () => {
-          if (!memberToRemove) return;
-          await handleMemberAction(memberToRemove.id, 'remove');
-          setMemberToRemove(null);
-        }}
-        title="Remove Member"
-        message={`Remove ${memberToRemove?.profiles?.full_name || 'this member'} from the company? They will lose access immediately.`}
-        confirmLabel="Remove"
-        destructive
-      />
     </div>
   );
 }

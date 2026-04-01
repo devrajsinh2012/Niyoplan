@@ -53,10 +53,10 @@ const normalizeOrgMember = (member) => ({
 export default function AdminSettingsPage() {
   const { profile, loading: authLoading } = useAuth();
   const { activeOrganization, loading: orgLoading } = useOrganization();
-  const [users, setUsers] = useState([]);
+  const [members, setMembers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('users');
+  const [activeTab, setActiveTab] = useState('members');
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showRoleDropdown, setShowRoleDropdown] = useState(null);
   const [roleDropdownPosition, setRoleDropdownPosition] = useState(null);
@@ -69,19 +69,19 @@ export default function AdminSettingsPage() {
   const [isPermissionsLoading, setIsPermissionsLoading] = useState(false);
   const [isPermissionsSaving, setIsPermissionsSaving] = useState(false);
 
-  const loadUsers = React.useCallback(async () => {
+  const loadMembers = React.useCallback(async () => {
     if (authLoading || orgLoading) {
       return;
     }
 
     if (!profile?.id) {
-      setUsers([]);
+      setMembers([]);
       setPendingApprovals([]);
       setIsLoading(false);
       return;
     }
 
-    if (users.length === 0) {
+    if (members.length === 0) {
       setIsLoading(true);
     }
 
@@ -98,7 +98,7 @@ export default function AdminSettingsPage() {
         const data = await res.json();
         const normalizedMembers = Array.isArray(data) ? data.map(normalizeOrgMember) : [];
 
-        setUsers(normalizedMembers.filter((member) => member.status === 'active'));
+        setMembers(normalizedMembers.filter((member) => member.status === 'active'));
         setPendingApprovals(normalizedMembers.filter((member) => member.status === 'pending'));
         return;
       }
@@ -107,30 +107,30 @@ export default function AdminSettingsPage() {
         const res = await apiFetch('/api/admin/users');
 
         if (!res.ok) {
-          throw new Error('Failed to fetch users');
+          throw new Error('Failed to fetch members');
         }
 
         const data = await res.json();
-        setUsers(Array.isArray(data) ? data : []);
+        setMembers(Array.isArray(data) ? data : []);
         setPendingApprovals([]);
         return;
       }
 
-      setUsers([]);
+      setMembers([]);
       setPendingApprovals([]);
     } catch (err) {
       console.error(err);
-      toast.error(activeOrganization?.id ? 'Failed to load organization members' : 'Failed to load users');
-      setUsers([]);
+      toast.error(activeOrganization?.id ? 'Failed to load organization members' : 'Failed to load members');
+      setMembers([]);
       setPendingApprovals([]);
     } finally {
       setIsLoading(false);
     }
-  }, [activeOrganization?.id, authLoading, orgLoading, profile?.id, profile?.role, users.length]);
+  }, [activeOrganization?.id, authLoading, members.length, orgLoading, profile?.id, profile?.role]);
 
   useEffect(() => {
-    loadUsers();
-  }, [loadUsers]);
+    loadMembers();
+  }, [loadMembers]);
 
   const loadRolePermissions = React.useCallback(async () => {
     if (!activeOrganization?.id) {
@@ -201,7 +201,7 @@ export default function AdminSettingsPage() {
     );
   }
 
-  const filteredUsers = users.filter(u =>
+  const filteredMembers = members.filter(u =>
     (u.full_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
     (u.email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
   );
@@ -220,7 +220,7 @@ export default function AdminSettingsPage() {
 
         if (!res.ok) throw new Error('Failed to update role');
 
-        await loadUsers();
+        await loadMembers();
       } else {
         const res = await apiFetch(`/api/admin/users/${user.id}`, {
           method: 'PATCH',
@@ -229,16 +229,16 @@ export default function AdminSettingsPage() {
 
         if (!res.ok) throw new Error('Failed to update role');
 
-        const updatedUser = await res.json();
-        setUsers((currentUsers) => currentUsers.map((currentUser) => currentUser.id === user.id ? updatedUser : currentUser));
+        const updatedMember = await res.json();
+        setMembers((currentMembers) => currentMembers.map((currentMember) => currentMember.id === user.id ? updatedMember : currentMember));
       }
 
       setShowRoleDropdown(null);
       setRoleDropdownPosition(null);
-      toast.success(`User role updated to ${newRole}`);
+      toast.success(`Member role updated to ${newRole}`);
     } catch (err) {
       console.error(err);
-      toast.error('Failed to update user role');
+      toast.error('Failed to update member role');
     }
   };
 
@@ -255,7 +255,7 @@ export default function AdminSettingsPage() {
 
         if (!res.ok) throw new Error('Failed to remove user');
 
-        await loadUsers();
+        await loadMembers();
       } else {
         const res = await apiFetch(`/api/admin/users/${user.id}`, {
           method: 'DELETE'
@@ -263,14 +263,14 @@ export default function AdminSettingsPage() {
 
         if (!res.ok) throw new Error('Failed to delete user');
 
-        setUsers((currentUsers) => currentUsers.filter((currentUser) => currentUser.id !== user.id));
+        setMembers((currentMembers) => currentMembers.filter((currentMember) => currentMember.id !== user.id));
       }
 
       setShowDeleteConfirm(null);
       toast.success(activeOrganization?.id ? 'Member removed' : 'User removed');
     } catch (err) {
       console.error(err);
-      toast.error('Failed to remove user');
+      toast.error('Failed to remove member');
     }
   };
 
@@ -291,7 +291,7 @@ export default function AdminSettingsPage() {
 
       if (!res.ok) throw new Error(`Failed to ${action} member`);
 
-      await loadUsers();
+      await loadMembers();
       setShowRoleDropdown(null);
       setRoleDropdownPosition(null);
       setShowDeleteConfirm(null);
@@ -301,13 +301,13 @@ export default function AdminSettingsPage() {
       } else if (action === 'reject') {
         toast.success('Join request declined');
       } else if (action === 'changeRole') {
-        toast.success(`User role updated to ${newRole}`);
+        toast.success(`Member role updated to ${newRole}`);
       } else if (action === 'remove') {
         toast.success('Member removed');
       }
     } catch (err) {
       console.error(err);
-      toast.error(action === 'changeRole' ? 'Failed to update user role' : 'Failed to process member action');
+      toast.error(action === 'changeRole' ? 'Failed to update member role' : 'Failed to process member action');
     }
   };
 
@@ -368,7 +368,7 @@ export default function AdminSettingsPage() {
 
       if (!res.ok) throw new Error(data?.error || 'Failed to send invitations');
 
-      toast.success(data?.message || `Invitations sent to ${emails.length} users`);
+      toast.success(data?.message || `Invitations sent to ${emails.length} members`);
       setInviteEmails('');
       setShowInviteModal(false);
     } catch (err) {
@@ -429,7 +429,7 @@ export default function AdminSettingsPage() {
             <BrandMark size={40} />
             <div>
               <h1 className="text-2xl font-bold text-[var(--text-heading)]">Admin Settings</h1>
-              <p className="text-sm text-[var(--text-secondary)]">Manage users, roles, and permissions</p>
+              <p className="text-sm text-[var(--text-secondary)]">Manage members, roles, and permissions</p>
             </div>
           </div>
         </div>
@@ -440,14 +440,14 @@ export default function AdminSettingsPage() {
         <div className="mb-6 border-b border-[var(--border-subtle)]">
           <div className="flex gap-8">
             <button
-              onClick={() => setActiveTab('users')}
+              onClick={() => setActiveTab('members')}
               className={`px-1 py-3 font-medium text-sm border-b-2 transition-colors ${
-                activeTab === 'users'
+                activeTab === 'members'
                   ? 'border-[#0052CC] text-[#0052CC]'
                   : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
-              Users & Roles
+              Members & Roles
             </button>
             <button
               onClick={() => setActiveTab('invites')}
@@ -473,8 +473,8 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
-        {/* Users Tab */}
-        {activeTab === 'users' && (
+        {/* Members Tab */}
+        {activeTab === 'members' && (
           <div>
             {/* Toolbar */}
             <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -482,7 +482,7 @@ export default function AdminSettingsPage() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" size={16} />
                 <input
                   type="text"
-                  placeholder="Search users..."
+                  placeholder="Search members..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--border-subtle)] bg-white text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0052CC] focus:border-transparent transition-all"
@@ -494,32 +494,49 @@ export default function AdminSettingsPage() {
                   className="flex items-center gap-2 rounded-lg bg-[#0052CC] px-4 py-2 text-sm font-semibold text-white hover:bg-[#003D99] transition-colors whitespace-nowrap"
                 >
                   <Plus size={16} />
-                  Invite Users
+                  Invite Members
                 </button>
               )}
             </div>
 
-            {/* Users Table */}
+            {/* Summary */}
+            <div className="mb-6 grid grid-cols-1 sm:grid-cols-4 gap-4">
+              {[
+                { label: 'Admins', count: members.filter(u => u.role === 'admin').length },
+                { label: 'PMs', count: members.filter(u => u.role === 'pm').length },
+                { label: 'QAs', count: members.filter(u => u.role === 'qa').length },
+                { label: 'Developers', count: members.filter(u => u.role === 'developer').length },
+                { label: 'Members', count: members.filter(u => u.role === 'member').length },
+                { label: 'Viewers', count: members.filter(u => u.role === 'viewer').length }
+              ].map((stat, idx) => (
+                <div key={idx} className="rounded-lg border border-[var(--border-subtle)] bg-white p-4">
+                  <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-semibold">{stat.label}</p>
+                  <p className="text-2xl font-bold text-[var(--text-heading)] mt-2">{stat.count}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Members Table */}
             <div className="rounded-lg border border-[var(--border-subtle)] bg-white overflow-hidden">
               {isLoading ? (
-                <div className="p-12 text-center text-[var(--text-muted)]">Loading users...</div>
-              ) : filteredUsers.length === 0 ? (
+                <div className="p-12 text-center text-[var(--text-muted)]">Loading members...</div>
+              ) : filteredMembers.length === 0 ? (
                 <div className="p-12 text-center">
-                  <p className="text-[var(--text-muted)]">No users found</p>
+                  <p className="text-[var(--text-muted)]">No members found</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="border-b border-[var(--border-subtle)] bg-[var(--bg-panel)]">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">User</th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Member</th>
                         <th className="px-6 py-3 text-left text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Role</th>
                         <th className="px-6 py-3 text-left text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Joined</th>
                         <th className="px-6 py-3 text-right text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--border-subtle)]">
-                      {filteredUsers.map((user) => {
+                      {filteredMembers.map((user) => {
                         const roleInfo = ROLE_OPTIONS.find(r => r.value === user.role);
                         const roleColor = getRoleColor(user.role);
                         const isCurrentUser = user.id === profile?.id;
@@ -571,7 +588,7 @@ export default function AdminSettingsPage() {
                                   <button
                                     onClick={() => setShowDeleteConfirm(user)}
                                     className="p-2 rounded hover:bg-red-50 text-red-600 transition-colors"
-                                    title="Remove user"
+                                    title="Remove member"
                                   >
                                     <Trash2 size={16} />
                                   </button>
@@ -585,23 +602,6 @@ export default function AdminSettingsPage() {
                   </table>
                 </div>
               )}
-            </div>
-
-            {/* Summary */}
-            <div className="mt-6 grid grid-cols-1 sm:grid-cols-4 gap-4">
-              {[
-                { label: 'Admins', count: users.filter(u => u.role === 'admin').length },
-                { label: 'PMs', count: users.filter(u => u.role === 'pm').length },
-                { label: 'QAs', count: users.filter(u => u.role === 'qa').length },
-                { label: 'Developers', count: users.filter(u => u.role === 'developer').length },
-                { label: 'Members', count: users.filter(u => u.role === 'member').length },
-                { label: 'Viewers', count: users.filter(u => u.role === 'viewer').length }
-              ].map((stat, idx) => (
-                <div key={idx} className="rounded-lg border border-[var(--border-subtle)] bg-white p-4">
-                  <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-semibold">{stat.label}</p>
-                  <p className="text-2xl font-bold text-[var(--text-heading)] mt-2">{stat.count}</p>
-                </div>
-              ))}
             </div>
           </div>
         )}
@@ -735,15 +735,15 @@ export default function AdminSettingsPage() {
               onClick={(event) => event.stopPropagation()}
             >
               {(() => {
-                const selectedUser = filteredUsers.find((u) => u.id === showRoleDropdown);
-                if (!selectedUser) return null;
+                const selectedMember = filteredMembers.find((u) => u.id === showRoleDropdown);
+                if (!selectedMember) return null;
 
                 return ROLE_OPTIONS.map((roleOption) => (
                   <button
                     key={roleOption.value}
-                    onClick={() => handleRoleUpdate(selectedUser, roleOption.value)}
+                    onClick={() => handleRoleUpdate(selectedMember, roleOption.value)}
                     className={`w-full text-left px-4 py-2.5 text-sm rounded hover:bg-gray-50 transition-colors ${
-                      selectedUser.role === roleOption.value ? 'font-semibold bg-blue-50 text-blue-700' : 'text-gray-700'
+                      selectedMember.role === roleOption.value ? 'font-semibold bg-blue-50 text-blue-700' : 'text-gray-700'
                     }`}
                   >
                     <div className="font-medium">{roleOption.label}</div>
@@ -762,7 +762,7 @@ export default function AdminSettingsPage() {
           <div className="w-full max-w-lg rounded-lg bg-white shadow-xl p-6 animate-fade-in">
             <div className="flex items-center gap-3 mb-4">
               <Mail size={20} className="text-blue-600" />
-              <h2 className="text-lg font-bold text-[var(--text-heading)]">Invite Users</h2>
+              <h2 className="text-lg font-bold text-[var(--text-heading)]">Invite Members</h2>
             </div>
 
             <form onSubmit={handleSendInvites} className="space-y-4">
@@ -820,8 +820,8 @@ export default function AdminSettingsPage() {
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <ConfirmModal
-          title="Remove User"
-          message="Are you sure you want to remove this user? This action cannot be undone."
+          title="Remove Member"
+          message="Are you sure you want to remove this member? This action cannot be undone."
           onConfirm={() => handleDeleteUser(showDeleteConfirm)}
           onCancel={() => setShowDeleteConfirm(null)}
           type="danger"

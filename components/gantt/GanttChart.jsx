@@ -80,9 +80,28 @@ const normalizeStatus = (value) => {
 
 const getDateOrNull = (value) => {
   if (!value) return null;
-  const parsed = parseISO(value);
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  if (typeof value === 'number') {
+    const numericDate = new Date(value);
+    return Number.isNaN(numericDate.getTime()) ? null : numericDate;
+  }
+
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.includes(' ') && !value.includes('T') ? value.replace(' ', 'T') : value;
+  const parsed = parseISO(normalized);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
+
+const getItemStartDate = (item) => getDateOrNull(item?.start_date || item?.due_date || item?.created_at);
+
+const getItemEndDate = (item) =>
+  getDateOrNull(item?.end_date || item?.due_date || item?.start_date || item?.created_at);
 
 const isMilestoneItem = (item) => {
   const issueType = (item?.issue_type || '').toLowerCase();
@@ -217,8 +236,8 @@ const GanttChart = ({ projectId, refreshNonce = 0 }) => {
     let maxTimestamp = Number.NEGATIVE_INFINITY;
 
     localItems.forEach((item) => {
-      const start = getDateOrNull(item.start_date || item.created_at);
-      const end = getDateOrNull(item.end_date || item.due_date || item.start_date || item.created_at);
+      const start = getItemStartDate(item);
+      const end = getItemEndDate(item) || start;
 
       if (start) {
         minTimestamp = Math.min(minTimestamp, start.getTime());
@@ -461,13 +480,13 @@ const GanttChart = ({ projectId, refreshNonce = 0 }) => {
 
     if (primarySelectedItemId) {
       const selected = localItems.find((item) => item.id === primarySelectedItemId);
-      const selectedStart = getDateOrNull(selected?.start_date || selected?.created_at);
+      const selectedStart = getItemStartDate(selected);
       if (selectedStart) {
         targetDayIndex = differenceInDays(selectedStart, startDate) - 2;
       }
     } else {
-      const firstVisible = filteredItems[0];
-      const firstVisibleStart = getDateOrNull(firstVisible?.start_date || firstVisible?.created_at);
+      const firstVisible = filteredItems.find((item) => getItemStartDate(item));
+      const firstVisibleStart = getItemStartDate(firstVisible);
       if (firstVisibleStart) {
         targetDayIndex = differenceInDays(firstVisibleStart, startDate) - 2;
       } else if (todayIndex >= 0) {
@@ -875,8 +894,8 @@ const GanttChart = ({ projectId, refreshNonce = 0 }) => {
 
   // Compute task styles with proper date positioning
   const getItemStyle = (item) => {
-    const start = getDateOrNull(item.start_date || item.created_at);
-    const end = getDateOrNull(item.end_date || item.due_date || item.start_date || item.created_at);
+    const start = getItemStartDate(item);
+    const end = getItemEndDate(item) || start;
 
     // Hide malformed items rather than rendering visual artifacts.
     if (!start || !end) {
@@ -920,9 +939,9 @@ const GanttChart = ({ projectId, refreshNonce = 0 }) => {
 
           if (!source || !target) return null;
 
-          const sourceStart = getDateOrNull(source.start_date || source.created_at);
-          const sourceEnd = getDateOrNull(source.end_date || source.due_date || source.start_date || source.created_at);
-          const targetStart = getDateOrNull(target.start_date || target.created_at);
+          const sourceStart = getItemStartDate(source);
+          const sourceEnd = getItemEndDate(source) || sourceStart;
+          const targetStart = getItemStartDate(target);
           const y1 = rowLayout.rowCenterById.get(source.id);
           const y2 = rowLayout.rowCenterById.get(target.id);
 
@@ -1008,8 +1027,8 @@ const GanttChart = ({ projectId, refreshNonce = 0 }) => {
 
     const headers = ['Task ID', 'Title', 'Priority', 'Status', 'Start Date', 'End Date', 'Progress %', 'Assignee'];
     const rows = storeItems.map((item) => {
-      const start = getDateOrNull(item.start_date);
-      const end = getDateOrNull(item.end_date || item.start_date);
+      const start = getItemStartDate(item);
+      const end = getItemEndDate(item) || start;
 
       return [
       item.custom_id || item.id,
@@ -1037,6 +1056,9 @@ const GanttChart = ({ projectId, refreshNonce = 0 }) => {
   };
 
   if (storeLoading) return <GanttPanelSkeleton />;
+
+  const timelineWidth = days.length * dayWidth;
+  const timelineTrackStyle = { minWidth: `${timelineWidth}px`, width: `${timelineWidth}px` };
 
   return (
     <div
@@ -1244,7 +1266,7 @@ const GanttChart = ({ projectId, refreshNonce = 0 }) => {
                         <span>{row.label}</span>
                         <span className="gantt-group-count">{row.count}</span>
                       </div>
-                      <div className="gantt-group-timeline" />
+                      <div className="gantt-group-timeline" style={timelineTrackStyle} />
                     </div>
                   );
                 }
@@ -1252,8 +1274,8 @@ const GanttChart = ({ projectId, refreshNonce = 0 }) => {
                 const { item } = row;
                 const itemStyle = getItemStyle(item);
                 const isSelected = isItemSelected(item.id);
-                const itemStart = getDateOrNull(item.start_date || item.created_at);
-                const itemEnd = getDateOrNull(item.end_date || item.due_date || item.start_date || item.created_at);
+                const itemStart = getItemStartDate(item);
+                const itemEnd = getItemEndDate(item) || itemStart;
                 const durationDays = itemStart && itemEnd ? Math.max(1, differenceInDays(itemEnd, itemStart) + 1) : 1;
                 const isMilestone = isMilestoneItem(item);
                 const isShortTask = !isMilestone && durationDays <= 2;
@@ -1300,6 +1322,7 @@ const GanttChart = ({ projectId, refreshNonce = 0 }) => {
                     </div>
                     <div
                       className="gantt-timeline-row"
+                      style={timelineTrackStyle}
                       onDoubleClick={(event) => handleTimelineDoubleClick(event, normalizeStatus(item.status))}
                     >
                       {!isMilestone && item.progress_percent > 0 && (

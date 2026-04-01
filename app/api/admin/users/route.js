@@ -66,7 +66,7 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const { emails, role = 'member' } = body;
-    const redirectTo = `${request.nextUrl.origin}/?invite=1`;
+    const redirectTo = `${request.nextUrl.origin}/login`;
 
     if (!emails || !Array.isArray(emails) || emails.length === 0) {
       return NextResponse.json({ error: 'Emails list is required' }, { status: 400 });

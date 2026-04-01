@@ -291,7 +291,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Only admins can invite members' }, { status: 403 });
     }
 
-    const redirectTo = `${request.nextUrl.origin}/login`;
+    const redirectTo = `${request.nextUrl.origin}/?invite=1`;
     const results = [];
 
     for (const rawEmail of emails) {

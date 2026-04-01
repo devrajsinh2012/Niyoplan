@@ -8,8 +8,9 @@ import UserAvatar from '@/components/ui/UserAvatar';
 import WelcomeModal from '@/components/ui/WelcomeModal';
 import BrandMark from '@/components/ui/BrandMark';
 import { DashboardPageSkeleton } from '@/components/ui/PageSkeleton';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useOrganization } from '@/context/OrganizationContext';
+import { useAuth } from '@/context/AuthContext';
 
 const EMPTY_TODAY_STATS = {
   total: 0,
@@ -47,7 +48,10 @@ const buildTodayStats = (items = []) => {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { activeOrganization, loading: orgLoading } = useOrganization();
+  const { profile } = useAuth();
   const [stats, setStats] = useState({ resolved: 0, open: 0, storyPoints: 0, velocity: 0 });
   const [todayStats, setTodayStats] = useState(EMPTY_TODAY_STATS);
   const [activities, setActivities] = useState([]);
@@ -56,6 +60,26 @@ export default function DashboardPage() {
   const [activeSprintCount, setActiveSprintCount] = useState(0);
   const [activeSprints, setActiveSprints] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showAccountSetupPrompt, setShowAccountSetupPrompt] = useState(false);
+
+  useEffect(() => {
+    const inviteFlag = searchParams.get('invite');
+    const fromInvite = inviteFlag === '1' || inviteFlag === 'true';
+    const missingProfileName = !profile?.full_name?.trim();
+
+    if (fromInvite || missingProfileName) {
+      setShowAccountSetupPrompt(true);
+    }
+
+    if (!fromInvite) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete('invite');
+    const nextQuery = nextParams.toString();
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+  }, [pathname, profile?.full_name, router, searchParams]);
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -293,6 +317,39 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-extrabold text-[var(--text-heading)] tracking-tight">Project Overview</h1>
         </div>
       </div>
+
+      {showAccountSetupPrompt && (
+        <div className="mb-8 rounded-[4px] border border-[#B3D4FF] bg-[#F4F8FF] p-4 sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-[#0747A6]">Finish your account setup</p>
+              <p className="mt-1 text-xs text-[#42526E]">
+                Complete your profile details and set your password so your account is ready for team collaboration.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => router.push('/settings/profile')}
+                className="rounded-[3px] bg-[#0052CC] px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#0747A6]"
+              >
+                Complete Profile
+              </button>
+              <button
+                onClick={() => router.push('/settings/profile#security')}
+                className="rounded-[3px] border border-[#0052CC] bg-white px-3 py-2 text-xs font-semibold text-[#0052CC] transition-colors hover:bg-[#E9F2FF]"
+              >
+                Set Password
+              </button>
+              <button
+                onClick={() => setShowAccountSetupPrompt(false)}
+                className="rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-panel-hover)]"
+              >
+                Later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Two-column layout */}
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_400px]">

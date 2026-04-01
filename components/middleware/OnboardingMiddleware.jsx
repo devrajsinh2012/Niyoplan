@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 import NiyoplanLoader from '@/components/ui/NiyoplanLoader';
 
 export default function OnboardingMiddleware({ children }) {
-  const { user, profile, loading: authLoading, initialLoading } = useAuth();
+  const { user, loading: authLoading, initialLoading } = useAuth();
   const { activeOrganization } = useOrganization();
   const router = useRouter();
   const pathname = usePathname();
@@ -16,32 +16,37 @@ export default function OnboardingMiddleware({ children }) {
   const [hasOrganization, setHasOrganization] = useState(null);
   const onboardingCacheRef = useRef({ userId: null, status: null });
 
-  // Pages that don't require onboarding
-  const allowedPaths = [
+  const publicPaths = [
     '/login',
     '/signup',
     '/register',
     '/forgot-password',
-    '/reset-password',
+    '/reset-password'
+  ];
+
+  const onboardingPaths = [
     '/onboarding',
     '/onboarding/create',
     '/onboarding/join'
   ];
 
-  // Check if current path is allowed without onboarding
-  const isAllowedPath = allowedPaths.some(path => pathname.startsWith(path));
+  const isPublicPath = publicPaths.some((path) => pathname.startsWith(path));
+  const isOnboardingPath = onboardingPaths.some((path) => pathname.startsWith(path));
+  const isAllowedPath = isPublicPath || isOnboardingPath;
 
   const checkOnboardingStatus = useCallback(async () => {
-    // Public pages bypass organization checks.
-    if (isAllowedPath) {
+    if (isPublicPath && !user) {
       setChecking(false);
       return;
     }
 
     if (authLoading || initialLoading) {
-      // If we already have a user and profile, don't show full page loader just because auth is revalidating in background
-      if (user && profile && activeOrganization?.id) {
+      if (user && activeOrganization?.id) {
+        setHasOrganization(true);
         setChecking(false);
+        if (isOnboardingPath) {
+          router.replace('/');
+        }
         return;
       }
       setChecking(true);
@@ -49,29 +54,36 @@ export default function OnboardingMiddleware({ children }) {
     }
 
     if (!user) {
-      router.replace('/login');
+      setHasOrganization(null);
+      setChecking(false);
+      if (!isPublicPath) {
+        router.replace('/login');
+      }
       return;
     }
 
-    // Wait until the profile is available for authenticated users.
-    if (!profile?.id) {
-      setChecking(true);
-      return;
-    }
+    const userId = user.id;
 
     if (activeOrganization?.id) {
-      onboardingCacheRef.current = { userId: profile.id, status: true };
+      onboardingCacheRef.current = { userId, status: true };
       setHasOrganization(true);
       setChecking(false);
+      if (isOnboardingPath) {
+        router.replace('/');
+      }
       return;
     }
 
     const cached = onboardingCacheRef.current;
-    if (cached.userId === profile.id && cached.status !== null) {
+    if (cached.userId === userId && cached.status !== null) {
       setHasOrganization(cached.status);
       setChecking(false);
 
-      if (cached.status === false) {
+      if (cached.status === true && isOnboardingPath) {
+        router.replace('/');
+      }
+
+      if (cached.status === false && !isAllowedPath) {
         router.replace('/onboarding');
       }
 
@@ -82,36 +94,49 @@ export default function OnboardingMiddleware({ children }) {
 
     try {
       // Check if user has an active organization membership
-      const { data: membership } = await supabase
+      const { data: membership, error: membershipError } = await supabase
         .from('organization_members')
         .select('id, status')
-        .eq('user_id', profile.id)
+        .eq('user_id', userId)
         .eq('status', 'active')
         .limit(1)
-        .single();
+        .maybeSingle();
+
+      if (membershipError) {
+        throw membershipError;
+      }
 
       if (membership) {
-        onboardingCacheRef.current = { userId: profile.id, status: true };
+        onboardingCacheRef.current = { userId, status: true };
         setHasOrganization(true);
+        if (isOnboardingPath) {
+          router.replace('/');
+        }
       } else {
         // Check if user has any pending memberships
-        const { data: pendingMembership } = await supabase
+        const { data: pendingMembership, error: pendingError } = await supabase
           .from('organization_members')
           .select('id, status')
-          .eq('user_id', profile.id)
+          .eq('user_id', userId)
           .eq('status', 'pending')
           .limit(1)
-          .single();
+          .maybeSingle();
+
+        if (pendingError) {
+          throw pendingError;
+        }
 
         if (pendingMembership) {
           // User has pending membership, show waiting screen
-          onboardingCacheRef.current = { userId: profile.id, status: 'pending' };
+          onboardingCacheRef.current = { userId, status: 'pending' };
           setHasOrganization('pending');
         } else {
           // No organization at all, need onboarding
-          onboardingCacheRef.current = { userId: profile.id, status: false };
+          onboardingCacheRef.current = { userId, status: false };
           setHasOrganization(false);
-          router.replace('/onboarding');
+          if (!isAllowedPath) {
+            router.replace('/onboarding');
+          }
           return;
         }
       }
@@ -119,12 +144,14 @@ export default function OnboardingMiddleware({ children }) {
       console.error('Onboarding check error:', error);
       // On error, assume no organization and redirect to onboarding
       setHasOrganization(false);
-      router.replace('/onboarding');
+      if (!isAllowedPath) {
+        router.replace('/onboarding');
+      }
       return;
     }
 
     setChecking(false);
-  }, [activeOrganization?.id, authLoading, initialLoading, isAllowedPath, profile, router, user]);
+  }, [activeOrganization?.id, authLoading, initialLoading, isAllowedPath, isOnboardingPath, isPublicPath, router, user]);
 
   useEffect(() => {
     checkOnboardingStatus();
@@ -132,7 +159,7 @@ export default function OnboardingMiddleware({ children }) {
 
   // Show loading state while checking
   // Only show full loader if it's initial load or we don't have enough context
-  const shouldShowLoader = (checking || authLoading || initialLoading) && (!user || !profile || !activeOrganization?.id);
+  const shouldShowLoader = (checking || authLoading || initialLoading) && (!user || (!activeOrganization?.id && hasOrganization !== true && hasOrganization !== 'pending'));
 
   if (shouldShowLoader && !isAllowedPath) {
     return <NiyoplanLoader />;
@@ -174,7 +201,7 @@ export default function OnboardingMiddleware({ children }) {
   }
 
   // Render children if user has completed onboarding, is on allowed path, or we have enough context to continue
-  if (hasOrganization === true || isAllowedPath || (user && profile && activeOrganization?.id)) {
+  if (hasOrganization === true || isAllowedPath || (user && activeOrganization?.id)) {
     return children;
   }
 

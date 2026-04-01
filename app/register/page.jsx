@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import BrandMark from '@/components/ui/BrandMark';
 
 export default function RegisterPage() {
+  const successColor = 'var(--status-done, #16a34a)';
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -44,7 +45,7 @@ export default function RegisterPage() {
       {/* Background Ornaments */}
       <div style={{
         position: 'absolute', top: '-10%', right: '-10%', width: '40%', height: '40%',
-        borderRadius: '50%', background: 'var(--status-done)', opacity: 0.1,
+        borderRadius: '50%', background: successColor, opacity: 0.1,
         filter: 'blur(120px)', pointerEvents: 'none'
       }} />
       <div style={{
@@ -82,7 +83,7 @@ export default function RegisterPage() {
                 }}
                 placeholder="John Doe"
                 value={fullName} onChange={(e) => setFullName(e.target.value)}
-                onFocus={e => e.target.style.borderColor = 'var(--status-done)'}
+                onFocus={e => e.target.style.borderColor = successColor}
                 onBlur={e => e.target.style.borderColor = 'var(--border-strong)'}
               />
             </div>
@@ -100,7 +101,7 @@ export default function RegisterPage() {
                 }}
                 placeholder="name@company.com"
                 value={email} onChange={(e) => setEmail(e.target.value)}
-                onFocus={e => e.target.style.borderColor = 'var(--status-done)'}
+                onFocus={e => e.target.style.borderColor = successColor}
                 onBlur={e => e.target.style.borderColor = 'var(--border-strong)'}
               />
             </div>
@@ -118,7 +119,7 @@ export default function RegisterPage() {
                 }}
                 placeholder="••••••••"
                 value={password} onChange={(e) => setPassword(e.target.value)}
-                onFocus={e => e.target.style.borderColor = 'var(--status-done)'}
+                onFocus={e => e.target.style.borderColor = successColor}
                 onBlur={e => e.target.style.borderColor = 'var(--border-strong)'}
               />
               <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0' }}>Must be at least 6 characters long</p>
@@ -128,7 +129,13 @@ export default function RegisterPage() {
               type="submit" disabled={isSubmitting}
               style={{
                 width: '100%', padding: '12px', fontSize: 15, display: 'flex', justifyContent: 'center', gap: 8, marginTop: 12,
-                background: 'var(--status-done)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 600
+                background: successColor,
+                color: '#fff',
+                border: '1px solid color-mix(in srgb, #000 10%, transparent)',
+                borderRadius: 'var(--radius-md)',
+                cursor: 'pointer',
+                fontWeight: 600,
+                minHeight: 44
               }}
               onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}
               onMouseLeave={e => e.currentTarget.style.filter = ''}
@@ -143,7 +150,7 @@ export default function RegisterPage() {
 
           <p style={{ textAlign: 'center', margin: '32px 0 0', color: 'var(--text-secondary)', fontSize: 14 }}>
             Already have an account?{' '}
-            <Link href="/login" style={{ color: 'var(--status-done)', textDecoration: 'none', fontWeight: 600 }}>
+            <Link href="/login" style={{ color: successColor, textDecoration: 'none', fontWeight: 600 }}>
               Sign in
             </Link>
           </p>

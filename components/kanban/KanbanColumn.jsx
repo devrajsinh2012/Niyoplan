@@ -7,7 +7,7 @@ import { SortableContext } from '@dnd-kit/sortable';
 import KanbanCard from './KanbanCard';
 import toast from 'react-hot-toast';
 
-export default function KanbanColumn({ list, cards, onCardOpen, onQuickAddCard }) {
+export default function KanbanColumn({ list, cards, deletingCardIdsSet, onCardOpen, onQuickAddCard }) {
   const {
     attributes,
     listeners,
@@ -63,7 +63,12 @@ export default function KanbanColumn({ list, cards, onCardOpen, onQuickAddCard }
       <div className="kanban-column-body">
         <SortableContext items={cardIds}>
           {cards.map(card => (
-            <KanbanCard key={card.id} card={card} onOpen={onCardOpen} />
+            <KanbanCard
+              key={card.id}
+              card={card}
+              isDeleting={Boolean(deletingCardIdsSet?.has(card.id))}
+              onOpen={onCardOpen}
+            />
           ))}
         </SortableContext>
         <button className="add-quick-card-btn" onClick={() => onQuickAddCard?.(list.id)}>+ Add a card</button>

@@ -223,6 +223,14 @@ export function ScheduleStoreProvider({ children, projectId }) {
   );
 
   /**
+   * Remove a schedule item from local state immediately after a confirmed delete.
+   */
+  const removeScheduleItem = useCallback((itemId) => {
+    if (!itemId) return;
+    setScheduleItems((prev) => prev.filter((item) => item.id !== itemId));
+  }, []);
+
+  /**
    * Create a new dependency
    */
   const createDependency = useCallback(
@@ -360,6 +368,7 @@ export function ScheduleStoreProvider({ children, projectId }) {
 
     // Actions
     updateScheduleItem,
+    removeScheduleItem,
     createDependency,
     updateDependency,
     deleteDependency,

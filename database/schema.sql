@@ -321,7 +321,22 @@ CREATE TABLE IF NOT EXISTS public.organization_members (
   UNIQUE(user_id, organization_id)
 );
 
--- 22. Card Comments (Thread-based Comments)
+-- 22. Organization Role Permissions (role-based capability matrix per company)
+CREATE TABLE IF NOT EXISTS public.organization_role_permissions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  role org_role NOT NULL,
+  permission_key VARCHAR(80) NOT NULL,
+  is_allowed BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(organization_id, role, permission_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_org_role_permissions_org_id
+  ON public.organization_role_permissions(organization_id);
+
+-- 23. Card Comments (Thread-based Comments)
 CREATE TABLE IF NOT EXISTS public.card_comments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   card_id UUID NOT NULL REFERENCES public.cards(id) ON DELETE CASCADE,
@@ -336,7 +351,7 @@ CREATE INDEX IF NOT EXISTS idx_card_comments_card_id ON public.card_comments(car
 CREATE INDEX IF NOT EXISTS idx_card_comments_user_id ON public.card_comments(user_id);
 CREATE INDEX IF NOT EXISTS idx_card_comments_created_at ON public.card_comments(created_at DESC);
 
--- 23. Card Subtasks (Linked to Cards)
+-- 24. Card Subtasks (Linked to Cards)
 CREATE TABLE IF NOT EXISTS public.card_subtasks (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   card_id UUID NOT NULL REFERENCES public.cards(id) ON DELETE CASCADE,
@@ -354,7 +369,7 @@ CREATE INDEX IF NOT EXISTS idx_card_subtasks_card_id ON public.card_subtasks(car
 CREATE INDEX IF NOT EXISTS idx_card_subtasks_assignee_id ON public.card_subtasks(assignee_id);
 CREATE INDEX IF NOT EXISTS idx_card_subtasks_completed ON public.card_subtasks(completed);
 
--- 24. Saved Views/Filters (Board State Persistence)
+-- 25. Saved Views/Filters (Board State Persistence)
 CREATE TABLE IF NOT EXISTS public.saved_views (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,

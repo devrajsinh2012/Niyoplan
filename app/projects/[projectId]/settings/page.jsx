@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import UserAvatar from '@/components/ui/UserAvatar';
+import Portal from '@/components/modals/Portal';
 import {
-  Settings, Users, Calendar, AlertTriangle, Plus, X, Archive, RefreshCw
+  Settings, Users, Calendar, AlertTriangle, Plus, X, Archive, RefreshCw, ChevronDown
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '@/components/ui/ConfirmModal';
@@ -16,6 +17,15 @@ const TABS = [
   { id: 'members', label: 'Members', icon: Users },
   { id: 'sprints', label: 'Sprints', icon: Calendar },
   { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
+];
+
+const MEMBER_ROLE_OPTIONS = [
+  { value: 'admin', label: 'Admin', description: 'Full project and admin access' },
+  { value: 'pm', label: 'PM', description: 'Project management access' },
+  { value: 'qa', label: 'QA', description: 'Quality assurance access' },
+  { value: 'developer', label: 'Developer', description: 'Build and implementation access' },
+  { value: 'member', label: 'Member', description: 'Standard team member access' },
+  { value: 'viewer', label: 'Viewer', description: 'Read-only access' },
 ];
 
 export default function ProjectSettingsPage() {
@@ -55,6 +65,35 @@ export default function ProjectSettingsPage() {
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [deleteConfirmName, setDeleteConfirmName] = useState('');
   const [memberToRemove, setMemberToRemove] = useState(null);
+  const [showRoleDropdown, setShowRoleDropdown] = useState(null);
+  const [roleDropdownPosition, setRoleDropdownPosition] = useState(null);
+
+  const closeRoleDropdown = useCallback(() => {
+    setShowRoleDropdown(null);
+    setRoleDropdownPosition(null);
+  }, []);
+
+  const toggleRoleDropdown = useCallback((event, memberId) => {
+    if (showRoleDropdown === memberId) {
+      closeRoleDropdown();
+      return;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const dropdownWidth = 240;
+    const viewportPadding = 12;
+    const left = Math.max(
+      viewportPadding,
+      Math.min(rect.left, window.innerWidth - dropdownWidth - viewportPadding)
+    );
+
+    setRoleDropdownPosition({
+      top: rect.bottom + 8,
+      left,
+      width: dropdownWidth,
+    });
+    setShowRoleDropdown(memberId);
+  }, [closeRoleDropdown, showRoleDropdown]);
 
   const requestWithAuth = useCallback(async (url, options = {}) => {
     const response = await apiFetch(url, options);
@@ -147,6 +186,30 @@ export default function ProjectSettingsPage() {
     };
     loadData();
   }, [fetchProjectData, fetchMembers, fetchOrgMembers]);
+
+  useEffect(() => {
+    if (!showRoleDropdown) {
+      return;
+    }
+
+    const handleWindowChange = () => {
+      closeRoleDropdown();
+    };
+
+    window.addEventListener('resize', handleWindowChange);
+    window.addEventListener('scroll', handleWindowChange, true);
+
+    return () => {
+      window.removeEventListener('resize', handleWindowChange);
+      window.removeEventListener('scroll', handleWindowChange, true);
+    };
+  }, [closeRoleDropdown, showRoleDropdown]);
+
+  useEffect(() => {
+    if (activeTab !== 'members' && showRoleDropdown) {
+      closeRoleDropdown();
+    }
+  }, [activeTab, closeRoleDropdown, showRoleDropdown]);
 
   const handleSaveGeneral = async () => {
     if (!name.trim()) {
@@ -524,19 +587,15 @@ export default function ProjectSettingsPage() {
                           </div>
                         </td>
                         <td className="py-4">
-                          <select
-                            value={member.role}
-                            onChange={(e) => handleUpdateRole(member.id, e.target.value)}
+                          <button
+                            type="button"
+                            onClick={(event) => toggleRoleDropdown(event, member.id)}
                             disabled={!canManageSettings || isSaving}
-                            className="rounded-md border border-[var(--border-subtle)] bg-white px-3 py-1.5 text-sm text-[var(--text-primary)] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="inline-flex items-center gap-2 rounded-md border border-[var(--border-subtle)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--text-primary)] transition-colors hover:border-blue-300 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            <option value="admin">Admin</option>
-                            <option value="pm">PM</option>
-                            <option value="qa">QA</option>
-                            <option value="developer">Developer</option>
-                            <option value="member">Member</option>
-                            <option value="viewer">Viewer</option>
-                          </select>
+                            <span>{MEMBER_ROLE_OPTIONS.find((role) => role.value === member.role)?.label || member.role}</span>
+                            <ChevronDown className="text-[var(--text-muted)]" size={14} />
+                          </button>
                         </td>
                         <td className="py-4 text-sm text-[var(--text-secondary)]">
                           {new Date(member.created_at).toLocaleDateString()}
@@ -816,6 +875,49 @@ export default function ProjectSettingsPage() {
         confirmLabel="Remove"
         destructive
       />
+
+      {showRoleDropdown && roleDropdownPosition && (
+        <Portal>
+          <div className="fixed inset-0 z-[2200]" onClick={closeRoleDropdown}>
+            <div
+              className="absolute overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl"
+              style={{
+                top: `${roleDropdownPosition.top}px`,
+                left: `${roleDropdownPosition.left}px`,
+                width: `${roleDropdownPosition.width}px`,
+              }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              {MEMBER_ROLE_OPTIONS.map((role) => {
+                const selectedMember = members.find((member) => member.id === showRoleDropdown);
+                const isCurrentRole = selectedMember?.role === role.value;
+
+                return (
+                  <button
+                    key={role.value}
+                    type="button"
+                    onClick={async () => {
+                      if (isCurrentRole || !showRoleDropdown) {
+                        closeRoleDropdown();
+                        return;
+                      }
+
+                      closeRoleDropdown();
+                      await handleUpdateRole(showRoleDropdown, role.value);
+                    }}
+                    className={`block w-full px-4 py-2.5 text-left transition-colors ${
+                      isCurrentRole ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="text-sm font-medium">{role.label}</div>
+                    <div className="text-xs text-gray-500">{role.description}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </Portal>
+      )}
 
       {/* Delete Modal */}
       {showDeleteModal && (

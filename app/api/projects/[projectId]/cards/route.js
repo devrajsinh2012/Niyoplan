@@ -2,11 +2,11 @@ import { verifyProjectAccess, verifyValidAssignee } from '@/lib/access';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import { getAuthUser } from '@/lib/auth';
-import { checkRole } from '@/lib/roles';
 import { createProjectMajorNotifications } from '@/lib/projectNotifications';
 import { validateString, validateEnum, combineValidations, validationError, validateNonEmpty } from '@/lib/validate';
 import { ISSUE_TYPE, CARD_PRIORITY, ISSUE_TYPES, PRIORITIES } from '@/lib/constants';
 import { logger, rateLimit } from '@/lib/middleware';
+import { applyPermissionRows, roleHasPermission } from '@/lib/permissions';
 
 export async function GET(request, { params }) {
   const { projectId } = await params;
@@ -66,8 +66,33 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: access.error }, { status: 403 });
   }
 
-  if (!checkRole(user, 'admin', 'pm', 'member')) {
-    return NextResponse.json({ error: 'Forbidden. Insufficient role.' }, { status: 403 });
+  let canCreateIssue = false;
+
+  if (access.isCreator) {
+    canCreateIssue = true;
+  } else if (access.project?.organization_id && access.organizationMembership?.role) {
+    const { data: permissionRows, error: permissionError } = await supabaseAdmin
+      .from('organization_role_permissions')
+      .select('role, permission_key, is_allowed')
+      .eq('organization_id', access.project.organization_id);
+
+    if (permissionError) {
+      console.error('Failed to evaluate organization permissions:', permissionError);
+      return NextResponse.json({ error: 'Failed to validate role permissions' }, { status: 500 });
+    }
+
+    const matrix = applyPermissionRows(permissionRows || []);
+    canCreateIssue = roleHasPermission(matrix, access.organizationMembership.role, 'create_issue');
+  } else if (access.projectMembership?.role) {
+    const fallbackMatrix = applyPermissionRows([]);
+    canCreateIssue = roleHasPermission(fallbackMatrix, access.projectMembership.role, 'create_issue');
+  } else {
+    const fallbackMatrix = applyPermissionRows([]);
+    canCreateIssue = roleHasPermission(fallbackMatrix, user.role, 'create_issue');
+  }
+
+  if (!canCreateIssue) {
+    return NextResponse.json({ error: 'Forbidden. Your role does not have permission to create issues.' }, { status: 403 });
   }
 
   try {

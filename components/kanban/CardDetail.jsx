@@ -3,9 +3,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   X, MoreHorizontal, Paperclip, CheckSquare, Link, ChevronDown,
-  AlignLeft, Activity, List, Clock, Send, Eye, Loader, Trash2, Copy
+  AlignLeft, Activity, List, Clock, Send, Eye, Loader, Trash2
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useScheduleStore } from '@/context/ScheduleStore';
 import UserAvatar from '@/components/ui/UserAvatar';
 import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
 import { apiFetch } from '@/lib/apiClient';
@@ -23,8 +24,9 @@ const toDateInput = (value) => {
   return parsed.toISOString().slice(0, 10);
 };
 
-export default function CardDetail({ card, onClose, onSave, isSaving = false }) {
+export default function CardDetail({ card, onClose, onSave, onDelete, isSaving = false }) {
   const { profile } = useAuth();
+  const { removeScheduleItem } = useScheduleStore();
   const [users, setUsers] = useState([]);
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -261,24 +263,34 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
   const completedSubtasks = subtasks.filter(s => s.completed).length;
   const subtaskProgress = subtasks.length > 0 ? Math.round((completedSubtasks / subtasks.length) * 100) : 0;
 
-  const handleCopyLink = () => {
-    const url = `${window.location.origin}/projects/${card.project_id}?cardId=${card.id}`;
-    navigator.clipboard.writeText(url);
-    toast.success('Link copied to clipboard');
-    setShowMenu(false);
-  };
-
   const handleDeleteCard = async () => {
     setIsDeleting(true);
     try {
-      const res = await apiFetch(`/api/cards/${card.id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete card');
+      if (!card?.project_id) throw new Error('Missing project context for this card');
+
+      const res = await apiFetch(`/api/projects/${card.project_id}/cards/${card.id}`, {
+        method: 'DELETE'
+      });
+
+      if (!res.ok) {
+        let message = 'Failed to delete card';
+        try {
+          const errorBody = await res.json();
+          message = errorBody?.error || message;
+        } catch {
+          // Ignore JSON parse failures and keep generic fallback message.
+        }
+        throw new Error(message);
+      }
+
       toast.success('Card deleted');
+      removeScheduleItem(card.id);
+      onDelete?.(card.id);
       setShowDeleteConfirm(false);
       onClose();
     } catch (err) {
       console.error(err);
-      toast.error('Failed to delete card');
+      toast.error(err?.message || 'Failed to delete card');
     } finally {
       setIsDeleting(false);
     }
@@ -303,9 +315,6 @@ export default function CardDetail({ card, onClose, onSave, isSaving = false }) 
               <button className="flex items-center justify-center p-2 rounded-[3px] text-[var(--text-secondary)] hover:bg-[var(--bg-panel-hover)] transition-colors" onClick={() => setShowMenu(!showMenu)}><MoreHorizontal size={16} /></button>
               {showMenu && (
                 <div className="absolute right-0 mt-1 w-48 bg-[var(--bg-surface)] rounded-lg shadow-lg border border-[var(--border-subtle)] z-50">
-                  <button className="w-full text-left px-4 py-2 hover:bg-[var(--bg-panel-hover)] transition-colors flex items-center gap-2 text-sm text-[var(--text-secondary)] first:rounded-t-lg" onClick={handleCopyLink}>
-                    <Copy size={14} /> Copy link
-                  </button>
                   <button className="w-full text-left px-4 py-2 hover:bg-[var(--bg-panel-hover)] transition-colors flex items-center gap-2 text-sm text-red-600 last:rounded-b-lg" onClick={() => { setShowMenu(false); setShowDeleteConfirm(true); }}>
                     <Trash2 size={14} /> Delete card
                   </button>

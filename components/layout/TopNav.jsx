@@ -104,6 +104,7 @@ export default function TopNav({ theme, onToggleTheme, currentProject }) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [deletingAllNotifications, setDeletingAllNotifications] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [globalSearch, setGlobalSearch] = useState('');
   const [orgProjects, setOrgProjects] = useState([]);
@@ -230,6 +231,33 @@ export default function TopNav({ theme, onToggleTheme, currentProject }) {
     } catch (error) {
       console.error('Failed to delete notification:', error);
       toast.error('Failed to delete notification');
+    }
+  };
+
+  const deleteAllNotifications = async () => {
+    if (!notifications.length || deletingAllNotifications) return;
+
+    try {
+      setDeletingAllNotifications(true);
+      const response = await apiFetch('/api/notifications', { method: 'DELETE' });
+      if (!response.ok) {
+        let errorMessage = 'Failed to delete all notifications';
+        try {
+          const payload = await response.json();
+          errorMessage = payload?.error || errorMessage;
+        } catch {
+          // Ignore JSON parse failures and use fallback message.
+        }
+        throw new Error(errorMessage);
+      }
+
+      setNotifications([]);
+      toast.success('All notifications deleted');
+    } catch (error) {
+      console.error('Failed to delete all notifications:', error);
+      toast.error(error?.message || 'Failed to delete all notifications');
+    } finally {
+      setDeletingAllNotifications(false);
     }
   };
 
@@ -454,14 +482,25 @@ export default function TopNav({ theme, onToggleTheme, currentProject }) {
             <div className="absolute right-0 top-[calc(100%+8px)] z-[200] w-[360px] overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-lg">
               <div className="flex items-center justify-between border-b border-[var(--border-subtle)] px-4 py-3">
                 <h3 className="text-sm font-semibold text-[var(--text-heading)]">Notifications</h3>
-                {unreadCount > 0 && (
-                  <button
-                    onClick={markAllAsRead}
-                    className="text-xs font-medium text-[var(--accent-primary)] hover:underline"
-                  >
-                    Mark all as read
-                  </button>
-                )}
+                <div className="flex items-center gap-3">
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={markAllAsRead}
+                      className="text-xs font-medium text-[var(--accent-primary)] hover:underline"
+                    >
+                      Mark all as read
+                    </button>
+                  )}
+                  {notifications.length > 0 && (
+                    <button
+                      onClick={deleteAllNotifications}
+                      disabled={deletingAllNotifications}
+                      className="text-xs font-medium text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {deletingAllNotifications ? 'Deleting...' : 'Delete all'}
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="max-h-[400px] overflow-y-auto">
                 {loadingNotifications ? (

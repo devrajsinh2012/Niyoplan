@@ -6,6 +6,8 @@ import {
   Building2,
   Users,
   Key,
+  Plus,
+  Mail,
   AlertTriangle,
   Save,
   Copy,
@@ -19,6 +21,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import ConfirmModal from '@/components/ui/ConfirmModal';
+import Portal from '@/components/modals/Portal';
 import { CompanySettingsPageSkeleton } from '@/components/ui/PageSkeleton';
 import { useOrganization } from '@/context/OrganizationContext';
 import { apiFetch } from '@/lib/apiClient';
@@ -45,6 +48,12 @@ export default function CompanySettingsPage() {
   const [copied, setCopied] = useState(false);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState(null);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmails, setInviteEmails] = useState('');
+  const [inviteRole, setInviteRole] = useState('member');
+  const [isInviteSending, setIsInviteSending] = useState(false);
+  const [showRoleDropdown, setShowRoleDropdown] = useState(null);
+  const [roleDropdownPosition, setRoleDropdownPosition] = useState(null);
 
   // Form states
   const [formData, setFormData] = useState({
@@ -54,6 +63,33 @@ export default function CompanySettingsPage() {
     size: ''
   });
   const [deleteConfirm, setDeleteConfirm] = useState('');
+
+  const closeRoleDropdown = useCallback(() => {
+    setShowRoleDropdown(null);
+    setRoleDropdownPosition(null);
+  }, []);
+
+  const toggleRoleDropdown = useCallback((event, memberId) => {
+    if (showRoleDropdown === memberId) {
+      closeRoleDropdown();
+      return;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const dropdownWidth = 240;
+    const viewportPadding = 12;
+    const left = Math.max(
+      viewportPadding,
+      Math.min(rect.left, window.innerWidth - dropdownWidth - viewportPadding)
+    );
+
+    setRoleDropdownPosition({
+      top: rect.bottom + 8,
+      left,
+      width: dropdownWidth
+    });
+    setShowRoleDropdown(memberId);
+  }, [closeRoleDropdown, showRoleDropdown]);
 
   const loadMembers = useCallback(async (orgId) => {
     const { data: allMembers } = await supabase
@@ -157,6 +193,30 @@ export default function CompanySettingsPage() {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    if (!showRoleDropdown) {
+      return;
+    }
+
+    const handleWindowChange = () => {
+      closeRoleDropdown();
+    };
+
+    window.addEventListener('resize', handleWindowChange);
+    window.addEventListener('scroll', handleWindowChange, true);
+
+    return () => {
+      window.removeEventListener('resize', handleWindowChange);
+      window.removeEventListener('scroll', handleWindowChange, true);
+    };
+  }, [closeRoleDropdown, showRoleDropdown]);
+
+  useEffect(() => {
+    if (activeTab !== 'members' && showRoleDropdown) {
+      closeRoleDropdown();
+    }
+  }, [activeTab, closeRoleDropdown, showRoleDropdown]);
+
   const handleSaveGeneral = async () => {
     if (!organization) return;
 
@@ -209,6 +269,55 @@ export default function CompanySettingsPage() {
     } catch (error) {
       console.error('Error performing member action:', error);
       toast.error('An error occurred');
+    }
+  };
+
+  const handleSendInvites = async (e) => {
+    e.preventDefault();
+
+    if (!organization?.id) {
+      toast.error('Organization context is missing');
+      return;
+    }
+
+    if (!inviteEmails.trim()) {
+      toast.error('Please enter at least one email');
+      return;
+    }
+
+    setIsInviteSending(true);
+
+    try {
+      const emails = inviteEmails
+        .split(/[\n,;]/)
+        .map((email) => email.trim())
+        .filter((email) => email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+
+      if (!emails.length) {
+        toast.error('No valid emails provided');
+        return;
+      }
+
+      const response = await apiFetch(`/api/organizations/${organization.id}/members`, {
+        method: 'POST',
+        body: JSON.stringify({ emails, role: inviteRole })
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to send invites');
+      }
+
+      toast.success(data?.message || `Processed ${emails.length} invite${emails.length === 1 ? '' : 's'}`);
+      setInviteEmails('');
+      setShowInviteModal(false);
+      await loadMembers(organization.id);
+    } catch (error) {
+      console.error('Error sending organization invites:', error);
+      toast.error(error.message || 'Failed to send invites');
+    } finally {
+      setIsInviteSending(false);
     }
   };
 
@@ -447,9 +556,18 @@ export default function CompanySettingsPage() {
                 <div>
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <h3 className="font-semibold text-gray-900">Active Members</h3>
-                    <span className="text-sm font-medium text-gray-500">
-                      {activeMemberCount} member{activeMemberCount === 1 ? '' : 's'}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium text-gray-500">
+                        {activeMemberCount} member{activeMemberCount === 1 ? '' : 's'}
+                      </span>
+                      <button
+                        onClick={() => setShowInviteModal(true)}
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Invite Members
+                      </button>
+                    </div>
                   </div>
                   <div className="border border-gray-200 rounded-lg overflow-hidden">
                     <table className="w-full">
@@ -492,19 +610,20 @@ export default function CompanySettingsPage() {
                                 </div>
                               </td>
                               <td className="px-6 py-4">
-                                <select
-                                  value={member.role}
-                                  onChange={(e) => handleMemberAction(member.id, 'changeRole', e.target.value)}
-                                  className="px-3 py-1 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
-                                  disabled={member.isOwner === true}
-                                >
-                                  <option value="admin">Admin</option>
-                                  <option value="pm">PM</option>
-                                  <option value="qa">QA</option>
-                                  <option value="developer">Developer</option>
-                                  <option value="member">Member</option>
-                                  <option value="viewer">Viewer</option>
-                                </select>
+                                {member.isOwner ? (
+                                  <span className="inline-flex rounded-lg border border-blue-200 bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
+                                    {ROLE_OPTIONS.find((role) => role.value === member.role)?.label || member.role}
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={(event) => toggleRoleDropdown(event, member.id)}
+                                    className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-800 transition-colors hover:border-blue-300 hover:bg-blue-50"
+                                  >
+                                    <span>{ROLE_OPTIONS.find((role) => role.value === member.role)?.label || member.role}</span>
+                                    <ChevronDown className="text-gray-500" size={14} />
+                                  </button>
+                                )}
                               </td>
                               <td className="px-6 py-4 text-sm text-gray-600">
                                 {member.joined_at ? new Date(member.joined_at).toLocaleDateString() : 'Not available'}
@@ -615,6 +734,112 @@ export default function CompanySettingsPage() {
         message="This will invalidate the old invite code immediately. Continue?"
         confirmLabel="Regenerate"
       />
+
+      {showRoleDropdown && roleDropdownPosition && (
+        <Portal>
+          <div
+            className="fixed inset-0 z-[2200]"
+            onClick={closeRoleDropdown}
+          >
+            <div
+              className="absolute overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl"
+              style={{
+                top: `${roleDropdownPosition.top}px`,
+                left: `${roleDropdownPosition.left}px`,
+                width: `${roleDropdownPosition.width}px`
+              }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              {ROLE_OPTIONS.map((role) => {
+                const selectedMember = members.find((member) => member.id === showRoleDropdown);
+                const isCurrentRole = selectedMember?.role === role.value;
+
+                return (
+                  <button
+                    key={role.value}
+                    type="button"
+                    onClick={async () => {
+                      if (isCurrentRole || !showRoleDropdown) {
+                        closeRoleDropdown();
+                        return;
+                      }
+
+                      closeRoleDropdown();
+                      await handleMemberAction(showRoleDropdown, 'changeRole', role.value);
+                    }}
+                    className={`block w-full px-4 py-2.5 text-left transition-colors ${
+                      isCurrentRole ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="text-sm font-medium">{role.label}</div>
+                    <div className="text-xs text-gray-500">{role.description}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {showInviteModal && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-lg bg-white shadow-xl p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Mail className="w-5 h-5 text-blue-600" />
+              <h2 className="text-lg font-bold text-gray-900">Invite Members</h2>
+            </div>
+
+            <form onSubmit={handleSendInvites} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email Addresses
+                </label>
+                <textarea
+                  value={inviteEmails}
+                  onChange={(e) => setInviteEmails(e.target.value)}
+                  placeholder="user1@example.com&#10;user2@example.com&#10;&#10;One email per line, separated by comma or semicolon"
+                  rows={6}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Assign Role
+                </label>
+                <select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  {ROLE_OPTIONS.map((role) => (
+                    <option key={role.value} value={role.value}>
+                      {role.label} - {role.description}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowInviteModal(false)}
+                  className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isInviteSending}
+                  className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {isInviteSending ? 'Sending...' : 'Send Invites'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <ConfirmModal
         isOpen={Boolean(memberToRemove)}

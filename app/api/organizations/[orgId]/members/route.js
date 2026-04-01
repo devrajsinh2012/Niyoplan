@@ -1,6 +1,8 @@
 import { supabaseAdmin } from '@/lib/supabaseServer';
-import { getAuthUser } from '@/lib/auth';
+import { findAuthUserByEmail, getAuthUser, inviteAuthUserByEmail } from '@/lib/auth';
 import { NextResponse } from 'next/server';
+
+const ORG_MEMBER_ROLES = new Set(['admin', 'pm', 'qa', 'developer', 'member', 'viewer']);
 
 export async function GET(request, { params }) {
   try {
@@ -253,6 +255,129 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   } catch (error) {
     console.error('Error in PATCH /api/organizations/[orgId]/members:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function POST(request, { params }) {
+  try {
+    const { user, error: authError } = await getAuthUser(request);
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { orgId } = await params;
+    const body = await request.json();
+    const role = String(body?.role || 'member').trim().toLowerCase();
+    const emails = Array.isArray(body?.emails) ? body.emails : [];
+
+    if (!ORG_MEMBER_ROLES.has(role)) {
+      return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+    }
+
+    if (!emails.length) {
+      return NextResponse.json({ error: 'At least one email is required' }, { status: 400 });
+    }
+
+    const { data: membership } = await supabaseAdmin
+      .from('organization_members')
+      .select('role, status')
+      .eq('user_id', user.id)
+      .eq('organization_id', orgId)
+      .single();
+
+    if (!membership || membership.role !== 'admin' || membership.status !== 'active') {
+      return NextResponse.json({ error: 'Only admins can invite members' }, { status: 403 });
+    }
+
+    const redirectTo = `${request.nextUrl.origin}/login`;
+    const results = [];
+
+    for (const rawEmail of emails) {
+      const email = String(rawEmail || '').trim().toLowerCase();
+
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        continue;
+      }
+
+      let authUser = await findAuthUserByEmail(email);
+
+      if (!authUser?.id) {
+        authUser = await inviteAuthUserByEmail(email, {
+          redirectTo,
+          data: { role },
+        });
+      }
+
+      if (!authUser?.id) {
+        results.push({ email, status: 'failed', message: 'Unable to resolve invited account' });
+        continue;
+      }
+
+      const { data: existingMember } = await supabaseAdmin
+        .from('organization_members')
+        .select('id, status')
+        .eq('organization_id', orgId)
+        .eq('user_id', authUser.id)
+        .maybeSingle();
+
+      if (existingMember?.status === 'active') {
+        results.push({ email, status: 'already_member' });
+        continue;
+      }
+
+      if (existingMember) {
+        const { error: updateError } = await supabaseAdmin
+          .from('organization_members')
+          .update({
+            role,
+            status: 'active',
+            joined_at: new Date().toISOString(),
+          })
+          .eq('id', existingMember.id);
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        results.push({ email, status: 'reinstated' });
+        continue;
+      }
+
+      const { error: insertError } = await supabaseAdmin
+        .from('organization_members')
+        .insert({
+          organization_id: orgId,
+          user_id: authUser.id,
+          role,
+          status: 'active',
+          joined_at: new Date().toISOString(),
+        });
+
+      if (insertError) {
+        throw insertError;
+      }
+
+      results.push({ email, status: 'invited' });
+    }
+
+    if (!results.length) {
+      return NextResponse.json({ error: 'No valid email addresses provided' }, { status: 400 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Processed ${results.length} invite${results.length === 1 ? '' : 's'}`,
+      results,
+    });
+  } catch (error) {
+    console.error('Error in POST /api/organizations/[orgId]/members:', error);
+    if (error?.status === 429 || error?.message?.toLowerCase().includes('rate limit')) {
+      return NextResponse.json({
+        error: 'Email invitation limit reached or database is under high load. Please try again after some time (usually after 1 hour).'
+      }, { status: 429 });
+    }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

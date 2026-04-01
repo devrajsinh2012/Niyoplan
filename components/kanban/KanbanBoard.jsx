@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { DndContext, closestCorners, PointerSensor, KeyboardSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
@@ -24,7 +24,7 @@ const DEFAULT_LISTS = [
   { name: 'DONE', rank: 5000 }
 ];
 
-export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards = null, sharedLists = null, onCardUpdated = null }) {
+export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards = null, sharedLists = null, deletingCardIds = [], onCardUpdated = null }) {
   const { scheduleItems: storeItems, updateScheduleItem } = useScheduleStore();
   const [lists, setLists] = useState([]);
   const [cards, setCards] = useState([]);
@@ -40,6 +40,18 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
   const searchParams = useSearchParams();
   const router = useRouter();
   const dragSourceRef = useRef({ status: null, listId: null });
+  const deletingCardIdSet = useMemo(() => new Set(deletingCardIds), [deletingCardIds]);
+
+  const isTaskLike = useCallback((card) => {
+    const type = (card?.item_type || card?.type || card?.issue_type || '').toString().toLowerCase();
+    return type !== 'meeting';
+  }, []);
+
+  const getCardTimestamp = useCallback((card) => {
+    const rawValue = card?.updated_at || card?.updatedAt || card?.created_at || card?.createdAt || 0;
+    const parsedValue = new Date(rawValue).getTime();
+    return Number.isNaN(parsedValue) ? 0 : parsedValue;
+  }, []);
 
   const getStatusFromList = useCallback((listId) => {
     const list = lists.find((item) => item.id === listId);
@@ -63,6 +75,43 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
     });
     return match?.id;
   }, [lists]);
+
+  const sourceCards = useMemo(() => {
+    const sourceLists = Array.isArray(sharedLists) ? sharedLists : lists;
+    const backlogList = sourceLists.find((list) => {
+      const normalized = (list.name || '').trim().toLowerCase();
+      return normalized === 'backlog' || normalized === 'to do' || normalized === 'todo';
+    });
+    const fallbackListId = (backlogList || sourceLists[0])?.id;
+
+    const mergedCards = new Map();
+
+    const upsertCard = (card) => {
+      if (!card?.id) return;
+
+      const normalizedCard = {
+        ...card,
+        prefix: card.custom_id,
+        listId: card.list_id || getListIdFromStatus(card.status) || fallbackListId || card.listId
+      };
+
+      const existingCard = mergedCards.get(card.id);
+      if (!existingCard || getCardTimestamp(normalizedCard) >= getCardTimestamp(existingCard)) {
+        mergedCards.set(card.id, normalizedCard);
+      }
+    };
+
+    if (Array.isArray(storeItems) && storeItems.length > 0) {
+      storeItems.filter(isTaskLike).forEach(upsertCard);
+    }
+
+    if (Array.isArray(sharedCards)) {
+      sharedCards.filter(Boolean).forEach(upsertCard);
+    }
+
+    return Array.from(mergedCards.values());
+  }, [storeItems, sharedCards, lists, getListIdFromStatus, getCardTimestamp, isTaskLike, sharedLists]);
+  const hasExternalCardSource = Array.isArray(sharedCards) || (Array.isArray(storeItems) && storeItems.length > 0);
 
   const triggerDoneCelebration = useCallback(() => {
     const duration = 2200;
@@ -183,40 +232,14 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
       fetchBoardData();
     } else if (sharedLists) {
       setLists(sharedLists);
-      setIsLoading(false);
     }
   }, [projectId, refreshNonce, fetchBoardData, sharedLists]);
 
-
-
   useEffect(() => {
-    const isTaskLike = (card) => {
-      const type = (card?.item_type || card?.type || card?.issue_type || '').toString().toLowerCase();
-      return type !== 'meeting';
-    };
-
-    const sourceLists = Array.isArray(sharedLists) ? sharedLists : lists;
-    const backlogList = sourceLists.find((list) => {
-      const normalized = (list.name || '').trim().toLowerCase();
-      return normalized === 'backlog' || normalized === 'to do' || normalized === 'todo';
-    });
-    const fallbackListId = (backlogList || sourceLists[0])?.id;
-
-    const sourceCards = Array.isArray(storeItems) && storeItems.length > 0
-      ? storeItems.filter(isTaskLike)
-      : (Array.isArray(sharedCards) ? sharedCards : []);
-
-    if (sourceCards.length === 0) return;
-
-    const normalizedCards = sourceCards.map((card) => ({
-      ...card,
-      prefix: card.custom_id,
-      listId: card.list_id || getListIdFromStatus(card.status) || fallbackListId || card.listId
-    }));
-
-    setCards(normalizedCards);
-    if (sharedCards) setIsLoading(false);
-  }, [storeItems, sharedCards, sharedLists, lists, getListIdFromStatus]);
+    if (!hasExternalCardSource) return;
+    setCards(sourceCards);
+    setIsLoading(false);
+  }, [sourceCards, hasExternalCardSource]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 10 } }),
@@ -561,6 +584,7 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
                 key={list.id}
                 list={list}
                 cards={filteredCards.filter(c => c.listId === list.id).sort((a,b) => (a.rank || 0) - (b.rank || 0))}
+                deletingCardIdsSet={deletingCardIdSet}
                 onCardOpen={(card) => {
                   router.replace(`/projects/${projectId}?tab=board&cardId=${card.id}`, { scroll: false });
                 }}

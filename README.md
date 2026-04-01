@@ -1,132 +1,176 @@
-<div align="center">
-  <h1>🚀 Niyoplan</h1>
-  <p><strong>A Modern, Full-Stack Agile Project Management Platform</strong></p>
-  <p>Built with Next.js 15, React 19, Supabase, and Tailwind CSS v4.</p>
-</div>
+# Niyoplan
 
----
+Niyoplan is a multi-tenant project management workspace for agile teams. It combines organization onboarding, project planning, team operations, and lightweight productivity tools in a single Next.js application.
 
-## 📖 Overview
+The app is built with Next.js 15, React 19, Supabase, Tailwind CSS v4, and optional Groq AI integrations.
 
-**Niyoplan** is a highly capable project management and issue-tracking platform designed for Agile teams. It acts as an all-in-one workspace, combining traditional Kanban boards and Sprint planning tools with advanced features like Gantt charts, Daily Scrum (DSM) updates, Goal (OKR) tracking, and built-in HR/PM meeting workflows. 
+## What It Does
 
-Furthermore, Niyoplan leverages **Groq AI** to provide smart ticket summarizations, sprint velocity predictions, and automated risk analysis, enabling teams to operate at maximum efficiency.
+- Create or join an organization during onboarding.
+- Switch between workspaces and manage membership from the app shell.
+- Track work from a dashboard, a Today view, and a per-project workspace.
+- Plan work with list, Kanban, backlog/sprint, Gantt, calendar, DSM, meetings, goals, docs, and views/inbox tabs.
+- Use AI helpers for writing, summaries, priorities, risks, and goal narratives.
+- Open a small productivity toolkit with a calculator, notes, JSON formatting, and an AI writing assistant.
 
-## ✨ Key Features
+## Main Routes
 
-*   🏢 **Multi-Tenant Workspaces:** Support for isolated organizations. Join an existing team via an invite code, or create a new workspace from scratch.
-*   🔒 **Enterprise-Grade Security:** Custom architectural middleware (`lib/access.js`) guaranteeing strict, server-side resource scoping to prevent IDOR and cross-tenant data leaks.
-*   📋 **Advanced Issue Tracking:** Full ticket lifecycle management with backlog curation, sprint assignments, priority tagging, and custom statuses.
-*   📊 **Visual Workflows:**
-    *   Interactive **Kanban Boards** featuring drag-and-drop powered by `dnd-kit`.
-    *   Dynamic **Gantt Timelines** to visualize blocker dependencies.
-*   🤖 **AI Enhancements:** Built-in Groq integrations that automatically generate meeting summaries, suggest ticket descriptions, and highlight project risks.
-*   🎯 **Goals & OKRs:** Track top-level objectives and measurable key results directly alongside your project execution.
-*   📝 **Knowledge Base:** Internal Docs workspace supporting spaces, folders, and markdown-based collaborative documents.
-*   👥 **Role-Based Access Control (RBAC):** Granular permissions ensuring `admin`, `pm`, `member`, and `viewer` roles can only perform authorized actions.
+| Route | Purpose |
+| --- | --- |
+| `/` | Main dashboard with organization-wide activity and sprint summaries |
+| `/projects` | Project directory with search, filters, and starred projects |
+| `/projects/[projectId]` | Project workspace with multiple planning and collaboration tabs |
+| `/projects/[projectId]/settings` | Project-level settings |
+| `/today` | Personal daily task view |
+| `/tools` | Productivity utilities |
+| `/onboarding` | Create or join a company |
+| `/login`, `/register`, `/forgot-password`, `/reset-password` | Authentication flows |
+| `/settings` | Personal and organization settings hub |
+| `/settings/profile` | Profile, avatar, email, and password management |
+| `/settings/company` | Company details, members, and invite management |
+| `/admin/settings` | Admin user management and permission controls |
 
-## 🛠️ Tech Stack
+## Workspace Features
+
+- Dashboard: organization-level overview, recent activity, sprint health, recent issues, and today stats.
+- Projects: searchable, filterable project directory with star support and quick project creation.
+- Project workspace: list view, Kanban board, sprint backlog, Gantt timeline, calendar, DSM, meetings, goals and OKRs, docs workspace, saved views and inbox, and AI tools.
+- Today: daily task tracking with custom items and imported issues.
+- Meetings: PM review sheets, HR review sheets, meeting calendars, and action-item conversion into cards.
+- Goals: goal and key-result tracking with AI-generated stakeholder narratives.
+- Docs: space/folder/doc hierarchy for structured project notes.
+- Tools: calculator, local notes, JSON formatter, and an AI writing assistant.
+- Admin and company settings: role management, invite flow, permissions, and organization metadata.
+
+## Tech Stack
 
 ### Frontend
-- **Framework:** Next.js 15 (App Router)
-- **UI Library:** React 19
-- **Styling:** Tailwind CSS v4 + custom modules
-- **Components:** Radix primitives + Lucide React for icons
-- **State/Interactions:** `dnd-kit` (drag-and-drop), `date-fns`
 
-### Backend & Infrastructure
-- **API:** Next.js Serverless Route Handlers (`app/api/*`)
-- **Database:** PostgreSQL (via Supabase)
-- **Authentication:** Supabase Auth with JWT verification
-- **AI Integrations:** Groq LLM API
-- **Containerization:** Docker & Docker Compose (`output: 'standalone'`)
+- Next.js 15 App Router
+- React 19
+- Tailwind CSS v4
+- Lucide React icons
+- dnd-kit for drag and drop
+- date-fns for date handling
+- react-hot-toast for notifications
+- canvas-confetti for task completion celebration
 
----
+### Backend and Data
 
-## 🏗️ Architecture & Security Model
+- Supabase Auth and PostgreSQL
+- Next.js route handlers under `app/api/`
+- Server-side access checks in `lib/access.js`
+- Authenticated fetch helpers in `lib/apiClient.js`
+- Groq-backed AI helpers in `lib/ai.js`
 
-Niyoplan follows a strict separation of concerns within the Next.js App Router:
-*   **Colocated APIs:** Endpoints live under `app/api/` representing RESTful resources.
-*   **Dynamic Server Rendering:** Native Next.js 15 data fetching strategies utilizing strict `force-dynamic` headers to ensure boards and kanban lists never display stale cache.
-*   **Access Control Middleware:** Due to complex hierarchical data (Organizations -> Projects -> Sprints -> Cards), the codebase enforces a manual Verification Layer (`lib/access.js`) on the backend against the Supabase Service Role client, ensuring 100% tenant isolation.
+### Deployment
 
----
+- Docker and Docker Compose
+- Next.js standalone output
 
-## 🚦 Quick Start
+## Architecture Notes
 
-### 1. Prerequisites
-- Node.js 20+
-- npm 10+
-- [Supabase](https://supabase.com/) Project (Auth + Postgres)
-- [Groq](https://groq.com/) API key (for AI features)
+- `context/AuthContext.jsx` manages auth state, profile hydration, and sign-in persistence.
+- `context/OrganizationContext.jsx` keeps the active organization in sync across the app.
+- `context/ScheduleStore.jsx` powers shared planning data for the project views.
+- `lib/access.js` contains the organization, project, and assignee validation rules used by protected server routes.
+- `lib/apiClient.js` injects Supabase session tokens into client-side API calls.
+- Many project actions are organized around organization-scoped data to keep workspace boundaries isolated.
 
-### 2. Installation
+## Prerequisites
+
+- Node.js 20 or newer
+- npm 10 or newer
+- A Supabase project with Auth and Postgres enabled
+- A Groq API key if you want to use AI features
+
+## Installation
+
 Clone the repository and install dependencies:
+
 ```bash
 git clone https://github.com/devrajsinh2012/Niyoplan.git
 cd Niyoplan
 npm install
 ```
 
-### 3. Environment Variables
-Create a `.env` file at the root of your project:
+## Environment Variables
+
+Create a `.env` file in the project root:
+
 ```env
-# Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_KEY=your_service_role_key
 
-# Groq AI Configuration
-GROQ_API_KEY=your_groq_api_key
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+# Optional fallback if NEXT_PUBLIC_APP_URL is not set
+# NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
-# Optional Groq Overrides
+GROQ_API_KEY=your_groq_api_key
 GROQ_MODEL=llama-3.3-70b-versatile
 GROQ_API_BASE_URL=https://api.groq.com/openai/v1
 ```
 
-### 4. Database Seeding
-Setup your database using the provided SQL files:
-1. Run `database/schema.sql` in your Supabase SQL Editor to establish foundational tables.
-2. Run any incremental scripts found in `supabase/migrations/`.
-3. *(Optional)* Run the server-side helper `scripts/migrate-organizations.js` if upgrading from a legacy schema.
+`SUPABASE_SERVICE_KEY` is required for server-side access checks and protected API routes. `GROQ_*` values are only needed for AI features.
 
-### 5. Run Development Server
+## Database Setup
+
+1. Run `database/schema.sql` in your Supabase SQL editor to create the base schema.
+2. Apply any migration files under `supabase/migrations/`.
+3. If you are upgrading from an older schema, run the helper scripts in `scripts/` only when they match your database version.
+
+## Run Locally
+
 ```bash
 npm run dev
 ```
-Navigate to [http://localhost:3000](http://localhost:3000)
 
----
+Open `http://localhost:3000` in your browser.
 
-## 🐳 Docker Deployment
+## Other Scripts
 
-Niyoplan expects a production-oriented standalone output.
-To build and spin up the containerized application instantly:
+```bash
+npm run build
+npm run start
+npm run lint
+npx vitest
+```
+
+## Docker
+
+Build and run the production container with Docker Compose:
 
 ```bash
 docker compose up -d --build
 ```
-*Note: Make sure your `.env` variables are correctly bound/passed to the container.*
 
----
+This setup uses the Next.js standalone output configured in `next.config.js`.
 
-## 🗂️ Project Structure
+## Project Structure
 
 ```text
-Niyoplan/
-├── app/
-│   ├── api/          # Secure REST API Endpoints
-│   ├── projects/     # Main Workspace & Dashboards
-│   └── onboarding/   # Multi-tenant Auth flows
-├── components/       # Reusable UI Blocks (Kanban, Gantt, DSM)
-├── context/          # React Context Providers (Auth, Active Org)
-├── lib/              # Core Utilities (Access Middleware, Roles, DB Clients)
-├── database/         # SQL Schemas
-└── scripts/          # Migration Utilities
+app/              # App Router pages, layouts, and route handlers
+components/       # UI, layout, project, and workspace components
+context/          # Auth, organization, and schedule state providers
+database/         # Base SQL schema and related database files
+lib/              # API client, auth, access control, validation, and AI helpers
+modules/tools/    # Workspace tools dashboard and local utilities
+scripts/          # Maintenance and migration scripts
+supabase/migrations/ # Incremental database migrations
+__tests__/        # Vitest coverage for access, API client, and tools helpers
 ```
 
----
+## Testing
 
-## 👤 Maintainer
-**Devrajsinh Gohil**
-- GitHub: [devrajsinh2012](https://github.com/devrajsinh2012)
+The current test suite focuses on access control, authenticated API headers, and the built-in tools helpers. Run it with `npx vitest`.
+
+## Notes
+
+- Many screens expect an active organization before they can load data.
+- Client-side calls to protected routes should go through `apiFetch`.
+- AI-powered actions require the Groq environment variables above.
+
+## Maintainer
+
+Devrajsinh Gohil

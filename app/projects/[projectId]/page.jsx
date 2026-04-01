@@ -33,6 +33,7 @@ import confetti from 'canvas-confetti';
 
 
 export default function ProjectDetailPage() {
+  const DELETE_EXIT_ANIMATION_MS = 240;
   const params = useParams();
   const id = params.projectId;
   const router = useRouter();
@@ -47,6 +48,8 @@ export default function ProjectDetailPage() {
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [selectedCard, setSelectedCard] = useState(null);
   const [isSavingCard, setIsSavingCard] = useState(false);
+  const [deletingCardIds, setDeletingCardIds] = useState([]);
+  const deleteTimeoutsRef = useRef(new Map());
   
   // Get active tab from URL search params or default to 'list'
   const requestedTab = searchParams.get('tab') || 'list';
@@ -149,6 +152,11 @@ export default function ProjectDetailPage() {
   useEffect(() => {
     fetchProjectAndCards();
   }, [fetchProjectAndCards]);
+
+  useEffect(() => () => {
+    deleteTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
+    deleteTimeoutsRef.current.clear();
+  }, []);
 
   useEffect(() => {
     const openModal = (event) => {
@@ -255,6 +263,7 @@ export default function ProjectDetailPage() {
     }
     
     setSelectedCard((prev) => (prev?.id === data.id ? data : prev));
+    setRefreshNonce((prev) => prev + 1);
     toast.success('Card updated');
   };
 
@@ -269,6 +278,23 @@ export default function ProjectDetailPage() {
 
     setSelectedCard((prev) => (prev?.id === updatedCard.id ? { ...prev, ...updatedCard } : prev));
   }, []);
+
+  const handleCardDeleted = useCallback((cardId) => {
+    if (!cardId) return;
+    setSelectedCard((prev) => (prev?.id === cardId ? null : prev));
+    setDeletingCardIds((prev) => (prev.includes(cardId) ? prev : [...prev, cardId]));
+
+    const existingTimeout = deleteTimeoutsRef.current.get(cardId);
+    if (existingTimeout) clearTimeout(existingTimeout);
+
+    const timeoutId = setTimeout(() => {
+      setCards((prev) => prev.filter((item) => item.id !== cardId));
+      setDeletingCardIds((prev) => prev.filter((id) => id !== cardId));
+      deleteTimeoutsRef.current.delete(cardId);
+    }, DELETE_EXIT_ANIMATION_MS);
+
+    deleteTimeoutsRef.current.set(cardId, timeoutId);
+  }, [DELETE_EXIT_ANIMATION_MS]);
 
   useEffect(() => {
     const selectedCardId = searchParams.get('cardId');
@@ -466,6 +492,7 @@ export default function ProjectDetailPage() {
                 refreshNonce={refreshNonce}
                 sharedCards={cards}
                 sharedLists={lists}
+                deletingCardIds={deletingCardIds}
                 onCardUpdated={handleBoardCardUpdated}
               />
             </div>
@@ -567,6 +594,7 @@ export default function ProjectDetailPage() {
         <CardDetail
           key={selectedCard.id}
           card={selectedCard}
+          onDelete={handleCardDeleted}
           onClose={() => {
             setSelectedCard(null);
             router.replace(`/projects/${id}?tab=${requestedTab}`, { scroll: false });

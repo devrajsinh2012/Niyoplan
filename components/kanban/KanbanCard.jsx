@@ -21,7 +21,7 @@ const issueTypeIcon = (type) => {
   return { color: '#0C66E4', label: '✓' }; // task
 };
 
-export default function KanbanCard({ card, isOverlay, onOpen }) {
+export default function KanbanCard({ card, isOverlay, isDeleting = false, onOpen }) {
   const {
     attributes,
     listeners,
@@ -32,6 +32,7 @@ export default function KanbanCard({ card, isOverlay, onOpen }) {
     isDragging,
   } = useSortable({
     id: card.id,
+    disabled: isDeleting,
     data: { type: 'Card', card },
   });
 
@@ -53,27 +54,27 @@ export default function KanbanCard({ card, isOverlay, onOpen }) {
 
   return (
     <div
-      className={`kanban-card ${isOverlay ? 'overlay' : ''} transition-all relative group`}
+      className={`kanban-card ${isOverlay ? 'overlay' : ''} ${isDeleting ? 'deleting' : ''} transition-all relative group`}
       ref={isOverlay ? undefined : setNodeRef}
       style={isOverlay ? undefined : style}
       role="button"
       tabIndex={isOverlay ? -1 : 0}
       onClick={(e) => {
-        if (isOverlay || isDragging) return;
+        if (isOverlay || isDragging || isDeleting) return;
         // Check if the click was actually on the drag handle
         if (e.target.closest('.kanban-card-drag-handle')) return;
         
         if (onOpen) onOpen(card);
       }}
       onKeyDown={(e) => {
-        if ((e.key === 'Enter' || e.key === ' ') && !isOverlay && onOpen) {
+        if ((e.key === 'Enter' || e.key === ' ') && !isOverlay && !isDeleting && onOpen) {
           e.preventDefault();
           onOpen(card);
         }
       }}
     >
       {/* Drag handle (visible on hover) */}
-      {!isOverlay && (
+      {!isOverlay && !isDeleting && (
         <button
           className="kanban-card-drag-handle absolute top-2 right-2 p-1.5 rounded-md hover:bg-[var(--bg-panel-hover)] text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
           ref={setActivatorNodeRef}

@@ -202,6 +202,38 @@
   position: relative;
 }
 
+.kanban-card.deleting {
+  pointer-events: none;
+  overflow: hidden;
+  transform-origin: center top;
+  animation: kanban-card-delete-exit 240ms cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+
+@keyframes kanban-card-delete-exit {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    max-height: 160px;
+    margin: 0;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    border-width: 1px;
+  }
+  60% {
+    opacity: 0.4;
+    transform: translateY(-4px) scale(0.98);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+    max-height: 0;
+    margin: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-width: 0;
+  }
+}
+
 .kanban-card:hover {
   background: var(--bg-surface-hover);
   box-shadow: var(--shadow-md);

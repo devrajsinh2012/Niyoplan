@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, KeyRound, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, KeyRound, CheckCircle2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import BrandMark from '@/components/ui/BrandMark';
 import { supabase } from '@/lib/supabase';
@@ -10,6 +10,8 @@ import { supabase } from '@/lib/supabase';
 export default function ResetPasswordPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckingLink, setIsCheckingLink] = useState(true);
   const [isReady, setIsReady] = useState(false);
@@ -191,14 +193,22 @@ export default function ResetPasswordPage() {
                   <div className="relative">
                     <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={18} />
                     <input
-                      type="password"
+                      type={showNewPassword ? 'text' : 'password'}
                       required
                       minLength={8}
-                      className="w-full pl-11 pr-4 py-3 bg-[var(--bg-panel)] border-2 border-[var(--border-strong)] rounded-[var(--radius-lg)] text-[var(--text-primary)] text-sm transition-all focus:border-[var(--accent-primary)] outline-none"
+                      className="w-full pl-11 pr-11 py-3 bg-[var(--bg-panel)] border-2 border-[var(--border-strong)] rounded-[var(--radius-lg)] text-[var(--text-primary)] text-sm transition-all focus:border-[var(--accent-primary)] outline-none"
                       placeholder="At least 8 characters"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword((current) => !current)}
+                      aria-label={showNewPassword ? 'Hide new password' : 'Show new password'}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 border-none bg-transparent p-0 flex items-center cursor-pointer text-[var(--text-secondary)]"
+                    >
+                      {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
                 </div>
 
@@ -209,14 +219,22 @@ export default function ResetPasswordPage() {
                   <div className="relative">
                     <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={18} />
                     <input
-                      type="password"
+                      type={showConfirmPassword ? 'text' : 'password'}
                       required
                       minLength={8}
-                      className="w-full pl-11 pr-4 py-3 bg-[var(--bg-panel)] border-2 border-[var(--border-strong)] rounded-[var(--radius-lg)] text-[var(--text-primary)] text-sm transition-all focus:border-[var(--accent-primary)] outline-none"
+                      className="w-full pl-11 pr-11 py-3 bg-[var(--bg-panel)] border-2 border-[var(--border-strong)] rounded-[var(--radius-lg)] text-[var(--text-primary)] text-sm transition-all focus:border-[var(--accent-primary)] outline-none"
                       placeholder="Repeat your password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((current) => !current)}
+                      aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 border-none bg-transparent p-0 flex items-center cursor-pointer text-[var(--text-secondary)]"
+                    >
+                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
                 </div>
               </div>

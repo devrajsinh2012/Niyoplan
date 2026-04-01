@@ -2,14 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Plus, ChevronDown, Trash2, Mail, CheckCircle2, Clock, Search, AlertCircle
+  Plus, ChevronDown, Trash2, Mail, CheckCircle2, Clock, Search, AlertCircle, Loader2, ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useOrganization } from '@/context/OrganizationContext';
 import { apiFetch } from '@/lib/apiClient';
+import { PERMISSION_DEFINITIONS, getDefaultRolePermissionMatrix } from '@/lib/permissions';
 import UserAvatar from '@/components/ui/UserAvatar';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import NiyoplanLoader from '@/components/ui/NiyoplanLoader';
+import Portal from '@/components/modals/Portal';
 import toast from 'react-hot-toast';
 import BrandMark from '@/components/ui/BrandMark';
 
@@ -57,11 +59,15 @@ export default function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState('users');
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showRoleDropdown, setShowRoleDropdown] = useState(null);
+  const [roleDropdownPosition, setRoleDropdownPosition] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const [inviteEmails, setInviteEmails] = useState('');
   const [inviteRole, setInviteRole] = useState('member');
   const [isInvitingSending, setIsInvitingSending] = useState(false);
   const [pendingApprovals, setPendingApprovals] = useState([]);
+  const [rolePermissions, setRolePermissions] = useState(getDefaultRolePermissionMatrix());
+  const [isPermissionsLoading, setIsPermissionsLoading] = useState(false);
+  const [isPermissionsSaving, setIsPermissionsSaving] = useState(false);
 
   const loadUsers = React.useCallback(async () => {
     if (authLoading || orgLoading) {
@@ -126,6 +132,56 @@ export default function AdminSettingsPage() {
     loadUsers();
   }, [loadUsers]);
 
+  const loadRolePermissions = React.useCallback(async () => {
+    if (!activeOrganization?.id) {
+      setRolePermissions(getDefaultRolePermissionMatrix());
+      return;
+    }
+
+    setIsPermissionsLoading(true);
+    try {
+      const res = await apiFetch(`/api/organizations/${activeOrganization.id}/permissions`);
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to load role permissions');
+      }
+
+      setRolePermissions(data?.rolePermissions || getDefaultRolePermissionMatrix());
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Failed to load role permissions');
+      setRolePermissions(getDefaultRolePermissionMatrix());
+    } finally {
+      setIsPermissionsLoading(false);
+    }
+  }, [activeOrganization?.id]);
+
+  useEffect(() => {
+    if (activeTab === 'permissions') {
+      loadRolePermissions();
+    }
+  }, [activeTab, loadRolePermissions]);
+
+  useEffect(() => {
+    if (!showRoleDropdown) {
+      return;
+    }
+
+    const closeDropdown = () => {
+      setShowRoleDropdown(null);
+      setRoleDropdownPosition(null);
+    };
+
+    window.addEventListener('resize', closeDropdown);
+    window.addEventListener('scroll', closeDropdown, true);
+
+    return () => {
+      window.removeEventListener('resize', closeDropdown);
+      window.removeEventListener('scroll', closeDropdown, true);
+    };
+  }, [showRoleDropdown]);
+
   if (authLoading || orgLoading) {
     return <NiyoplanLoader />;
   }
@@ -178,6 +234,7 @@ export default function AdminSettingsPage() {
       }
 
       setShowRoleDropdown(null);
+      setRoleDropdownPosition(null);
       toast.success(`User role updated to ${newRole}`);
     } catch (err) {
       console.error(err);
@@ -236,6 +293,7 @@ export default function AdminSettingsPage() {
 
       await loadUsers();
       setShowRoleDropdown(null);
+      setRoleDropdownPosition(null);
       setShowDeleteConfirm(null);
 
       if (action === 'approve') {
@@ -251,6 +309,29 @@ export default function AdminSettingsPage() {
       console.error(err);
       toast.error(action === 'changeRole' ? 'Failed to update user role' : 'Failed to process member action');
     }
+  };
+
+  const toggleRoleDropdown = (event, userId) => {
+    if (showRoleDropdown === userId) {
+      setShowRoleDropdown(null);
+      setRoleDropdownPosition(null);
+      return;
+    }
+
+    const buttonRect = event.currentTarget.getBoundingClientRect();
+    const menuWidth = Math.max(220, Math.round(buttonRect.width));
+    const viewportPadding = 8;
+    const left = Math.max(
+      viewportPadding,
+      Math.min(buttonRect.right - menuWidth, window.innerWidth - menuWidth - viewportPadding)
+    );
+
+    setShowRoleDropdown(userId);
+    setRoleDropdownPosition({
+      top: buttonRect.bottom + 8,
+      left,
+      width: menuWidth
+    });
   };
 
   const handleSendInvites = async (e) => {
@@ -300,6 +381,45 @@ export default function AdminSettingsPage() {
 
   const canSendGlobalInvites = !activeOrganization?.id || profile?.role === 'admin';
 
+  const handlePermissionToggle = (roleKey, permissionKey) => {
+    setRolePermissions((current) => ({
+      ...current,
+      [roleKey]: {
+        ...current?.[roleKey],
+        [permissionKey]: !current?.[roleKey]?.[permissionKey],
+      }
+    }));
+  };
+
+  const handleSaveRolePermissions = async () => {
+    if (!activeOrganization?.id) {
+      toast.error('Select a company to configure role permissions');
+      return;
+    }
+
+    setIsPermissionsSaving(true);
+    try {
+      const res = await apiFetch(`/api/organizations/${activeOrganization.id}/permissions`, {
+        method: 'PUT',
+        body: JSON.stringify({ rolePermissions })
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to save role permissions');
+      }
+
+      setRolePermissions(data?.rolePermissions || rolePermissions);
+      toast.success('Role permissions updated');
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Failed to save role permissions');
+    } finally {
+      setIsPermissionsSaving(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[var(--bg-primary)]">
       {/* Page Header */}
@@ -338,6 +458,17 @@ export default function AdminSettingsPage() {
               }`}
             >
               Pending Requests {pendingApprovals.length > 0 && <span className="inline-flex items-center justify-center w-5 h-5 text-xs bg-orange-100 text-orange-700 rounded-full">{pendingApprovals.length}</span>}
+            </button>
+            <button
+              onClick={() => setActiveTab('permissions')}
+              className={`px-1 py-3 font-medium text-sm border-b-2 transition-colors flex items-center gap-2 ${
+                activeTab === 'permissions'
+                  ? 'border-[#0052CC] text-[#0052CC]'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <ShieldCheck size={16} />
+              Roles & Permissions
             </button>
           </div>
         </div>
@@ -416,30 +547,12 @@ export default function AdminSettingsPage() {
                                 ) : (
                                   <>
                                     <button
-                                      onClick={() => setShowRoleDropdown(showRoleDropdown === user.id ? null : user.id)}
+                                      onClick={(event) => toggleRoleDropdown(event, user.id)}
                                       className={`text-sm font-semibold px-3 py-1.5 rounded-lg border transition-colors flex items-center gap-2 ${roleColor.bg} ${roleColor.text} ${roleColor.border} hover:opacity-80`}
                                     >
                                       {roleInfo?.label || user.role}
                                       <ChevronDown size={14} />
                                     </button>
-
-                                    {/* Role Dropdown Menu */}
-                                    {showRoleDropdown === user.id && (
-                                      <div className="absolute top-full mt-2 right-0 z-[100] bg-white border border-[var(--border-subtle)] rounded-lg shadow-xl p-2 min-w-[220px]">
-                                        {ROLE_OPTIONS.map((roleOption) => (
-                                          <button
-                                            key={roleOption.value}
-                                            onClick={() => handleRoleUpdate(user, roleOption.value)}
-                                            className={`w-full text-left px-4 py-2.5 text-sm rounded hover:bg-gray-50 transition-colors ${
-                                              user.role === roleOption.value ? 'font-semibold bg-blue-50 text-blue-700' : 'text-gray-700'
-                                            }`}
-                                          >
-                                            <div className="font-medium">{roleOption.label}</div>
-                                            <div className="text-xs text-gray-500">{roleOption.description}</div>
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
                                   </>
                                 )}
                               </div>
@@ -534,7 +647,114 @@ export default function AdminSettingsPage() {
             )}
           </div>
         )}
+
+        {activeTab === 'permissions' && (
+          <div className="space-y-6">
+            <div className="rounded-lg border border-[var(--border-subtle)] bg-white p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold text-[var(--text-primary)]">Role Permission Matrix</h3>
+                <p className="text-sm text-[var(--text-muted)] mt-1">
+                  Configure what each company role can do. Example: allow QA to create issues.
+                </p>
+              </div>
+              <button
+                onClick={handleSaveRolePermissions}
+                disabled={isPermissionsSaving || !activeOrganization?.id}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#0052CC] px-4 py-2 text-sm font-semibold text-white hover:bg-[#003D99] disabled:opacity-50 transition-colors"
+              >
+                {isPermissionsSaving ? <Loader2 size={16} className="animate-spin" /> : null}
+                Save Permissions
+              </button>
+            </div>
+
+            {!activeOrganization?.id ? (
+              <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-5">
+                <p className="text-sm text-yellow-800">Select an active company to manage role permissions.</p>
+              </div>
+            ) : isPermissionsLoading ? (
+              <div className="rounded-lg border border-[var(--border-subtle)] bg-white p-12 text-center text-[var(--text-muted)]">
+                Loading role permissions...
+              </div>
+            ) : (
+              <div className="rounded-lg border border-[var(--border-subtle)] bg-white overflow-x-auto">
+                <table className="min-w-full">
+                  <thead className="border-b border-[var(--border-subtle)] bg-[var(--bg-panel)]">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider min-w-[180px]">Role</th>
+                      {PERMISSION_DEFINITIONS.map((permission) => (
+                        <th key={permission.key} className="px-4 py-3 text-left text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider min-w-[150px]">
+                          <div>{permission.label}</div>
+                          <div className="mt-1 text-[10px] font-medium normal-case tracking-normal text-[var(--text-muted)]">{permission.description}</div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border-subtle)]">
+                    {ROLE_OPTIONS.map((role) => (
+                      <tr key={role.value} className="hover:bg-[var(--bg-panel-hover)] transition-colors">
+                        <td className="px-4 py-3 align-top">
+                          <p className="text-sm font-semibold text-[var(--text-primary)]">{role.label}</p>
+                          <p className="text-xs text-[var(--text-muted)] mt-1">{role.description}</p>
+                        </td>
+                        {PERMISSION_DEFINITIONS.map((permission) => (
+                          <td key={`${role.value}-${permission.key}`} className="px-4 py-3 align-top">
+                            <label className="inline-flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(rolePermissions?.[role.value]?.[permission.key])}
+                                onChange={() => handlePermissionToggle(role.value, permission.key)}
+                                className="h-4 w-4 rounded border-[var(--border-subtle)] text-[#0052CC] focus:ring-[#0052CC]"
+                              />
+                              <span className="text-xs text-[var(--text-secondary)]">Allowed</span>
+                            </label>
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
       </main>
+
+      {showRoleDropdown && roleDropdownPosition && (
+        <Portal>
+          <div className="fixed inset-0 z-[1200]" onClick={() => {
+            setShowRoleDropdown(null);
+            setRoleDropdownPosition(null);
+          }}>
+            <div
+              className="fixed bg-white border border-[var(--border-subtle)] rounded-lg shadow-xl p-2"
+              style={{
+                top: roleDropdownPosition.top,
+                left: roleDropdownPosition.left,
+                width: roleDropdownPosition.width
+              }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              {(() => {
+                const selectedUser = filteredUsers.find((u) => u.id === showRoleDropdown);
+                if (!selectedUser) return null;
+
+                return ROLE_OPTIONS.map((roleOption) => (
+                  <button
+                    key={roleOption.value}
+                    onClick={() => handleRoleUpdate(selectedUser, roleOption.value)}
+                    className={`w-full text-left px-4 py-2.5 text-sm rounded hover:bg-gray-50 transition-colors ${
+                      selectedUser.role === roleOption.value ? 'font-semibold bg-blue-50 text-blue-700' : 'text-gray-700'
+                    }`}
+                  >
+                    <div className="font-medium">{roleOption.label}</div>
+                    <div className="text-xs text-gray-500">{roleOption.description}</div>
+                  </button>
+                ));
+              })()}
+            </div>
+          </div>
+        </Portal>
+      )}
 
       {/* Invite Modal */}
       {showInviteModal && canSendGlobalInvites && (

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import { getAuthUser } from '@/lib/auth';
 import { checkRole } from '@/lib/roles';
+import { createDriveFolder, getOrgRootFolderId, isOrgDriveConnected } from '@/lib/drive';
 
 export const dynamic = 'force-dynamic';
 
@@ -98,6 +99,39 @@ export async function POST(request) {
       .single();
 
     if (projectError) throw projectError;
+
+    try {
+      const driveConnected = await isOrgDriveConnected(organizationId);
+      if (driveConnected) {
+        const rootFolderId = await getOrgRootFolderId(organizationId);
+
+        if (rootFolderId) {
+          const projectFolderId = await createDriveFolder(
+            organizationId,
+            name,
+            rootFolderId
+          );
+
+          if (projectFolderId) {
+            const { error: driveFolderUpdateError } = await supabaseAdmin
+              .from('projects')
+              .update({ drive_folder_id: projectFolderId })
+              .eq('id', project.id);
+
+            if (!driveFolderUpdateError) {
+              project.drive_folder_id = projectFolderId;
+            }
+          }
+        }
+      }
+    } catch (driveError) {
+      console.error('Drive folder provisioning skipped:', {
+        projectId: project.id,
+        organizationId,
+        error: driveError?.message || 'unknown',
+      });
+    }
+
     return NextResponse.json(project, { status: 201 });
   } catch (err) {
     console.error(err);

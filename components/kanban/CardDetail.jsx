@@ -7,9 +7,11 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useScheduleStore } from '@/context/ScheduleStore';
+import { useOrganization } from '@/context/OrganizationContext';
 import UserAvatar from '@/components/ui/UserAvatar';
 import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
 import { apiFetch } from '@/lib/apiClient';
+import FileAttachment from '@/components/FileAttachment';
 import toast from 'react-hot-toast';
 
 // Sub-components
@@ -26,6 +28,7 @@ const toDateInput = (value) => {
 
 export default function CardDetail({ card, onClose, onSave, onDelete, isSaving = false }) {
   const { profile } = useAuth();
+  const { activeOrganization } = useOrganization();
   const { removeScheduleItem } = useScheduleStore();
   const [users, setUsers] = useState([]);
   const [sprints, setSprints] = useState([]);
@@ -57,6 +60,7 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
   const [isLoadingSubtasks, setIsLoadingSubtasks] = useState(false);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [isAddingSubtask, setIsAddingSubtask] = useState(false);
+  const [showAttachments, setShowAttachments] = useState(false);
 
   const fetchComments = useCallback(async () => {
     if (!card?.id) return;
@@ -397,9 +401,9 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
             <div className="mt-6 mb-10 flex flex-wrap gap-2">
               <button 
                 className="flex items-center gap-2 rounded-[3px] bg-[var(--bg-panel)] px-3 py-1.5 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-panel-hover)] active:bg-[var(--border-subtle)]"
-                onClick={() => toast('Attach feature coming soon', { icon: '📎' })}
+                onClick={() => setShowAttachments((current) => !current)}
               >
-                <Paperclip size={14} /> Attach
+                <Paperclip size={14} /> {showAttachments ? 'Hide Attachments' : 'Attach'}
               </button>
               <button 
                 className="flex items-center gap-2 rounded-[3px] bg-[var(--bg-panel)] px-3 py-1.5 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-panel-hover)]"
@@ -420,6 +424,16 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
                 <span>More</span> <ChevronDown size={14} />
               </button>
             </div>
+
+            {showAttachments && (
+              <div className="mb-8">
+                <FileAttachment
+                  orgId={card?.organization_id || activeOrganization?.id}
+                  projectId={card?.project_id}
+                  cardId={card?.id}
+                />
+              </div>
+            )}
 
             <CardDescription
               description={form.description}

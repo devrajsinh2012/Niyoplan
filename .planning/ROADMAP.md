@@ -18,3 +18,17 @@ Manage, plan, and execute development phases for the Niyoplan project.
 - Gamification & Advanced Today Workspace
 - Performance Optimizations
 - Real-time updates with Supabase Realtime
+
+## Active Planning: v2.0
+
+### Phase 08: Google Drive Storage Integration
+**Status:** Planned
+**Goal:** Add organization-owned Google Drive as the default attachment storage backend with tenant-safe upload/download/delete workflows.
+**Requirements:** [GDRIVE-01, GDRIVE-02, GDRIVE-03, GDRIVE-04, GDRIVE-05, GDRIVE-06]
+**Plans:** 4 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — Foundation: schema, Drive helper, dependency/docs setup
+- [ ] 08-02-PLAN.md — Admin Drive lifecycle APIs and Company Settings management UI
+- [ ] 08-03-PLAN.md — File attachment APIs and reusable FileAttachment component
+- [ ] 08-04-PLAN.md — Project auto-folder provisioning, card integration, and end-to-end verification checkpoint

@@ -103,6 +103,9 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_KEY=your_service_role_key
 
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_xxxxx
+CLERK_SECRET_KEY=sk_test_xxxxx
+
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 # Optional fallback if NEXT_PUBLIC_APP_URL is not set
 # NEXT_PUBLIC_SITE_URL=http://localhost:3000
@@ -110,9 +113,37 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 GROQ_API_KEY=your_groq_api_key
 GROQ_MODEL=llama-3.3-70b-versatile
 GROQ_API_BASE_URL=https://api.groq.com/openai/v1
+
+GOOGLE_CLIENT_ID=your_google_oauth_client_id
+GOOGLE_CLIENT_SECRET=your_google_oauth_client_secret
 ```
 
-`SUPABASE_SERVICE_KEY` is required for server-side access checks and protected API routes. `GROQ_*` values are only needed for AI features.
+`SUPABASE_SERVICE_KEY` is required for server-side access checks and protected API routes. `CLERK_*` values are required for authentication. `GROQ_*` values are only needed for AI features. `GOOGLE_*` values are required for Google Drive storage integration.
+
+## Google OAuth Setup (Clerk)
+
+Niyoplan supports Google sign-in from both login and register pages through Clerk.
+
+1. Open Clerk Dashboard and enable the Google social connection.
+2. Paste your Google OAuth client ID and secret in Clerk provider settings.
+3. In Google Cloud, add Clerk callback URL provided by Clerk dashboard.
+4. In Clerk, configure redirect URLs for each environment:
+	- `http://localhost:3000/sso-callback`
+	- `http://localhost:3000/login`
+	- `http://localhost:3000/register`
+	- Production equivalents (same routes on your deployed domain)
+
+Important notes:
+- Keep `NEXT_PUBLIC_APP_URL` accurate for each environment.
+- The app keeps existing onboarding behavior after OAuth sign-in: users without an organization are routed to onboarding.
+
+### Additional Scope for Google Drive Storage
+
+If you enable organization-level file storage via Google Drive, add the following scope in Clerk Google social connection settings:
+
+- `https://www.googleapis.com/auth/drive.file`
+
+Also enable refresh token support in Clerk's Google provider settings. Niyoplan stores per-organization Drive tokens and refreshes them automatically for background file operations.
 
 ## Database Setup
 

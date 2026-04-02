@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Building2,
+  HardDrive,
   Key,
   AlertTriangle,
   Save,
@@ -19,7 +20,9 @@ import ConfirmModal from '@/components/ui/ConfirmModal';
 import Portal from '@/components/modals/Portal';
 import { CompanySettingsPageSkeleton } from '@/components/ui/PageSkeleton';
 import { useOrganization } from '@/context/OrganizationContext';
+import { useAuth } from '@/context/AuthContext';
 import { apiFetch } from '@/lib/apiClient';
+import { useClerk } from '@clerk/nextjs';
 
 const ROLE_OPTIONS = [
   { value: 'admin', label: 'Admin', description: 'Full system access' },
@@ -31,13 +34,20 @@ const ROLE_OPTIONS = [
 
 export default function CompanySettingsPage() {
   const router = useRouter();
+  const { openUserProfile } = useClerk();
+  const { user: currentUser } = useAuth();
   const { activeOrganization, refreshOrganizations } = useOrganization();
   const [activeTab, setActiveTab] = useState('general');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [organization, setOrganization] = useState(null);
+  const [pendingInvites, setPendingInvites] = useState([]);
+  const [driveStatus, setDriveStatus] = useState(null);
+  const [driveLoading, setDriveLoading] = useState(false);
+  const [driveBusy, setDriveBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+  const [showDriveDisconnectConfirm, setShowDriveDisconnectConfirm] = useState(false);
 
   // Form states
   const [formData, setFormData] = useState({
@@ -48,12 +58,34 @@ export default function CompanySettingsPage() {
   });
   const [deleteConfirm, setDeleteConfirm] = useState('');
 
+  const loadDriveStatus = useCallback(async (orgId) => {
+    if (!orgId) {
+      setDriveStatus(null);
+      return;
+    }
+
+    setDriveLoading(true);
+    try {
+      const response = await apiFetch(`/api/drive/status?orgId=${encodeURIComponent(orgId)}`);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload?.error || 'Failed to fetch Drive status.');
+      }
+
+      const payload = await response.json();
+      setDriveStatus(payload);
+    } catch (error) {
+      console.error('Drive status load failed:', error);
+      setDriveStatus({ connected: false });
+    } finally {
+      setDriveLoading(false);
+    }
+  }, []);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      // Get current user
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (!currentUser) {
+      if (!currentUser?.id) {
         router.push('/login');
         return;
       }
@@ -94,17 +126,40 @@ export default function CompanySettingsPage() {
         });
       }
 
+      await loadDriveStatus(activeOrganization.id);
+
+      const membersResponse = await apiFetch(`/api/organizations/${activeOrganization.id}/members`);
+      if (membersResponse.ok) {
+        const members = await membersResponse.json().catch(() => []);
+        const sentPending = Array.isArray(members)
+          ? members.filter((member) => member.is_pending_invite)
+          : [];
+        setPendingInvites(sentPending);
+      }
+
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Failed to load organization data');
     } finally {
       setLoading(false);
     }
-  }, [router, activeOrganization?.id]);
+  }, [router, activeOrganization?.id, currentUser?.id, loadDriveStatus]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (activeTab !== 'invite' || pendingInvites.length === 0) {
+      return;
+    }
+
+    const intervalId = setInterval(() => {
+      loadData();
+    }, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [activeTab, pendingInvites.length, loadData]);
 
   const handleSaveGeneral = async () => {
     if (!organization) return;
@@ -196,6 +251,70 @@ export default function CompanySettingsPage() {
     } catch (error) {
       console.error('Error deleting organization:', error);
       toast.error('An error occurred');
+    }
+  };
+
+  const handleConnectDrive = async () => {
+    if (!activeOrganization?.id || !organization?.name) {
+      toast.error('Organization context is missing.');
+      return;
+    }
+
+    setDriveBusy(true);
+    try {
+      if (typeof openUserProfile === 'function') {
+        openUserProfile();
+      }
+
+      const response = await apiFetch('/api/drive/connect', {
+        method: 'POST',
+        body: JSON.stringify({
+          orgId: activeOrganization.id,
+          orgName: organization.name,
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to connect Google Drive.');
+      }
+
+      await loadDriveStatus(activeOrganization.id);
+      toast.success('Google Drive connected successfully.');
+    } catch (error) {
+      console.error('Connect drive failed:', error);
+      toast.error(error.message || 'Failed to connect Google Drive.');
+    } finally {
+      setDriveBusy(false);
+    }
+  };
+
+  const handleDisconnectDrive = async () => {
+    if (!activeOrganization?.id) {
+      toast.error('Organization context is missing.');
+      return;
+    }
+
+    setDriveBusy(true);
+    try {
+      const response = await apiFetch('/api/drive/disconnect', {
+        method: 'POST',
+        body: JSON.stringify({ orgId: activeOrganization.id }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to disconnect Google Drive.');
+      }
+
+      await loadDriveStatus(activeOrganization.id);
+      toast.success('Google Drive disconnected.');
+      setShowDriveDisconnectConfirm(false);
+    } catch (error) {
+      console.error('Disconnect drive failed:', error);
+      toast.error(error.message || 'Failed to disconnect Google Drive.');
+    } finally {
+      setDriveBusy(false);
     }
   };
 
@@ -321,6 +440,67 @@ export default function CompanySettingsPage() {
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   Save Changes
                 </button>
+
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                        <HardDrive className="h-4 w-4" />
+                        Google Drive Storage
+                      </h3>
+                      <p className="mt-1 text-xs text-gray-600">
+                        Connect your organization Drive so ticket and document attachments are stored in your own Google account.
+                      </p>
+                    </div>
+
+                    {driveStatus?.connected ? (
+                      <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+                        Connected
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
+                        Not connected
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-3 text-xs text-gray-600 space-y-1">
+                    {driveLoading ? (
+                      <p className="flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking Drive status...</p>
+                    ) : driveStatus?.connected ? (
+                      <>
+                        <p>Connected at: {driveStatus.connectedAt ? new Date(driveStatus.connectedAt).toLocaleString() : 'Unknown'}</p>
+                        <p>Root path: Niyoplan/{organization.name}/</p>
+                      </>
+                    ) : (
+                      <p>Drive is currently disconnected for this organization.</p>
+                    )}
+                  </div>
+
+                  <div className="mt-4">
+                    {driveStatus?.connected ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowDriveDisconnectConfirm(true)}
+                        disabled={driveBusy}
+                        className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        {driveBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                        Disconnect Google Drive
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleConnectDrive}
+                        disabled={driveBusy || driveLoading}
+                        className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        {driveBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                        Connect Google Drive
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -358,6 +538,32 @@ export default function CompanySettingsPage() {
                     <RefreshCw className="w-4 h-4" />
                     Regenerate Code
                   </button>
+                </div>
+
+                <div className="pt-6 border-t border-gray-200">
+                  <h3 className="font-semibold text-gray-900 mb-2">Pending Invites You Sent</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Invites are removed automatically when the user accepts.
+                  </p>
+                  {pendingInvites.length === 0 ? (
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                      No pending member invites right now.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {pendingInvites.map((invite) => (
+                        <div key={`company-pending-${invite.id}`} className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900">{invite.email || 'Unknown email'}</p>
+                            <p className="text-xs text-gray-600">Role: {invite.role}</p>
+                          </div>
+                          <p className="text-xs text-gray-600">
+                            Sent {invite.invited_at ? new Date(invite.invited_at).toLocaleDateString() : 'recently'}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -409,6 +615,15 @@ export default function CompanySettingsPage() {
         title="Regenerate Invite Code"
         message="This will invalidate the old invite code immediately. Continue?"
         confirmLabel="Regenerate"
+      />
+
+      <ConfirmModal
+        isOpen={showDriveDisconnectConfirm}
+        onClose={() => setShowDriveDisconnectConfirm(false)}
+        onConfirm={handleDisconnectDrive}
+        title="Disconnect Google Drive"
+        message="This removes the Drive connection for this organization. Existing files remain in Drive but new uploads will be disabled."
+        confirmLabel="Disconnect"
       />
 
     </div>

@@ -4,12 +4,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useOrganization } from '@/context/OrganizationContext';
-import { supabase } from '@/lib/supabase';
+import { apiFetch } from '@/lib/apiClient';
 import NiyoplanLoader from '@/components/ui/NiyoplanLoader';
 
 export default function OnboardingMiddleware({ children }) {
   const { user, loading: authLoading, initialLoading } = useAuth();
-  const { activeOrganization } = useOrganization();
+  const { activeOrganization, refreshOrganizations } = useOrganization();
   const router = useRouter();
   const pathname = usePathname();
   const [checking, setChecking] = useState(true);
@@ -32,6 +32,7 @@ export default function OnboardingMiddleware({ children }) {
 
   const isPublicPath = publicPaths.some((path) => pathname.startsWith(path));
   const isOnboardingPath = onboardingPaths.some((path) => pathname.startsWith(path));
+  const isOnboardingLandingPath = pathname === '/onboarding' || pathname === '/onboarding/';
   const isAllowedPath = isPublicPath || isOnboardingPath;
 
   const checkOnboardingStatus = useCallback(async () => {
@@ -44,7 +45,7 @@ export default function OnboardingMiddleware({ children }) {
       if (user && activeOrganization?.id) {
         setHasOrganization(true);
         setChecking(false);
-        if (isOnboardingPath) {
+        if (isOnboardingLandingPath) {
           router.replace('/');
         }
         return;
@@ -68,7 +69,7 @@ export default function OnboardingMiddleware({ children }) {
       onboardingCacheRef.current = { userId, status: true };
       setHasOrganization(true);
       setChecking(false);
-      if (isOnboardingPath) {
+      if (isOnboardingLandingPath) {
         router.replace('/');
       }
       return;
@@ -79,7 +80,7 @@ export default function OnboardingMiddleware({ children }) {
       setHasOrganization(cached.status);
       setChecking(false);
 
-      if (cached.status === true && isOnboardingPath) {
+      if (cached.status === true && isOnboardingLandingPath) {
         router.replace('/');
       }
 
@@ -93,40 +94,57 @@ export default function OnboardingMiddleware({ children }) {
     setChecking(true);
 
     try {
-      // Check if user has an active organization membership
-      const { data: membership, error: membershipError } = await supabase
-        .from('organization_members')
-        .select('id, status')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .limit(1)
-        .maybeSingle();
-
-      if (membershipError) {
-        throw membershipError;
+      const statusResponse = await apiFetch('/api/auth/onboarding-status');
+      if (!statusResponse.ok) {
+        throw new Error('Failed to resolve onboarding status');
       }
 
-      if (membership) {
+      const statusPayload = await statusResponse.json();
+
+      if (statusPayload?.hasActiveOrganization) {
         onboardingCacheRef.current = { userId, status: true };
         setHasOrganization(true);
-        if (isOnboardingPath) {
+        if (isOnboardingLandingPath) {
           router.replace('/');
         }
       } else {
-        // Check if user has any pending memberships
-        const { data: pendingMembership, error: pendingError } = await supabase
-          .from('organization_members')
-          .select('id, status')
-          .eq('user_id', userId)
-          .eq('status', 'pending')
-          .limit(1)
-          .maybeSingle();
+        let autoJoined = false;
 
-        if (pendingError) {
-          throw pendingError;
+        try {
+          const autoJoinResponse = await apiFetch('/api/organizations/auto-join', {
+            method: 'POST',
+          });
+
+          if (autoJoinResponse.ok) {
+            const autoJoinPayload = await autoJoinResponse.json().catch(() => ({}));
+            const joinedCount = Array.isArray(autoJoinPayload?.joinedOrganizationIds)
+              ? autoJoinPayload.joinedOrganizationIds.length
+              : 0;
+            const activeCount = Array.isArray(autoJoinPayload?.activeOrganizationIds)
+              ? autoJoinPayload.activeOrganizationIds.length
+              : 0;
+
+            if (joinedCount > 0 || activeCount > 0) {
+              await refreshOrganizations();
+              onboardingCacheRef.current = { userId, status: true };
+              setHasOrganization(true);
+              setChecking(false);
+              autoJoined = true;
+
+              if (isOnboardingPath || isPublicPath) {
+                router.replace('/?inviteJoined=1');
+              }
+            }
+          }
+        } catch (autoJoinError) {
+          console.error('Auto-join from invite failed:', autoJoinError);
         }
 
-        if (pendingMembership) {
+        if (autoJoined) {
+          return;
+        }
+
+        if (statusPayload?.hasPendingOrganization) {
           // User has pending membership, show waiting screen
           onboardingCacheRef.current = { userId, status: 'pending' };
           setHasOrganization('pending');
@@ -151,7 +169,7 @@ export default function OnboardingMiddleware({ children }) {
     }
 
     setChecking(false);
-  }, [activeOrganization?.id, authLoading, initialLoading, isAllowedPath, isOnboardingPath, isPublicPath, router, user]);
+  }, [activeOrganization?.id, authLoading, initialLoading, isAllowedPath, isOnboardingLandingPath, isPublicPath, refreshOrganizations, router, user]);
 
   useEffect(() => {
     checkOnboardingStatus();

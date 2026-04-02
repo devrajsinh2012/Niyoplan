@@ -28,35 +28,35 @@ export default function RootLayout({ children }) {
         <link rel="apple-touch-icon" href={`/apple-touch-icon.svg?v=${iconVersion}`} />
       </head>
       <body className={`${inter.variable} font-sans`} suppressHydrationWarning>
-        <AuthProvider>
-          <OrganizationProvider>
-            <OnboardingMiddleware>
-              <AppShell>
-                {children}
-              </AppShell>
-            </OnboardingMiddleware>
-          </OrganizationProvider>
-          <Toaster position="top-right" toastOptions={{
-            duration: 3000,
-            style: {
-              background: 'var(--bg-surface)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border-subtle)',
-            },
-            success: {
-              iconTheme: {
-                primary: '#22A06B',
-                secondary: 'white',
+          <AuthProvider>
+            <OrganizationProvider>
+              <OnboardingMiddleware>
+                <AppShell>
+                  {children}
+                </AppShell>
+              </OnboardingMiddleware>
+            </OrganizationProvider>
+            <Toaster position="top-right" toastOptions={{
+              duration: 3000,
+              style: {
+                background: 'var(--bg-surface)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-subtle)',
               },
-            },
-            error: {
-              iconTheme: {
-                primary: '#E34935',
-                secondary: 'white',
+              success: {
+                iconTheme: {
+                  primary: '#22A06B',
+                  secondary: 'white',
+                },
               },
-            },
-          }} />
-        </AuthProvider>
+              error: {
+                iconTheme: {
+                  primary: '#E34935',
+                  secondary: 'white',
+                },
+              },
+            }} />
+          </AuthProvider>
       </body>
     </html>
   )

@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Link as LinkIcon, Loader2, CheckCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
+import { useAuth } from '@/context/AuthContext';
 
 export default function JoinCompanyPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
   const [status, setStatus] = useState(null); // null, 'pending', 'success'
@@ -26,10 +28,7 @@ export default function JoinCompanyPage() {
     setLoading(true);
 
     try {
-      // Get current user
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-      if (authError || !user) {
+      if (!user?.id) {
         toast.error('You must be logged in to join a company');
         router.push('/login');
         return;

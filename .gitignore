@@ -9,3 +9,6 @@ secret key.md
 # Design reference assets (not for repo)
 stitch_assets/
 Jira vs. NiyoPlan* 
+
+# clerk configuration (can include secrets)
+/.clerk/

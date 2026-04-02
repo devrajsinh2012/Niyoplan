@@ -61,22 +61,30 @@ export default function DashboardPage() {
   const [activeSprints, setActiveSprints] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAccountSetupPrompt, setShowAccountSetupPrompt] = useState(false);
+  const [showInviteJoinBanner, setShowInviteJoinBanner] = useState(false);
 
   useEffect(() => {
     const inviteFlag = searchParams.get('invite');
     const fromInvite = inviteFlag === '1' || inviteFlag === 'true';
+    const inviteJoinedFlag = searchParams.get('inviteJoined');
+    const fromAutoJoin = inviteJoinedFlag === '1' || inviteJoinedFlag === 'true';
     const missingProfileName = !profile?.full_name?.trim();
 
     if (fromInvite || missingProfileName) {
       setShowAccountSetupPrompt(true);
     }
 
-    if (!fromInvite) {
+    if (fromAutoJoin) {
+      setShowInviteJoinBanner(true);
+    }
+
+    if (!fromInvite && !fromAutoJoin) {
       return;
     }
 
     const nextParams = new URLSearchParams(searchParams.toString());
     nextParams.delete('invite');
+    nextParams.delete('inviteJoined');
     const nextQuery = nextParams.toString();
     router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
   }, [pathname, profile?.full_name, router, searchParams]);
@@ -347,6 +355,25 @@ export default function DashboardPage() {
                 Later
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showInviteJoinBanner && (
+        <div className="mb-8 rounded-[4px] border border-[#C3F4D5] bg-[#F2FFF6] p-4 sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-[#006644]">You are in</p>
+              <p className="mt-1 text-xs text-[#0C4A2D]">
+                Your invitation was accepted and you were automatically added to {activeOrganization?.name || 'your company'}.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowInviteJoinBanner(false)}
+              className="rounded-[3px] border border-[#57D9A3] bg-white px-3 py-2 text-xs font-semibold text-[#006644] transition-colors hover:bg-[#E3FCEF]"
+            >
+              Dismiss
+            </button>
           </div>
         </div>
       )}

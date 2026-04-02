@@ -11,7 +11,7 @@ import toast from 'react-hot-toast';
 import { ProfileSettingsPageSkeleton } from '@/components/ui/PageSkeleton';
 
 export default function ProfileSettingsPage() {
-  const { profile, refreshProfile } = useAuth();
+  const { profile, refreshProfile, signOut } = useAuth();
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -50,13 +50,9 @@ export default function ProfileSettingsPage() {
   }, [profile]);
 
   useEffect(() => {
-    const loadAuthEmail = async () => {
-      const { data } = await supabase.auth.getUser();
-      const authEmail = data?.user?.email || profile?.email || '';
-      setEmail(authEmail);
-      setNewEmail(authEmail);
-    };
-    loadAuthEmail();
+    const authEmail = profile?.email || '';
+    setEmail(authEmail);
+    setNewEmail(authEmail);
   }, [profile?.email]);
 
   const handleAvatarChange = (e) => {
@@ -206,7 +202,7 @@ export default function ProfileSettingsPage() {
     setIsSaving(true);
     try {
       const { error } = await supabase.auth.updateUser({
-        password: newPassword
+        password: newPassword,
       });
 
       if (error) throw error;
@@ -274,7 +270,7 @@ export default function ProfileSettingsPage() {
       }
 
       toast.success('Account deleted');
-      await supabase.auth.signOut();
+      await signOut();
       router.push('/login');
     } catch (error) {
       console.error('Error deleting account:', error);
@@ -509,7 +505,8 @@ export default function ProfileSettingsPage() {
                   <button
                     type="button"
                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    aria-label={showCurrentPassword ? 'Hide current password' : 'Show current password'}
+                    className="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   >
                     {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -531,7 +528,8 @@ export default function ProfileSettingsPage() {
                   <button
                     type="button"
                     onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    aria-label={showNewPassword ? 'Hide new password' : 'Show new password'}
+                    className="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   >
                     {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -568,7 +566,8 @@ export default function ProfileSettingsPage() {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                    className="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   >
                     {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>

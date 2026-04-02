@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Building2, Upload, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
+import { useAuth } from '@/context/AuthContext';
 import { useOrganization } from '@/context/OrganizationContext';
 
 export default function CreateCompanyPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const { refreshOrganizations } = useOrganization();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -67,10 +69,7 @@ export default function CreateCompanyPage() {
     setLoading(true);
 
     try {
-      // Get current user
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-      if (authError || !user) {
+      if (!user?.id) {
         toast.error('You must be logged in to create a company');
         router.push('/login');
         return;

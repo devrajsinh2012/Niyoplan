@@ -42,13 +42,9 @@ export default function AppShell({ children }) {
     return () => window.removeEventListener('niyoplan:show-shortcuts', handleShowShortcuts);
   }, []);
 
-  // Keyboard shortcut: ? to open shortcuts modal
+  // Keyboard shortcut: Esc to close shortcuts modal
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault();
-        setShortcutsModalOpen(true);
-      }
       if (e.key === 'Escape') {
         setShortcutsModalOpen(false);
       }
@@ -101,7 +97,6 @@ export default function AppShell({ children }) {
       { keys: ['Esc'], description: 'Close modal' },
     ]},
     { category: 'General', items: [
-      { keys: ['?'], description: 'Show keyboard shortcuts' },
       { keys: ['/'], description: 'Focus search' },
       { keys: ['Ctrl', 'K'], description: 'Quick search' },
     ]},

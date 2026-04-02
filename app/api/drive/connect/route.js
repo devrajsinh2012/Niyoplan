@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { clerkClient } from '@clerk/nextjs/server';
 import { getAuthUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import { createDriveFolder, upsertOrgDriveConnection } from '@/lib/drive';
@@ -20,24 +19,6 @@ function resolveTokenShape(tokenRecord) {
     refreshToken,
     tokenExpiry: expiryDate ? new Date(expiryDate).toISOString() : null,
   };
-}
-
-async function getClerkGoogleTokens(clerkUserId) {
-  const client = await clerkClient();
-  const result = await client.users.getUserOauthAccessToken(clerkUserId, 'oauth_google');
-
-  const records = Array.isArray(result)
-    ? result
-    : Array.isArray(result?.data)
-      ? result.data
-      : [];
-
-  for (const record of records) {
-    const parsed = resolveTokenShape(record);
-    if (parsed) return parsed;
-  }
-
-  return null;
 }
 
 export async function POST(request) {
@@ -74,15 +55,10 @@ export async function POST(request) {
       tokenExpiry: body?.tokenExpiry,
     });
 
-    if (!tokenBundle && user.clerk_user_id) {
-      tokenBundle = await getClerkGoogleTokens(user.clerk_user_id);
-    }
-
     if (!tokenBundle) {
       return NextResponse.json(
         {
-          error:
-            'Google OAuth tokens were not available. Re-authenticate with Google in Clerk and ensure refresh tokens are enabled.',
+          error: 'Google OAuth tokens are required to connect Drive at this time.',
         },
         { status: 400 }
       );

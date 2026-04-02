@@ -46,6 +46,8 @@ const normalizeOrgMember = (member) => ({
   role: member.role,
   org_role: member.role,
   status: member.status,
+  is_pending_invite: Boolean(member.is_pending_invite),
+  invited_at: member.invited_at,
   joined_at: member.joined_at,
   created_at: member.joined_at,
 });
@@ -182,6 +184,23 @@ export default function AdminSettingsPage() {
     };
   }, [showRoleDropdown]);
 
+  useEffect(() => {
+    if (activeTab !== 'invites') {
+      return;
+    }
+
+    const hasPendingItems = pendingApprovals.length > 0 || members.some((member) => member.is_pending_invite);
+    if (!hasPendingItems) {
+      return;
+    }
+
+    const intervalId = setInterval(() => {
+      loadMembers();
+    }, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [activeTab, pendingApprovals, members, loadMembers]);
+
   if (authLoading || orgLoading) {
     return <NiyoplanLoader />;
   }
@@ -205,6 +224,7 @@ export default function AdminSettingsPage() {
     (u.full_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
     (u.email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
   );
+  const pendingSentInvites = members.filter((member) => member.is_pending_invite);
 
   const handleRoleUpdate = async (user, newRole) => {
     try {
@@ -336,10 +356,6 @@ export default function AdminSettingsPage() {
 
   const handleSendInvites = async (e) => {
     e.preventDefault();
-    if (!canSendGlobalInvites) {
-      toast.error('Use the company settings page to invite teammates for this organization');
-      return;
-    }
 
     if (!inviteEmails.trim()) {
       toast.error('Please enter at least one email');
@@ -359,7 +375,11 @@ export default function AdminSettingsPage() {
         return;
       }
 
-      const res = await apiFetch('/api/admin/users', {
+      const endpoint = activeOrganization?.id
+        ? `/api/organizations/${activeOrganization.id}/members`
+        : '/api/admin/users';
+
+      const res = await apiFetch(endpoint, {
         method: 'POST',
         body: JSON.stringify({ emails, role: inviteRole })
       });
@@ -371,6 +391,7 @@ export default function AdminSettingsPage() {
       toast.success(data?.message || `Invitations sent to ${emails.length} members`);
       setInviteEmails('');
       setShowInviteModal(false);
+      await loadMembers();
     } catch (err) {
       console.error(err);
       toast.error(err.message || 'Failed to send invitations');
@@ -379,7 +400,7 @@ export default function AdminSettingsPage() {
     }
   };
 
-  const canSendGlobalInvites = !activeOrganization?.id || profile?.role === 'admin';
+  const canSendInvites = Boolean(activeOrganization?.id) || profile?.role === 'admin';
 
   const handlePermissionToggle = (roleKey, permissionKey) => {
     setRolePermissions((current) => ({
@@ -457,7 +478,7 @@ export default function AdminSettingsPage() {
                   : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
-              Pending Requests {pendingApprovals.length > 0 && <span className="inline-flex items-center justify-center w-5 h-5 text-xs bg-orange-100 text-orange-700 rounded-full">{pendingApprovals.length}</span>}
+              Invites {(pendingApprovals.length + pendingSentInvites.length) > 0 && <span className="inline-flex items-center justify-center w-5 h-5 text-xs bg-orange-100 text-orange-700 rounded-full">{pendingApprovals.length + pendingSentInvites.length}</span>}
             </button>
             <button
               onClick={() => setActiveTab('permissions')}
@@ -488,7 +509,7 @@ export default function AdminSettingsPage() {
                   className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--border-subtle)] bg-white text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#0052CC] focus:border-transparent transition-all"
                 />
               </div>
-              {canSendGlobalInvites && (
+              {canSendInvites && (
                 <button
                   onClick={() => setShowInviteModal(true)}
                   className="flex items-center gap-2 rounded-lg bg-[#0052CC] px-4 py-2 text-sm font-semibold text-white hover:bg-[#003D99] transition-colors whitespace-nowrap"
@@ -609,15 +630,35 @@ export default function AdminSettingsPage() {
         {/* Invites Tab */}
         {activeTab === 'invites' && (
           <div>
-            {pendingApprovals.length === 0 ? (
+            {pendingApprovals.length === 0 && pendingSentInvites.length === 0 ? (
               <div className="rounded-lg border border-[var(--border-subtle)] bg-white p-12 text-center">
                 <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-4 opacity-50" />
-                <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">No Pending Requests</h3>
-                <p className="text-[var(--text-muted)]">All join requests have been processed</p>
+                <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">No Pending Invites</h3>
+                <p className="text-[var(--text-muted)]">You have no pending company requests or sent invites.</p>
               </div>
             ) : (
               <div className="space-y-4">
-                {pendingApprovals.map((approval) => (
+                {pendingSentInvites.length > 0 && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                    <h3 className="text-sm font-semibold text-amber-900">Pending Invites You Sent</h3>
+                    <p className="mt-1 text-xs text-amber-700">These entries are removed automatically after the invited user accepts.</p>
+                    <div className="mt-3 space-y-2">
+                      {pendingSentInvites.map((invite) => (
+                        <div key={`sent-${invite.org_member_id || invite.id}`} className="rounded-md border border-amber-200 bg-white px-3 py-2 flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-[var(--text-primary)]">{invite.email}</p>
+                            <p className="text-xs text-[var(--text-muted)]">Role: {invite.role}</p>
+                          </div>
+                          <p className="text-xs text-[var(--text-muted)]">
+                            Sent {invite.invited_at ? new Date(invite.invited_at).toLocaleDateString() : 'recently'}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {pendingApprovals.length > 0 && pendingApprovals.map((approval) => (
                   <div key={approval.id} className="rounded-lg border border-[var(--border-subtle)] bg-white p-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <Clock className="text-amber-500" size={20} />
@@ -757,7 +798,7 @@ export default function AdminSettingsPage() {
       )}
 
       {/* Invite Modal */}
-      {showInviteModal && canSendGlobalInvites && (
+      {showInviteModal && canSendInvites && (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-lg rounded-lg bg-white shadow-xl p-6 animate-fade-in">
             <div className="flex items-center gap-3 mb-4">

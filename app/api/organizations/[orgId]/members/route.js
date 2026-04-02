@@ -34,6 +34,7 @@ export async function GET(request, { params }) {
         role,
         status,
         joined_at,
+        invited_by,
         user_id,
         profiles:user_id (
           id,
@@ -54,9 +55,19 @@ export async function GET(request, { params }) {
     const membersWithEmail = await Promise.all(
       members.map(async (member) => {
         const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(member.user_id);
+        const emailConfirmedAt = authUser?.user?.email_confirmed_at;
+        const isPendingInvite = Boolean(
+          member.status === 'active' &&
+          member.invited_by &&
+          member.invited_by === user.id &&
+          !emailConfirmedAt
+        );
+
         return {
           ...member,
-          email: authUser?.user?.email || 'Unknown'
+          email: authUser?.user?.email || 'Unknown',
+          is_pending_invite: isPendingInvite,
+          invited_at: member.joined_at,
         };
       })
     );
@@ -334,6 +345,7 @@ export async function POST(request, { params }) {
             role,
             status: 'active',
             joined_at: new Date().toISOString(),
+            invited_by: user.id,
           })
           .eq('id', existingMember.id);
 
@@ -353,6 +365,7 @@ export async function POST(request, { params }) {
           role,
           status: 'active',
           joined_at: new Date().toISOString(),
+          invited_by: user.id,
         });
 
       if (insertError) {

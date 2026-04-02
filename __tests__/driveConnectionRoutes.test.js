@@ -50,18 +50,10 @@ vi.mock('@/lib/supabaseServer', () => ({
   },
 }));
 
-vi.mock('@clerk/nextjs/server', () => ({
-  clerkClient: vi.fn(async () => ({
-    users: {
-      getUserOauthAccessToken: vi.fn().mockResolvedValue([]),
-    },
-  })),
-}));
-
 describe('Drive connection routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getAuthUserMock.mockResolvedValue({ user: { id: 'user-1', clerk_user_id: 'clerk-1' }, error: null });
+    getAuthUserMock.mockResolvedValue({ user: { id: 'user-1' }, error: null });
     memberMaybeSingleMock.mockResolvedValue({ data: { role: 'admin', status: 'active' }, error: null });
     driveMaybeSingleMock.mockResolvedValue({
       data: { root_folder_id: 'root-1', connected_at: '2026-04-02T00:00:00.000Z' },

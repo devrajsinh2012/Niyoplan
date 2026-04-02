@@ -346,7 +346,7 @@ export default function TopNav({ theme, onToggleTheme, currentProject }) {
                 <button
                   onClick={() => {
                     setOrgMenuOpen(false);
-                    router.push('/onboarding');
+                    router.push('/onboarding/create');
                   }}
                   className="w-full inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-panel-hover)]"
                 >

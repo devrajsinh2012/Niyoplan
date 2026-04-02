@@ -22,7 +22,6 @@ import { CompanySettingsPageSkeleton } from '@/components/ui/PageSkeleton';
 import { useOrganization } from '@/context/OrganizationContext';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch } from '@/lib/apiClient';
-import { useClerk } from '@clerk/nextjs';
 
 const ROLE_OPTIONS = [
   { value: 'admin', label: 'Admin', description: 'Full system access' },
@@ -34,7 +33,6 @@ const ROLE_OPTIONS = [
 
 export default function CompanySettingsPage() {
   const router = useRouter();
-  const { openUserProfile } = useClerk();
   const { user: currentUser } = useAuth();
   const { activeOrganization, refreshOrganizations } = useOrganization();
   const [activeTab, setActiveTab] = useState('general');
@@ -260,12 +258,11 @@ export default function CompanySettingsPage() {
       return;
     }
 
+    toast.error('Google Drive connect is temporarily unavailable while OAuth integration is being updated.');
+    return;
+
     setDriveBusy(true);
     try {
-      if (typeof openUserProfile === 'function') {
-        openUserProfile();
-      }
-
       const response = await apiFetch('/api/drive/connect', {
         method: 'POST',
         body: JSON.stringify({

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { X, Save, AlertCircle } from 'lucide-react';
@@ -18,6 +18,7 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [users, setUsers] = useState([]);
   const [sprints, setSprints] = useState([]);
+  const descriptionInputRef = useRef(null);
   const { profile } = useAuth();
 
   const [formData, setFormData] = useState({
@@ -67,6 +68,68 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const applyDescriptionFormat = (format) => {
+    const textarea = descriptionInputRef.current;
+    if (!textarea) return;
+
+    const value = formData.description || '';
+    const start = textarea.selectionStart ?? value.length;
+    const end = textarea.selectionEnd ?? value.length;
+    const selectedText = value.slice(start, end);
+
+    let insertion = '';
+    let selectionStart = start;
+    let selectionEnd = end;
+
+    if (format === 'bold') {
+      if (selectedText) {
+        insertion = `**${selectedText}**`;
+        selectionEnd = start + insertion.length;
+      } else {
+        insertion = '**bold text**';
+        selectionStart = start + 2;
+        selectionEnd = start + 11;
+      }
+    }
+
+    if (format === 'italic') {
+      if (selectedText) {
+        insertion = `*${selectedText}*`;
+        selectionEnd = start + insertion.length;
+      } else {
+        insertion = '*italic text*';
+        selectionStart = start + 1;
+        selectionEnd = start + 12;
+      }
+    }
+
+    if (format === 'bullet') {
+      if (selectedText) {
+        insertion = selectedText
+          .split('\n')
+          .map((line) => {
+            const trimmed = line.trim();
+            if (!trimmed) return '- ';
+            return trimmed.startsWith('- ') ? trimmed : `- ${trimmed}`;
+          })
+          .join('\n');
+        selectionEnd = start + insertion.length;
+      } else {
+        insertion = '- ';
+        selectionStart = start + 2;
+        selectionEnd = start + 2;
+      }
+    }
+
+    const nextDescription = `${value.slice(0, start)}${insertion}${value.slice(end)}`;
+    setFormData((prev) => ({ ...prev, description: nextDescription }));
+
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(selectionStart, selectionEnd);
+    });
   };
 
   const getOrCreateLists = async () => {
@@ -181,7 +244,7 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
           <form id="create-ticket-form" onSubmit={handleSubmit} className="space-y-6 flex flex-col">
 
             <div>
-              <label className="text-gray-700 mb-2 block text-sm font-medium">Summary / Title *</label>
+              <label className="text-gray-700 mb-2 block text-sm font-medium">Title *</label>
               <input
                 name="title"
                 required
@@ -195,7 +258,32 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
 
             <div>
               <label className="text-gray-700 mb-2 block text-sm font-medium">Description</label>
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-100"
+                  onClick={() => applyDescriptionFormat('bold')}
+                >
+                  Bold
+                </button>
+                <button
+                  type="button"
+                  className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-semibold italic text-gray-700 transition-colors hover:bg-gray-100"
+                  onClick={() => applyDescriptionFormat('italic')}
+                >
+                  Italic
+                </button>
+                <button
+                  type="button"
+                  className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-100"
+                  onClick={() => applyDescriptionFormat('bullet')}
+                >
+                  Bullet List
+                </button>
+                <span className="text-xs text-gray-500">Uses markdown: **bold**, *italic*, - list</span>
+              </div>
               <textarea
+                ref={descriptionInputRef}
                 name="description"
                 className="min-h-[150px] resize-y w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                 placeholder="Add details, acceptance criteria, context..."

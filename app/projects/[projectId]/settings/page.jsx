@@ -211,6 +211,23 @@ export default function ProjectSettingsPage() {
     }
   }, [activeTab, closeRoleDropdown, showRoleDropdown]);
 
+  useEffect(() => {
+    if (activeTab !== 'members') {
+      return;
+    }
+
+    const hasPendingInvites = members.some((member) => member.is_pending_invite);
+    if (!hasPendingInvites) {
+      return;
+    }
+
+    const intervalId = setInterval(() => {
+      fetchMembers();
+    }, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [activeTab, members, fetchMembers]);
+
   const handleSaveGeneral = async () => {
     if (!name.trim()) {
       toast.error('Project name is required');
@@ -375,6 +392,7 @@ export default function ProjectSettingsPage() {
 
   const canManageSettings = permissions.canManageSettings;
   const canDeleteProject = permissions.canDeleteProject;
+  const pendingInvites = members.filter((member) => member.is_pending_invite);
 
   return (
     <div className="min-h-screen bg-[var(--bg-app)]">
@@ -549,6 +567,28 @@ export default function ProjectSettingsPage() {
               {membersLoadError && (
                 <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-4 text-sm text-red-600">
                   Failed to load members. Click the refresh button to try again.
+                </div>
+              )}
+
+              {pendingInvites.length > 0 && (
+                <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                  <h3 className="text-sm font-semibold text-amber-900">Pending Invites You Sent</h3>
+                  <p className="mt-1 text-xs text-amber-700">
+                    These users have not accepted the invite yet. They will disappear from this list automatically after they accept.
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    {pendingInvites.map((invite) => (
+                      <div key={`pending-${invite.id}`} className="flex items-center justify-between rounded-md border border-amber-200 bg-white px-3 py-2">
+                        <div>
+                          <p className="text-sm font-medium text-[var(--text-primary)]">{invite.invite_email || invite.profile?.email || 'Unknown email'}</p>
+                          <p className="text-xs text-[var(--text-muted)]">Role: {invite.role}</p>
+                        </div>
+                        <p className="text-xs text-[var(--text-muted)]">
+                          Sent {invite.invited_at ? new Date(invite.invited_at).toLocaleDateString() : 'recently'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 

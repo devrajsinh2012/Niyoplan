@@ -17,7 +17,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { signIn, user, loading } = useAuth();
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+  const { signIn, signInWithGoogle, user, loading, signInInitializing } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -41,6 +42,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     setIsSubmitting(true);
 
     try {
@@ -59,6 +61,18 @@ export default function LoginPage() {
       toast.error(error?.message || 'Failed to sign in');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleSubmitting(true);
+
+    try {
+      const { error } = await signInWithGoogle({ rememberMe, redirectPath: '/login' });
+      if (error) throw error;
+    } catch (error) {
+      toast.error(error?.message || 'Failed to sign in with Google');
+      setIsGoogleSubmitting(false);
     }
   };
 
@@ -126,6 +140,19 @@ export default function LoginPage() {
         </div>
 
         <div className="card" style={{ padding: 32 }}>
+          {signInInitializing && (
+            <p
+              style={{
+                margin: '0 0 14px',
+                fontSize: 12,
+                color: 'var(--text-muted)',
+                textAlign: 'center',
+              }}
+            >
+              Preparing sign-in...
+            </p>
+          )}
+
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             <div>
               <label
@@ -235,6 +262,43 @@ export default function LoginPage() {
             </label>
 
             <button
+              type="button"
+              disabled={isGoogleSubmitting || isSubmitting}
+              onClick={handleGoogleSignIn}
+              style={{
+                width: '100%',
+                padding: '12px',
+                fontSize: 14,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: 10,
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-strong)',
+                background: 'var(--bg-panel)',
+                color: 'var(--text-primary)',
+                fontWeight: 600,
+                cursor: isGoogleSubmitting || isSubmitting ? 'not-allowed' : 'pointer',
+                opacity: isGoogleSubmitting || isSubmitting ? 0.7 : 1,
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="#EA4335" d="M12 10.2v3.9h5.4c-.2 1.2-1.4 3.6-5.4 3.6-3.2 0-5.9-2.7-5.9-6s2.7-6 5.9-6c1.8 0 3 .8 3.7 1.5l2.5-2.4C16.7 3.4 14.5 2.5 12 2.5 6.8 2.5 2.6 6.7 2.6 12s4.2 9.5 9.4 9.5c5.4 0 9-3.8 9-9.1 0-.6-.1-1.1-.2-1.5H12z" />
+                <path fill="#34A853" d="M2.6 7.8l3.2 2.3c.9-2 3-3.4 6.2-3.4 1.8 0 3 .8 3.7 1.5l2.5-2.4C16.7 3.4 14.5 2.5 12 2.5 8.2 2.5 4.9 4.6 2.6 7.8z" opacity="0" />
+                <path fill="#FBBC05" d="M2.6 12c0 1.5.4 2.9 1.2 4.1l3.1-2.4c-.2-.5-.3-1.1-.3-1.7s.1-1.2.3-1.7l-3.1-2.4C3 9.1 2.6 10.5 2.6 12z" />
+                <path fill="#34A853" d="M12 21.5c2.6 0 4.8-.9 6.4-2.4l-3-2.4c-.8.6-1.9 1-3.4 1-3 0-5.4-2-6.3-4.7l-3.1 2.4c2.2 3.6 5.6 6.1 9.4 6.1z" />
+                <path fill="#4285F4" d="M21 12.4c0-.6-.1-1.1-.2-1.6H12v3.3h5c-.2 1.1-.8 2-1.6 2.6l3 2.4c1.8-1.6 2.6-4 2.6-6.7z" />
+              </svg>
+              {isGoogleSubmitting ? 'Redirecting to Google...' : 'Continue with Google'}
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: -6 }}>
+              <span style={{ height: 1, background: 'var(--border-subtle)', flex: 1 }} />
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>OR</span>
+              <span style={{ height: 1, background: 'var(--border-subtle)', flex: 1 }} />
+            </div>
+
+            <button
               type="submit"
               disabled={isSubmitting}
               className="btn-primary"
@@ -246,6 +310,8 @@ export default function LoginPage() {
                 justifyContent: 'center',
                 gap: 8,
                 marginTop: 8,
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                opacity: isSubmitting ? 0.7 : 1,
               }}
             >
               {isSubmitting ? (

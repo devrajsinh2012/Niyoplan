@@ -90,7 +90,7 @@ export default function Sidebar({ project, expanded, onExpandedChange }) {
       {/* Nav Items */}
       <nav className="flex-1 overflow-y-auto py-3 scrollbar-hide">
         <div className="space-y-1">
-          <SideNavItem href="/" icon={LayoutDashboard} label="Dashboard" expanded={expanded} />
+          <SideNavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" expanded={expanded} />
           <SideNavItem href="/today" icon={Sun} label="Today" expanded={expanded} />
           <SideNavItem href="/tools" icon={Wrench} label="Tools" expanded={expanded} />
           <SideNavItem href="/projects" icon={KanbanSquare} label="Projects" expanded={expanded} />

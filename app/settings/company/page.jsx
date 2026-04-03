@@ -103,7 +103,7 @@ export default function CompanySettingsPage() {
 
       if (!membership || membership.role !== 'admin') {
         toast.error("You don't have permission to access this page");
-        router.push('/');
+        router.push('/dashboard');
         return;
       }
 

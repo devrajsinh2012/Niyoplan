@@ -16,12 +16,15 @@ export default function OnboardingMiddleware({ children }) {
   const [hasOrganization, setHasOrganization] = useState(null);
   const onboardingCacheRef = useRef({ userId: null, status: null });
 
-  const publicPaths = [
+  const publicPathPrefixes = [
     '/login',
     '/signup',
     '/register',
     '/forgot-password',
-    '/reset-password'
+    '/reset-password',
+    '/privacy',
+    '/terms',
+    '/api-documentation'
   ];
 
   const onboardingPaths = [
@@ -30,7 +33,8 @@ export default function OnboardingMiddleware({ children }) {
     '/onboarding/join'
   ];
 
-  const isPublicPath = publicPaths.some((path) => pathname.startsWith(path));
+  const isRootPath = pathname === '/' || pathname === '';
+  const isPublicPath = isRootPath || publicPathPrefixes.some((path) => pathname.startsWith(path));
   const isOnboardingPath = onboardingPaths.some((path) => pathname.startsWith(path));
   const isOnboardingLandingPath = pathname === '/onboarding' || pathname === '/onboarding/';
   const isAllowedPath = isPublicPath || isOnboardingPath;
@@ -46,7 +50,7 @@ export default function OnboardingMiddleware({ children }) {
         setHasOrganization(true);
         setChecking(false);
         if (isOnboardingLandingPath) {
-          router.replace('/');
+          router.replace('/dashboard');
         }
         return;
       }
@@ -70,7 +74,7 @@ export default function OnboardingMiddleware({ children }) {
       setHasOrganization(true);
       setChecking(false);
       if (isOnboardingLandingPath) {
-        router.replace('/');
+        router.replace('/dashboard');
       }
       return;
     }
@@ -81,7 +85,7 @@ export default function OnboardingMiddleware({ children }) {
       setChecking(false);
 
       if (cached.status === true && isOnboardingLandingPath) {
-        router.replace('/');
+        router.replace('/dashboard');
       }
 
       if (cached.status === false && !isAllowedPath) {
@@ -105,7 +109,7 @@ export default function OnboardingMiddleware({ children }) {
         onboardingCacheRef.current = { userId, status: true };
         setHasOrganization(true);
         if (isOnboardingLandingPath) {
-          router.replace('/');
+          router.replace('/dashboard');
         }
       } else {
         let autoJoined = false;
@@ -132,7 +136,7 @@ export default function OnboardingMiddleware({ children }) {
               autoJoined = true;
 
               if (isOnboardingPath || isPublicPath) {
-                router.replace('/?inviteJoined=1');
+                router.replace('/dashboard?inviteJoined=1');
               }
             }
           }
@@ -169,7 +173,7 @@ export default function OnboardingMiddleware({ children }) {
     }
 
     setChecking(false);
-  }, [activeOrganization?.id, authLoading, initialLoading, isAllowedPath, isOnboardingLandingPath, isPublicPath, refreshOrganizations, router, user]);
+  }, [activeOrganization?.id, authLoading, initialLoading, isAllowedPath, isOnboardingLandingPath, isOnboardingPath, isPublicPath, refreshOrganizations, router, user]);
 
   useEffect(() => {
     checkOnboardingStatus();

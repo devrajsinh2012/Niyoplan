@@ -36,7 +36,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace('/');
+      router.replace('/dashboard');
     }
   }, [loading, router, user]);
 
@@ -56,7 +56,7 @@ export default function LoginPage() {
       }
 
       toast.success('Welcome back!');
-      router.replace('/');
+      router.replace('/dashboard');
     } catch (error) {
       toast.error(error?.message || 'Failed to sign in');
     } finally {

@@ -288,7 +288,7 @@ export default function TopNav({ theme, onToggleTheme, currentProject }) {
     >
       {/* Logo */}
       <Link
-        href="/"
+        href="/dashboard"
         className="mr-2 inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-md p-1 transition-transform hover:scale-105"
         title="NiyoPlan Home"
       >
@@ -326,7 +326,7 @@ export default function TopNav({ theme, onToggleTheme, currentProject }) {
                       onClick={() => {
                         switchOrganization(org.id);
                         setOrgMenuOpen(false);
-                        router.push('/');
+                        router.push('/dashboard');
                       }}
                       className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-[var(--bg-panel-hover)] ${activeOrganization?.id === org.id ? 'bg-[var(--accent-subtle)]' : ''}`}
                     >
@@ -362,7 +362,7 @@ export default function TopNav({ theme, onToggleTheme, currentProject }) {
           <>
             <ChevronRight size={14} className="text-[var(--text-muted)] shrink-0" />
             <Link
-              href="/"
+              href="/dashboard"
               className="px-3 py-1.5 rounded-md text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)] transition-colors flex items-center gap-2"
             >
               <LayoutDashboard size={14} />

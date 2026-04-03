@@ -69,10 +69,19 @@ export default function AppShell({ children }) {
     return <AppShellSkeleton />;
   }
 
-  // Auth and onboarding flows should render without app chrome.
+  const isAuthPath = ['/login', '/register', '/forgot-password', '/reset-password', '/signup']
+    .includes(pathname);
+  const isOnboardingPath = pathname.startsWith('/onboarding');
+  const isMarketingPath = pathname === '/'
+    || pathname.startsWith('/privacy')
+    || pathname.startsWith('/terms')
+    || pathname.startsWith('/api-documentation');
+
+  // Auth, onboarding, and public marketing pages should render without app chrome.
   if (
-    ['/login', '/register', '/forgot-password', '/reset-password'].includes(pathname) ||
-    pathname.startsWith('/onboarding')
+    isAuthPath ||
+    isOnboardingPath ||
+    isMarketingPath
   ) {
     return <>{children}</>;
   }

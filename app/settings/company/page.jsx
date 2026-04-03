@@ -252,38 +252,15 @@ export default function CompanySettingsPage() {
     }
   };
 
-  const handleConnectDrive = async () => {
-    if (!activeOrganization?.id || !organization?.name) {
+  const handleConnectDrive = () => {
+    if (!activeOrganization?.id) {
       toast.error('Organization context is missing.');
       return;
     }
 
-    toast.error('Google Drive connect is temporarily unavailable while OAuth integration is being updated.');
-    return;
-
-    setDriveBusy(true);
-    try {
-      const response = await apiFetch('/api/drive/connect', {
-        method: 'POST',
-        body: JSON.stringify({
-          orgId: activeOrganization.id,
-          orgName: organization.name,
-        }),
-      });
-
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(payload?.error || 'Failed to connect Google Drive.');
-      }
-
-      await loadDriveStatus(activeOrganization.id);
-      toast.success('Google Drive connected successfully.');
-    } catch (error) {
-      console.error('Connect drive failed:', error);
-      toast.error(error.message || 'Failed to connect Google Drive.');
-    } finally {
-      setDriveBusy(false);
-    }
+    const orgId = activeOrganization.id;
+    const returnTo = window.location.href;
+    window.location.href = `https://wwptdwoenasjdzflksjk.supabase.co/functions/v1/google-drive-auth?org_id=${encodeURIComponent(orgId)}&return_to=${encodeURIComponent(returnTo)}`;
   };
 
   const handleDisconnectDrive = async () => {

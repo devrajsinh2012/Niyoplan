@@ -27,24 +27,43 @@ async function ensureCreatorMembership(project) {
 async function attachMemberEmails(members, currentUserId) {
   return Promise.all(
     (members || []).map(async (member) => {
-      const { data } = await supabaseAdmin.auth.admin.getUserById(member.user_id);
-      const authUser = data?.user;
-      const isPendingInvite = Boolean(
-        member.invited_by &&
-        member.invited_by === currentUserId &&
-        !authUser?.email_confirmed_at
-      );
+      try {
+        const { data } = await supabaseAdmin.auth.admin.getUserById(member.user_id);
+        const authUser = data?.user;
+        const isPendingInvite = Boolean(
+          member.invited_by &&
+          member.invited_by === currentUserId &&
+          !authUser?.email_confirmed_at
+        );
 
-      return {
-        ...member,
-        is_pending_invite: isPendingInvite,
-        invite_email: authUser?.email || '',
-        invited_at: member.created_at,
-        profile: {
-          ...(member.profile || {}),
-          email: authUser?.email || '',
-        },
-      };
+        return {
+          ...member,
+          is_pending_invite: isPendingInvite,
+          invite_email: authUser?.email || '',
+          invited_at: member.created_at,
+          profile: {
+            ...(member.profile || {}),
+            email: authUser?.email || '',
+          },
+        };
+      } catch (authLookupError) {
+        console.warn('Failed to enrich project member with auth email:', {
+          memberId: member?.id,
+          userId: member?.user_id,
+          error: authLookupError?.message || authLookupError,
+        });
+
+        return {
+          ...member,
+          is_pending_invite: false,
+          invite_email: '',
+          invited_at: member.created_at,
+          profile: {
+            ...(member.profile || {}),
+            email: member?.profile?.email || '',
+          },
+        };
+      }
     })
   );
 }
@@ -109,6 +128,7 @@ async function ensureOrganizationMembershipForInvite({
 export async function GET(request, { params }) {
   const { projectId } = await params;
   const { user, error } = await getAuthUser(request);
+  const includeEmail = request.nextUrl.searchParams.get('includeEmail') === 'true';
 
   if (error || !user) {
     return NextResponse.json({ error: error || 'Unauthorized' }, { status: 401 });
@@ -130,7 +150,7 @@ export async function GET(request, { params }) {
         created_at,
         invited_by,
         user_id,
-        profile:profiles (
+        profile:profiles!project_members_user_id_fkey (
           id,
           full_name,
           avatar_url
@@ -141,6 +161,10 @@ export async function GET(request, { params }) {
 
     if (membersError) {
       throw membersError;
+    }
+
+    if (!includeEmail) {
+      return NextResponse.json(members || []);
     }
 
     const membersWithEmail = await attachMemberEmails(members || [], user.id);

@@ -63,7 +63,7 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[var(--bg-app)] text-[var(--text-primary)]">
+    <div className="relative min-h-screen overflow-hidden bg-[var(--bg-app)] text-[var(--text-primary)] lg:flex lg:h-dvh lg:flex-col">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -left-24 -top-20 h-72 w-72 rounded-full bg-[var(--shell-ambient-1)] blur-3xl" />
         <div className="absolute right-0 top-0 h-96 w-96 rounded-full bg-[var(--shell-ambient-2)] blur-3xl" />
@@ -97,8 +97,8 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto w-full max-w-7xl px-6 pb-16 pt-14 md:pt-20">
-        <section className="grid items-center gap-10 lg:grid-cols-2">
+      <main className="relative z-10 mx-auto w-full max-w-7xl px-6 pb-16 pt-14 md:pt-20 lg:flex-1 lg:overflow-hidden lg:pb-8 lg:pt-8">
+        <section className="grid items-center gap-10 lg:h-full lg:grid-cols-2">
           <div>
             <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
               <Rocket size={14} />

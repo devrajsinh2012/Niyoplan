@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
-import { X, Save, AlertCircle } from 'lucide-react';
+import { Save } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Portal from '@/components/modals/Portal';
 
 const DEFAULT_LISTS = [
   { name: 'Backlog', rank: 1000 },
@@ -227,29 +228,35 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
   };
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-3xl rounded-xl border border-gray-200 shadow-2xl flex flex-col max-h-[95vh] bg-white">
+    <Portal>
+      <div className="fixed inset-0 z-[10000] bg-[#091E42]/60 backdrop-blur-[4px] flex justify-center items-center p-4">
+        <div
+          className="relative w-full max-w-4xl bg-[var(--bg-surface)] rounded-[12px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex flex-col max-h-[90vh] overflow-hidden transition-all ring-1 ring-black/5"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <form id="create-ticket-form" onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0">
 
-        <div className="p-6 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white rounded-t-xl">
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <AlertCircle className="text-blue-600" size={24} />
-            Create Issue
-          </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-900 transition-colors">
-            <X size={24} />
-          </button>
-        </div>
+            <div className="flex-shrink-0 flex items-center justify-between border-b border-[var(--border-subtle)]/50 bg-[var(--bg-surface)] px-6 py-5">
+              <h2 className="text-xl font-bold text-[var(--text-heading)] tracking-tight">Create Issue</h2>
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-full p-2 text-[var(--text-muted)] hover:bg-[var(--bg-panel-hover)] hover:text-[#0052CC] transition-all hover:rotate-90"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
 
-        <div className="p-6 overflow-y-auto flex-1">
-          <form id="create-ticket-form" onSubmit={handleSubmit} className="space-y-6 flex flex-col">
+            <div className="flex-1 overflow-y-auto px-8 py-6 space-y-8 custom-scrollbar min-h-0 text-left">
 
             <div>
-              <label className="text-gray-700 mb-2 block text-sm font-medium">Title *</label>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Title *</label>
               <input
                 name="title"
                 required
                 type="text"
-                className="text-lg w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                className="w-full rounded-[3px] border-2 border-[var(--border-subtle)] bg-[var(--bg-input)] px-4 py-2.5 text-sm font-medium text-[var(--text-primary)] transition-all focus:border-[#0052CC] focus:bg-[var(--bg-surface)] focus:outline-none"
                 placeholder="What needs to be done?"
                 value={formData.title}
                 onChange={handleChange}
@@ -257,35 +264,35 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
             </div>
 
             <div>
-              <label className="text-gray-700 mb-2 block text-sm font-medium">Description</label>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Description</label>
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-100"
+                  className="rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-panel-hover)]"
                   onClick={() => applyDescriptionFormat('bold')}
                 >
                   Bold
                 </button>
                 <button
                   type="button"
-                  className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-semibold italic text-gray-700 transition-colors hover:bg-gray-100"
+                  className="rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-2.5 py-1 text-xs font-semibold italic text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-panel-hover)]"
                   onClick={() => applyDescriptionFormat('italic')}
                 >
                   Italic
                 </button>
                 <button
                   type="button"
-                  className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-100"
+                  className="rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-panel-hover)]"
                   onClick={() => applyDescriptionFormat('bullet')}
                 >
                   Bullet List
                 </button>
-                <span className="text-xs text-gray-500">Uses markdown: **bold**, *italic*, - list</span>
+                <span className="text-xs text-[var(--text-muted)]">Uses markdown: **bold**, *italic*, - list</span>
               </div>
               <textarea
                 ref={descriptionInputRef}
                 name="description"
-                className="min-h-[150px] resize-y w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                className="min-h-[150px] resize-y w-full rounded-[3px] border-2 border-[var(--border-subtle)] bg-[var(--bg-input)] px-4 py-2.5 text-sm font-medium text-[var(--text-primary)] transition-all focus:border-[#0052CC] focus:bg-[var(--bg-surface)] focus:outline-none"
                 placeholder="Add details, acceptance criteria, context..."
                 value={formData.description}
                 onChange={handleChange}
@@ -294,10 +301,10 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
-                <label className="text-gray-700 mb-2 block text-sm font-medium">Issue Type</label>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Issue Type</label>
                 <select
                   name="issue_type"
-                  className="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                  className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
                   value={formData.issue_type}
                   onChange={handleChange}
                 >
@@ -309,10 +316,10 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
               </div>
 
               <div>
-                <label className="text-gray-700 mb-2 block text-sm font-medium">Status</label>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Status</label>
                 <select
                   name="status"
-                  className="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                  className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
                   value={formData.status}
                   onChange={handleChange}
                 >
@@ -325,10 +332,10 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
               </div>
 
               <div>
-                <label className="text-gray-700 mb-2 block text-sm font-medium">Priority</label>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Priority</label>
                 <select
                   name="priority"
-                  className="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                  className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
                   value={formData.priority}
                   onChange={handleChange}
                 >
@@ -340,13 +347,13 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
               </div>
 
               <div>
-                <label className="text-gray-700 mb-2 block text-sm font-medium">Story Points</label>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Story Points</label>
                 <input
                   name="story_points"
                   type="number"
                   min="0"
                   max="100"
-                  className="font-mono w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                  className="font-mono w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
                   placeholder="e.g. 5"
                   value={formData.story_points}
                   onChange={handleChange}
@@ -354,10 +361,10 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
               </div>
 
               <div>
-                <label className="text-gray-700 mb-2 block text-sm font-medium">Assignee</label>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Assignee</label>
                 <select
                   name="assignee_id"
-                  className="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                  className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
                   value={formData.assignee_id}
                   onChange={handleChange}
                 >
@@ -373,10 +380,10 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
               </div>
 
               <div>
-                <label className="text-gray-700 mb-2 block text-sm font-medium">Sprint</label>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Sprint</label>
                 <select
                   name="sprint_id"
-                  className="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                  className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
                   value={formData.sprint_id}
                   onChange={handleChange}
                 >
@@ -396,50 +403,50 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="text-gray-700 mb-2 block text-sm font-medium">Start Date</label>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Start Date</label>
                 <input
                   name="start_date"
                   type="date"
-                  className="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                  className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
                   value={formData.start_date}
                   onChange={handleChange}
                 />
               </div>
 
               <div>
-                <label className="text-gray-700 mb-2 block text-sm font-medium">Due Date</label>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Due Date</label>
                 <input
                   name="due_date"
                   type="date"
-                  className="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                  className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
                   value={formData.due_date}
                   onChange={handleChange}
                 />
               </div>
             </div>
+            </div>
+
+            <div className="flex-shrink-0 flex items-center justify-end gap-3 border-t border-[var(--border-subtle)]/50 bg-[var(--bg-surface)] px-6 py-5">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-[3px] px-5 py-2 text-sm font-bold text-[var(--text-secondary)] transition-all hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)] active:scale-95"
+              >
+                Cancel
+              </button>
+              <button
+                form="create-ticket-form"
+                type="submit"
+                disabled={isSubmitting}
+                className="rounded-[3px] bg-[#0052CC] px-7 py-2 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#00388D] disabled:opacity-50 active:scale-95 flex items-center gap-2"
+              >
+                {isSubmitting ? <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-white" /> : <><Save size={16} />Create Issue</>}
+              </button>
+            </div>
 
           </form>
         </div>
-
-        <div className="p-6 border-t border-gray-200 flex justify-end gap-3 bg-gray-50 rounded-b-xl sticky bottom-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg px-6 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all font-semibold"
-          >
-            Cancel
-          </button>
-          <button
-            form="create-ticket-form"
-            type="submit"
-            disabled={isSubmitting}
-            className="rounded-lg bg-blue-600 px-8 py-2 text-white hover:bg-blue-700 disabled:opacity-50 transition-all shadow-lg shadow-blue-500/20 active:scale-95 flex items-center gap-2 font-semibold"
-          >
-            {isSubmitting ? <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-white"></div> : <><Save size={18}/> Create</>}
-          </button>
-        </div>
-
       </div>
-    </div>
+    </Portal>
   );
 }

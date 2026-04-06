@@ -1497,6 +1497,7 @@ const GanttChart = ({ projectId, refreshNonce = 0 }) => {
       {activeCard && (
         <CardDetail
           card={activeCard}
+          viewMode="gantt"
           onClose={() => setActiveCardId(null)}
           onSave={handleSaveFromDetail}
           onDelete={handleDeleteFromDetail}

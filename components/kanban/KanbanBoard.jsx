@@ -424,25 +424,38 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
   const handleDragEnd = async (event) => {
     const { active, over } = event;
     const dragSource = dragSourceRef.current;
+    const resetDragTracking = () => {
+      dragSourceRef.current = { status: null, listId: null };
+      lastDragOverTargetRef.current = null;
+      pendingDragOverRef.current = null;
+    };
+
     setActiveCard(null);
     lastDragOverTargetRef.current = null;
+    const queuedDragOver = pendingDragOverRef.current;
     pendingDragOverRef.current = null;
     if (dragOverAnimationFrameRef.current !== null) {
       cancelAnimationFrame(dragOverAnimationFrameRef.current);
       dragOverAnimationFrameRef.current = null;
     }
-    if (!over) return;
     
     const activeId = String(active.id);
-    const overId = String(over.id);
+    const queuedOverId = (queuedDragOver && String(queuedDragOver.activeId) === activeId)
+      ? String(queuedDragOver.overId)
+      : null;
+    const overId = over ? String(over.id) : queuedOverId || activeId;
+    const overType = over?.data?.current?.type || (queuedDragOver?.isOverAList ? 'List' : queuedDragOver?.isOverACard ? 'Card' : null);
     const overIdIsList = listIdSet.has(overId);
-    
-    if (activeId === overId) return;
 
     const isActiveAList = active.data.current?.type === 'List';
     const isActiveACard = active.data.current?.type === 'Card';
 
     if (isActiveAList) {
+      if (!over || activeId === overId) {
+        resetDragTracking();
+        return;
+      }
+
       // Handle List Reordering
       setLists((prev) => {
         const activeIndex = prev.findIndex((l) => String(l.id) === activeId);
@@ -469,66 +482,86 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
 
         return newLists;
       });
+
+      resetDragTracking();
+      return;
     }
 
     if (isActiveACard) {
-       const card = cards.find((item) => String(item.id) === activeId);
-       if (!card) return;
+      const card = cards.find((item) => String(item.id) === activeId);
+      if (!card) {
+        resetDragTracking();
+        return;
+      }
        
-       // Use the drag-start snapshot so hover updates do not change the transition check.
+      // Use the drag-start snapshot so hover updates do not change the transition check.
       const sourceStatus = dragSource.status || getStatusFromList(dragSource.listId) || activeCard?.status || getStatusFromList(activeCard?.listId);
-       const isDropOnList = over.data.current?.type === 'List' || overIdIsList;
-       const destinationListId = isDropOnList
-         ? (lists.find((item) => String(item.id) === overId)?.id || overId || card.listId)
-         : cards.find((item) => String(item.id) === overId)?.listId || card.listId;
-       const destinationStatus = getStatusFromList(destinationListId);
+      const isDropOnList = overType === 'List' || overIdIsList;
+      const fallbackDestinationListId = card.listId || dragSource.listId;
+      const destinationListId = isDropOnList
+        ? (lists.find((item) => String(item.id) === overId)?.id || overId || fallbackDestinationListId)
+        : (overId !== activeId ? cards.find((item) => String(item.id) === overId)?.listId : null) || fallbackDestinationListId;
+      const destinationStatus = getStatusFromList(destinationListId);
       const sourceStatusNormalized = String(sourceStatus || '').trim().toLowerCase();
       const sourceListStatus = getStatusFromList(dragSource.listId);
+      const sourceListId = String(dragSource.listId || card.listId || '');
+      const destinationListIdKey = String(destinationListId || '');
+      const destinationStatusNormalized = String(destinationStatus || '').trim().toLowerCase();
+
+      // Some drops can end with over === active card even after a cross-list hover.
+      // Persist if the destination list or status changed from the drag source snapshot.
+      if (sourceListId === destinationListIdKey && sourceStatusNormalized === destinationStatusNormalized && activeId === overId) {
+        resetDragTracking();
+        return;
+      }
+
       const movedIntoDoneColumn = destinationStatus === 'done' && (
         (sourceStatusNormalized ? sourceStatusNormalized !== 'done' : sourceListStatus !== 'done')
       );
 
-       const listCards = cards
-         .filter((item) => (String(item.id) === activeId ? destinationListId : item.listId) === destinationListId)
-         .sort((a, b) => (a.rank || 0) - (b.rank || 0));
-       const targetIndex = listCards.findIndex((item) => String(item.id) === activeId);
+      const listCards = cards
+        .filter((item) => String(String(item.id) === activeId ? destinationListId : item.listId) === destinationListIdKey)
+        .sort((a, b) => (a.rank || 0) - (b.rank || 0));
+      const targetIndex = listCards.findIndex((item) => String(item.id) === activeId);
 
-       const prevCard = listCards[targetIndex - 1];
-       const nextCard = listCards[targetIndex + 1];
+      const prevCard = targetIndex > 0 ? listCards[targetIndex - 1] : null;
+      const nextCard = targetIndex >= 0 ? listCards[targetIndex + 1] : null;
 
-       let newRank;
-       if (!prevCard && !nextCard) {
-         newRank = 1000;
-       } else if (!prevCard) {
-         newRank = (nextCard.rank || 1000) / 2;
-       } else if (!nextCard) {
-         newRank = (prevCard.rank || 1000) + 1000;
-       } else {
-         newRank = ((prevCard.rank || 1000) + (nextCard.rank || 1000)) / 2;
-       }
+      let newRank;
+      if (targetIndex < 0) {
+        newRank = card.rank || 1000;
+      } else if (!prevCard && !nextCard) {
+        newRank = 1000;
+      } else if (!prevCard) {
+        newRank = (nextCard.rank || 1000) / 2;
+      } else if (!nextCard) {
+        newRank = (prevCard.rank || 1000) + 1000;
+      } else {
+        newRank = ((prevCard.rank || 1000) + (nextCard.rank || 1000)) / 2;
+      }
 
-       setCards((prev) => prev.map((item) => {
-         if (String(item.id) !== activeId) return item;
-         return {
-           ...item,
-           listId: destinationListId,
-           rank: newRank,
-           status: destinationStatus
-         };
-       }));
+      setCards((prev) => prev.map((item) => {
+        if (String(item.id) !== activeId) return item;
+        return {
+          ...item,
+          listId: destinationListId,
+          rank: newRank,
+          status: destinationStatus
+        };
+      }));
 
-        const { error } = await supabase.from('cards')
-          .update({ list_id: destinationListId, rank: newRank, status: destinationStatus })
-          .eq('id', card.id);
+      const { error } = await supabase.from('cards')
+        .update({ list_id: destinationListId, rank: newRank, status: destinationStatus })
+        .eq('id', card.id);
 
-        if (error) {
-          toast.error('Failed to save card position');
-          await fetchBoardData();
-        } else {
-          if (movedIntoDoneColumn) {
-            triggerDoneCelebration();
-          }
-          await updateScheduleItem(card.id, {
+      if (error) {
+        toast.error('Failed to save card position');
+        await fetchBoardData();
+      } else {
+        if (movedIntoDoneColumn) {
+          triggerDoneCelebration();
+        }
+        await updateScheduleItem(card.id, {
           list_id: destinationListId,
           status: destinationStatus,
           rank: newRank
@@ -541,11 +574,13 @@ export default function KanbanBoard({ projectId, refreshNonce = 0, sharedCards =
             rank: newRank
           });
         }
-       }
+      }
+
+      resetDragTracking();
+      return;
     }
 
-     dragSourceRef.current = { status: null, listId: null };
-    lastDragOverTargetRef.current = null;
+    resetDragTracking();
   };
 
   const handleQuickAddCard = async (title) => {

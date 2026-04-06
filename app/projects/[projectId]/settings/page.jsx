@@ -138,7 +138,7 @@ export default function ProjectSettingsPage() {
 
   const fetchMembers = useCallback(async () => {
     try {
-      const membersData = await requestWithAuth(`/api/projects/${projectId}/members`);
+      const membersData = await requestWithAuth(`/api/projects/${projectId}/members?includeEmail=true`);
       setMembers(membersData || []);
       setMembersLoadError(false);
     } catch (error) {

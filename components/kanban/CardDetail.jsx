@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  X, MoreHorizontal, Paperclip, CheckSquare, Link, ChevronDown,
+  X, MoreHorizontal, Paperclip, CheckSquare,
   AlignLeft, Activity, List, Clock, Send, Loader, Trash2
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -18,6 +18,7 @@ import toast from 'react-hot-toast';
 import CardDescription from './detail/CardDescription';
 import CardActivity from './detail/CardActivity';
 import CardSidebar from './detail/CardSidebar';
+import Portal from '@/components/modals/Portal';
 
 const toDateInput = (value) => {
   if (!value) return '';
@@ -347,11 +348,12 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
   };
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-[#091E42]/60 p-4 md:p-10 backdrop-blur-[2px]" onClick={onClose}>
-      <div className="relative max-h-[90vh] min-h-[500px] w-full max-w-6xl animate-fade-in flex flex-col overflow-hidden rounded-lg bg-[var(--bg-surface)] shadow-2xl ring-1 ring-black/5" onClick={(e) => e.stopPropagation()}>
+    <Portal>
+      <div className="fixed inset-0 z-[10000] bg-[#091E42]/60 backdrop-blur-[4px] flex justify-center items-center p-4 md:p-10" onClick={onClose}>
+      <div className="relative max-h-[90vh] min-h-[500px] w-full max-w-6xl animate-fade-in flex flex-col overflow-hidden rounded-[12px] bg-[var(--bg-surface)] shadow-[0_20px_50px_rgba(0,0,0,0.3)] ring-1 ring-black/5" onClick={(e) => e.stopPropagation()}>
         
         {/* Header - Breadcrumb & Actions */}
-        <header className="flex items-center justify-between border-b border-[var(--border-subtle)] px-6 py-4 bg-[var(--bg-header)] rounded-t-lg">
+        <header className="flex items-center justify-between border-b border-[var(--border-subtle)]/50 px-6 py-4 bg-[var(--bg-surface)] rounded-t-[12px]">
           <div className="flex items-center gap-2 text-[13px] font-medium text-[var(--text-muted)]">
             <span className="hover:text-[var(--accent-primary)] cursor-pointer">Projects</span>
             <span className="opacity-40">/</span>
@@ -379,7 +381,7 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
                 </div>
               )}
             </div>
-            <button className="ml-2 flex items-center justify-center p-2 rounded-[3px] text-[var(--text-secondary)] hover:bg-[var(--bg-panel-hover)] transition-colors" onClick={onClose}><X size={18} /></button>
+            <button className="ml-2 flex items-center justify-center p-2 rounded-full text-[var(--text-secondary)] hover:bg-[var(--bg-panel-hover)] transition-colors" onClick={onClose}><X size={18} /></button>
           </div>
         </header>
         
@@ -407,21 +409,12 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
               </button>
               <button 
                 className="flex items-center gap-2 rounded-[3px] bg-[var(--bg-panel)] px-3 py-1.5 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-panel-hover)]"
-                onClick={() => setActiveTab('subtasks')}
+                onClick={() => {
+                  const subtaskSection = document.getElementById('card-subtasks-section');
+                  subtaskSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }}
               >
                 <CheckSquare size={14} /> Subtasks
-              </button>
-              <button 
-                className="flex items-center gap-2 rounded-[3px] bg-[var(--bg-panel)] px-3 py-1.5 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-panel-hover)]"
-                onClick={() => toast('Link issue coming soon', { icon: '🔗' })}
-              >
-                <Link size={14} /> Link issue
-              </button>
-              <button 
-                className="flex items-center gap-2 rounded-[3px] bg-[var(--bg-panel)] px-3 py-1.5 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-panel-hover)]"
-                onClick={() => toast('More options coming soon')}
-              >
-                <span>More</span> <ChevronDown size={14} />
               </button>
             </div>
 
@@ -446,6 +439,7 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
             />
 
             <CardActivity
+              layout="stacked"
               activeTab={activeTab}
               setActiveTab={setActiveTab}
               comments={comments}
@@ -489,31 +483,32 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
       />
 
       {showEditCardForm && (
-        <div className="fixed inset-0 z-[2100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" onClick={() => setShowEditCardForm(false)}>
-          <div className="w-full max-w-3xl rounded-xl border border-gray-200 bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-gray-200 p-5">
-              <h2 className="text-lg font-bold text-gray-900">Edit Card</h2>
-              <button type="button" onClick={() => setShowEditCardForm(false)} className="rounded p-1 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">
+        <div className="fixed inset-0 z-[10010] bg-[#091E42]/60 backdrop-blur-[4px] flex justify-center items-center p-4" onClick={() => setShowEditCardForm(false)}>
+          <div className="relative w-full max-w-3xl bg-[var(--bg-surface)] rounded-[12px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex flex-col max-h-[90vh] overflow-hidden transition-all ring-1 ring-black/5" onClick={(event) => event.stopPropagation()}>
+            <div className="flex-shrink-0 flex items-center justify-between border-b border-[var(--border-subtle)]/50 bg-[var(--bg-surface)] px-6 py-5">
+              <h2 className="text-xl font-bold text-[var(--text-heading)] tracking-tight">Edit Card</h2>
+              <button type="button" onClick={() => setShowEditCardForm(false)} className="rounded-full p-2 text-[var(--text-muted)] hover:bg-[var(--bg-panel-hover)] hover:text-[#0052CC] transition-all" aria-label="Close">
                 <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleEditCardSubmit} className="space-y-4 p-5">
+            <form onSubmit={handleEditCardSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0">
+              <div className="flex-1 overflow-y-auto px-8 py-6 space-y-4 custom-scrollbar min-h-0 text-left">
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Title</label>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Title</label>
                 <input
                   type="text"
                   required
-                  className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-[3px] border-2 border-[var(--border-subtle)] bg-[var(--bg-input)] px-4 py-2.5 text-sm font-medium text-[var(--text-primary)] transition-all focus:border-[#0052CC] focus:bg-[var(--bg-surface)] focus:outline-none"
                   value={form.title}
                   onChange={(event) => setForm((previous) => ({ ...previous, title: event.target.value }))}
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Description</label>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Description</label>
                 <textarea
-                  className="min-h-[120px] w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  className="min-h-[120px] w-full rounded-[3px] border-2 border-[var(--border-subtle)] bg-[var(--bg-input)] px-4 py-2.5 text-sm font-medium text-[var(--text-primary)] transition-all focus:border-[#0052CC] focus:bg-[var(--bg-surface)] focus:outline-none"
                   value={form.description}
                   onChange={(event) => setForm((previous) => ({ ...previous, description: event.target.value }))}
                 />
@@ -521,9 +516,9 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Issue Type</label>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Issue Type</label>
                   <select
-                    className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
                     value={form.issue_type}
                     onChange={(event) => setForm((previous) => ({ ...previous, issue_type: event.target.value }))}
                   >
@@ -535,9 +530,9 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Status</label>
                   <select
-                    className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
                     value={form.status}
                     onChange={(event) => setForm((previous) => ({ ...previous, status: event.target.value }))}
                   >
@@ -550,9 +545,9 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Priority</label>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Priority</label>
                   <select
-                    className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
                     value={form.priority}
                     onChange={(event) => setForm((previous) => ({ ...previous, priority: event.target.value }))}
                   >
@@ -565,9 +560,9 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Assignee</label>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Assignee</label>
                   <select
-                    className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
                     value={form.assignee_id}
                     onChange={(event) => setForm((previous) => ({ ...previous, assignee_id: event.target.value }))}
                   >
@@ -579,9 +574,9 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Sprint</label>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Sprint</label>
                   <select
-                    className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
                     value={form.sprint_id}
                     onChange={(event) => setForm((previous) => ({ ...previous, sprint_id: event.target.value }))}
                   >
@@ -595,50 +590,51 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Story Points</label>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Story Points</label>
                   <input
                     type="number"
                     min="0"
                     max="100"
-                    className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
                     value={form.story_points}
                     onChange={(event) => setForm((previous) => ({ ...previous, story_points: event.target.value }))}
                   />
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Start Date</label>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Start Date</label>
                   <input
                     type="date"
-                    className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
                     value={form.start_date}
                     onChange={(event) => setForm((previous) => ({ ...previous, start_date: event.target.value }))}
                   />
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Due Date</label>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Due Date</label>
                   <input
                     type="date"
-                    className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
                     value={form.due_date}
                     onChange={(event) => setForm((previous) => ({ ...previous, due_date: event.target.value }))}
                   />
                 </div>
               </div>
+              </div>
 
-              <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-4">
+              <div className="flex-shrink-0 flex items-center justify-end gap-3 border-t border-[var(--border-subtle)]/50 bg-[var(--bg-surface)] px-6 py-5">
                 <button
                   type="button"
                   onClick={() => setShowEditCardForm(false)}
-                  className="rounded-lg px-4 py-2 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                  className="rounded-[3px] px-5 py-2 text-sm font-bold text-[var(--text-secondary)] transition-all hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)] active:scale-95"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-[3px] bg-[#0052CC] px-7 py-2 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#00388D] disabled:cursor-not-allowed disabled:opacity-60 active:scale-95"
                 >
                   {isSaving ? 'Saving...' : 'Save Changes'}
                 </button>
@@ -648,5 +644,6 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
         </div>
       )}
     </div>
+    </Portal>
   );
 }

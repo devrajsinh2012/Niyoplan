@@ -51,21 +51,55 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Failed to fetch members' }, { status: 500 });
     }
 
-    // Fetch email addresses from auth.users for each member
+    // Fetch auth email state and auto-activate invited members once they confirm their account.
     const membersWithEmail = await Promise.all(
       members.map(async (member) => {
-        const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(member.user_id);
-        const emailConfirmedAt = authUser?.user?.email_confirmed_at;
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserById(member.user_id);
+
+        if (authError) {
+          console.error('Failed to fetch auth user for organization member:', authError);
+        }
+
+        const authUser = authData?.user || null;
+        const emailConfirmedAt = authUser?.email_confirmed_at || null;
+        const invitedByAdmin = Boolean(member.invited_by);
+
+        let normalizedStatus = member.status;
+        let normalizedJoinedAt = member.joined_at;
+
+        if (member.status === 'pending' && invitedByAdmin && emailConfirmedAt) {
+          const activatedAt = new Date().toISOString();
+          const { error: activateError } = await supabaseAdmin
+            .from('organization_members')
+            .update({
+              status: 'active',
+              joined_at: activatedAt,
+            })
+            .eq('id', member.id)
+            .eq('organization_id', orgId);
+
+          if (activateError) {
+            console.error('Failed to activate accepted organization invite:', activateError);
+          } else {
+            normalizedStatus = 'active';
+            normalizedJoinedAt = activatedAt;
+          }
+        }
+
         const isPendingInvite = Boolean(
-          member.status === 'active' &&
-          member.invited_by &&
+          invitedByAdmin &&
           member.invited_by === user.id &&
-          !emailConfirmedAt
+          (
+            (normalizedStatus === 'pending' && !emailConfirmedAt) ||
+            (normalizedStatus === 'active' && !emailConfirmedAt)
+          )
         );
 
         return {
           ...member,
-          email: authUser?.user?.email || 'Unknown',
+          status: normalizedStatus,
+          joined_at: normalizedJoinedAt,
+          email: authUser?.email || 'Unknown',
           is_pending_invite: isPendingInvite,
           invited_at: member.joined_at,
         };
@@ -281,14 +315,24 @@ export async function POST(request, { params }) {
     const { orgId } = await params;
     const body = await request.json();
     const role = String(body?.role || 'member').trim().toLowerCase();
-    const emails = Array.isArray(body?.emails) ? body.emails : [];
+    const rawEmails = Array.isArray(body?.emails) ? body.emails : [];
 
     if (!ORG_MEMBER_ROLES.has(role)) {
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
     }
 
-    if (!emails.length) {
+    if (!rawEmails.length) {
       return NextResponse.json({ error: 'At least one email is required' }, { status: 400 });
+    }
+
+    const emails = [...new Set(
+      rawEmails
+        .map((entry) => String(entry || '').trim().toLowerCase())
+        .filter((entry) => entry && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(entry))
+    )];
+
+    if (!emails.length) {
+      return NextResponse.json({ error: 'No valid email addresses provided' }, { status: 400 });
     }
 
     const { data: membership } = await supabaseAdmin
@@ -304,37 +348,72 @@ export async function POST(request, { params }) {
 
     const redirectTo = `${request.nextUrl.origin}/login`;
     const results = [];
+    const summary = {
+      emailInvitesSent: 0,
+      pendingInvites: 0,
+      activeMembersAdded: 0,
+      alreadyMembers: 0,
+      failed: 0,
+    };
 
-    for (const rawEmail of emails) {
-      const email = String(rawEmail || '').trim().toLowerCase();
-
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        continue;
-      }
+    for (const email of emails) {
+      let invitedViaEmail = false;
 
       let authUser = await findAuthUserByEmail(email);
 
       if (!authUser?.id) {
-        authUser = await inviteAuthUserByEmail(email, {
-          redirectTo,
-          data: { role },
-        });
+        try {
+          authUser = await inviteAuthUserByEmail(email, {
+            redirectTo,
+            data: { role },
+          });
+          invitedViaEmail = true;
+          summary.emailInvitesSent += 1;
+        } catch (inviteError) {
+          if (inviteError?.status === 429 || inviteError?.message?.toLowerCase().includes('rate limit')) {
+            throw inviteError;
+          }
+
+          console.error('Failed to send invite email:', inviteError);
+          summary.failed += 1;
+          results.push({
+            email,
+            status: 'failed',
+            message: inviteError?.message || 'Failed to send invitation email',
+          });
+          continue;
+        }
       }
 
       if (!authUser?.id) {
+        summary.failed += 1;
         results.push({ email, status: 'failed', message: 'Unable to resolve invited account' });
         continue;
       }
 
-      const { data: existingMember } = await supabaseAdmin
+      const inviteAccepted = Boolean(authUser?.email_confirmed_at);
+      const membershipStatus = inviteAccepted ? 'active' : 'pending';
+      const joinedAt = new Date().toISOString();
+
+      const { data: existingMember, error: existingMemberError } = await supabaseAdmin
         .from('organization_members')
-        .select('id, status')
+        .select('id, status, invited_by')
         .eq('organization_id', orgId)
         .eq('user_id', authUser.id)
         .maybeSingle();
 
+      if (existingMemberError) {
+        throw existingMemberError;
+      }
+
       if (existingMember?.status === 'active') {
-        results.push({ email, status: 'already_member' });
+        summary.alreadyMembers += 1;
+        results.push({
+          email,
+          status: 'already_member',
+          email_sent: invitedViaEmail,
+          message: 'User is already active in this organization',
+        });
         continue;
       }
 
@@ -343,8 +422,8 @@ export async function POST(request, { params }) {
           .from('organization_members')
           .update({
             role,
-            status: 'active',
-            joined_at: new Date().toISOString(),
+            status: membershipStatus,
+            joined_at: joinedAt,
             invited_by: user.id,
           })
           .eq('id', existingMember.id);
@@ -353,7 +432,20 @@ export async function POST(request, { params }) {
           throw updateError;
         }
 
-        results.push({ email, status: 'reinstated' });
+        if (membershipStatus === 'pending') {
+          summary.pendingInvites += 1;
+        } else {
+          summary.activeMembersAdded += 1;
+        }
+
+        results.push({
+          email,
+          status: membershipStatus === 'pending' ? 'pending_invite' : 'active_member',
+          email_sent: invitedViaEmail,
+          message: membershipStatus === 'pending'
+            ? 'Invitation sent and awaiting acceptance'
+            : 'Existing account added as active member',
+        });
         continue;
       }
 
@@ -363,8 +455,8 @@ export async function POST(request, { params }) {
           organization_id: orgId,
           user_id: authUser.id,
           role,
-          status: 'active',
-          joined_at: new Date().toISOString(),
+          status: membershipStatus,
+          joined_at: joinedAt,
           invited_by: user.id,
         });
 
@@ -372,16 +464,32 @@ export async function POST(request, { params }) {
         throw insertError;
       }
 
-      results.push({ email, status: 'invited' });
+      if (membershipStatus === 'pending') {
+        summary.pendingInvites += 1;
+      } else {
+        summary.activeMembersAdded += 1;
+      }
+
+      results.push({
+        email,
+        status: membershipStatus === 'pending' ? 'pending_invite' : 'active_member',
+        email_sent: invitedViaEmail,
+        message: membershipStatus === 'pending'
+          ? 'Invitation sent and awaiting acceptance'
+          : 'Existing account added as active member',
+      });
     }
 
     if (!results.length) {
       return NextResponse.json({ error: 'No valid email addresses provided' }, { status: 400 });
     }
 
+    const totalProcessed = results.length;
+
     return NextResponse.json({
       success: true,
-      message: `Processed ${results.length} invite${results.length === 1 ? '' : 's'}`,
+      message: `Processed ${totalProcessed} invite${totalProcessed === 1 ? '' : 's'}: ${summary.emailInvitesSent} email${summary.emailInvitesSent === 1 ? '' : 's'} sent, ${summary.pendingInvites} pending, ${summary.activeMembersAdded} active, ${summary.alreadyMembers} already member${summary.alreadyMembers === 1 ? '' : 's'}, ${summary.failed} failed`,
+      summary,
       results,
     });
   } catch (error) {

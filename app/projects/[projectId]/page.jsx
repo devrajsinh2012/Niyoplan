@@ -208,6 +208,21 @@ export default function ProjectDetailPage() {
     setRefreshNonce((prev) => prev + 1);
   }, [fetchProjectAndCards]);
 
+  const openCardDetail = useCallback((cardToOpen, tabOverride = activeTab) => {
+    if (!cardToOpen?.id) return;
+
+    setSelectedCard(cardToOpen);
+
+    const params = new URLSearchParams();
+    params.set('tab', tabOverride || 'list');
+    params.set('cardId', cardToOpen.id);
+    if (cardToOpen.custom_id) {
+      params.set('issueId', cardToOpen.custom_id);
+    }
+
+    router.replace(`/projects/${id}?${params.toString()}`, { scroll: false });
+  }, [activeTab, id, router]);
+
   const setActiveTab = (tabId) => {
     router.push(`/projects/${id}?tab=${tabId}`, { scroll: false });
   };
@@ -301,8 +316,25 @@ export default function ProjectDetailPage() {
 
   useEffect(() => {
     const selectedCardId = searchParams.get('cardId');
-    if (!selectedCardId || !cards.length) return;
-    const match = cards.find((card) => card.id === selectedCardId);
+    const selectedIssueId = searchParams.get('issueId');
+
+    if ((!selectedCardId && !selectedIssueId) || !cards.length) return;
+
+    const normalizedIssueId = (selectedIssueId || '').trim().toLowerCase();
+    const normalizedCardParam = (selectedCardId || '').trim().toLowerCase();
+
+    const match = cards.find((card) => {
+      if (selectedCardId && card.id === selectedCardId) return true;
+
+      const cardIssueId = (card.custom_id || '').trim().toLowerCase();
+      if (normalizedIssueId && cardIssueId === normalizedIssueId) return true;
+
+      // Backward compatibility: cardId was sometimes passed as custom issue key.
+      if (!selectedIssueId && normalizedCardParam && cardIssueId === normalizedCardParam) return true;
+
+      return false;
+    });
+
     if (match) setSelectedCard(match);
   }, [cards, searchParams]);
 
@@ -447,7 +479,7 @@ export default function ProjectDetailPage() {
                       <tr
                         key={card.id}
                         className="hover:bg-[var(--bg-panel-hover)] transition-colors group cursor-pointer"
-                        onClick={() => setSelectedCard(card)}
+                        onClick={() => openCardDetail(card, 'list')}
                       >
                         <td className="p-4 font-mono font-medium text-[var(--accent-primary)] hover:underline">{card.custom_id}</td>
                         <td className="p-4 font-medium text-[var(--text-heading)] pr-8">{card.title}</td>
@@ -521,7 +553,7 @@ export default function ProjectDetailPage() {
         {activeTab === 'calendar' && (
           <ErrorBoundary>
             <div className="flex-1 animate-fade-in flex flex-col">
-              <CalendarGrid projectId={id} onItemSelect={setSelectedCard} />
+              <CalendarGrid projectId={id} onItemSelect={(card) => openCardDetail(card, 'calendar')} />
             </div>
           </ErrorBoundary>
         )}
@@ -597,6 +629,7 @@ export default function ProjectDetailPage() {
         <CardDetail
           key={selectedCard.id}
           card={selectedCard}
+          viewMode={activeTab}
           onDelete={handleCardDeleted}
           onClose={() => {
             setSelectedCard(null);

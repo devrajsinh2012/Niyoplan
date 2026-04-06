@@ -14,6 +14,7 @@ import InputModal from '@/components/ui/InputModal';
 import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
 import SprintInsightsModal from '@/components/sprints/SprintInsightsModal';
 import confetti from 'canvas-confetti';
+import Portal from '@/components/modals/Portal';
 
 
 const issueTypeIcon = (type) => {
@@ -624,31 +625,47 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
       )}
 
       {showCompleteSprintModal && pendingCompleteSprint && (
-        <div className="fixed inset-0 z-[2150] flex items-center justify-center bg-[#091E42]/60 p-4 backdrop-blur-sm" onClick={() => setShowCompleteSprintModal(false)}>
-          <div className="w-full max-w-md animate-fade-in rounded-lg bg-[var(--bg-surface)] p-6 shadow-2xl border border-[var(--border-subtle)]" onClick={(e) => e.stopPropagation()}>
-            <h3 className="mb-4 text-xl font-bold text-[var(--text-heading)]">Complete Sprint</h3>
-            <p className="mb-6 text-sm text-[var(--text-secondary)] leading-relaxed">
-              <span className="font-bold text-[var(--text-primary)]">{pendingCompleteSprint.openIssues} issue(s)</span> are not done yet. Complete sprint anyway?
-            </p>
-            <div className="flex justify-end gap-2">
-              <button 
-                className="rounded-[3px] px-4 py-2 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-panel-hover)] transition-colors" 
-                onClick={() => setShowCompleteSprintModal(false)}
-              >
-                Cancel
-              </button>
-              <button 
-                className="rounded-[3px] bg-[var(--accent-primary)] px-4 py-2 text-sm font-bold text-white hover:opacity-90 transition-colors shadow-sm"
-                onClick={() => {
-                  setShowCompleteSprintModal(false);
-                  updateSprintStatus(pendingCompleteSprint.sprint, 'completed', pendingCompleteSprint.issues, true);
-                }}
-              >
-                Complete sprint
-              </button>
+        <Portal>
+          <div className="fixed inset-0 z-[10000] bg-[#091E42]/60 backdrop-blur-[4px] flex justify-center items-center p-4" onClick={() => setShowCompleteSprintModal(false)}>
+            <div className="relative w-full max-w-[560px] bg-[var(--bg-surface)] rounded-[12px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex flex-col max-h-[90vh] overflow-hidden transition-all ring-1 ring-black/5" onClick={(e) => e.stopPropagation()}>
+              <div className="flex-shrink-0 flex items-center justify-between border-b border-[var(--border-subtle)]/50 bg-[var(--bg-surface)] px-6 py-5">
+                <h3 className="text-xl font-bold text-[var(--text-heading)] tracking-tight">Complete Sprint</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowCompleteSprintModal(false)}
+                  className="rounded-full p-2 text-[var(--text-muted)] hover:bg-[var(--bg-panel-hover)] hover:text-[#0052CC] transition-all"
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-8 py-6 min-h-0 text-left">
+                <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+                  <span className="font-bold text-[var(--text-primary)]">{pendingCompleteSprint.openIssues} issue(s)</span> are not done yet. Complete sprint anyway?
+                </p>
+              </div>
+
+              <div className="flex-shrink-0 flex items-center justify-end gap-3 border-t border-[var(--border-subtle)]/50 bg-[var(--bg-surface)] px-6 py-5">
+                <button
+                  className="rounded-[3px] px-5 py-2 text-sm font-bold text-[var(--text-secondary)] transition-all hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)] active:scale-95"
+                  onClick={() => setShowCompleteSprintModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="rounded-[3px] bg-[#0052CC] px-7 py-2 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#00388D] active:scale-95"
+                  onClick={() => {
+                    setShowCompleteSprintModal(false);
+                    updateSprintStatus(pendingCompleteSprint.sprint, 'completed', pendingCompleteSprint.issues, true);
+                  }}
+                >
+                  Complete Sprint
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
 
       {/* Create Sprint Modal */}

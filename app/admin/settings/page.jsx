@@ -40,6 +40,7 @@ const normalizeOrgMember = (member) => ({
   id: member.user_id,
   user_id: member.user_id,
   org_member_id: member.id,
+  invited_by: member.invited_by,
   full_name: member.profiles?.full_name || 'Unknown',
   email: member.email || 'No email',
   avatar_url: member.profiles?.avatar_url,
@@ -67,6 +68,7 @@ export default function AdminSettingsPage() {
   const [inviteRole, setInviteRole] = useState('member');
   const [isInvitingSending, setIsInvitingSending] = useState(false);
   const [pendingApprovals, setPendingApprovals] = useState([]);
+  const [pendingSentInvites, setPendingSentInvites] = useState([]);
   const [rolePermissions, setRolePermissions] = useState(getDefaultRolePermissionMatrix());
   const [isPermissionsLoading, setIsPermissionsLoading] = useState(false);
   const [isPermissionsSaving, setIsPermissionsSaving] = useState(false);
@@ -79,6 +81,7 @@ export default function AdminSettingsPage() {
     if (!profile?.id) {
       setMembers([]);
       setPendingApprovals([]);
+      setPendingSentInvites([]);
       setIsLoading(false);
       return;
     }
@@ -100,8 +103,15 @@ export default function AdminSettingsPage() {
         const data = await res.json();
         const normalizedMembers = Array.isArray(data) ? data.map(normalizeOrgMember) : [];
 
-        setMembers(normalizedMembers.filter((member) => member.status === 'active'));
-        setPendingApprovals(normalizedMembers.filter((member) => member.status === 'pending'));
+        const activeMembers = normalizedMembers.filter((member) => member.status === 'active');
+        const pendingJoinApprovals = normalizedMembers.filter((member) => member.status === 'pending' && !member.invited_by);
+        const sentInvites = normalizedMembers.filter((member) =>
+          (member.status === 'pending' && member.invited_by) || member.is_pending_invite
+        );
+
+        setMembers(activeMembers);
+        setPendingApprovals(pendingJoinApprovals);
+        setPendingSentInvites(sentInvites);
         return;
       }
 
@@ -115,16 +125,19 @@ export default function AdminSettingsPage() {
         const data = await res.json();
         setMembers(Array.isArray(data) ? data : []);
         setPendingApprovals([]);
+        setPendingSentInvites([]);
         return;
       }
 
       setMembers([]);
       setPendingApprovals([]);
+      setPendingSentInvites([]);
     } catch (err) {
       console.error(err);
       toast.error(activeOrganization?.id ? 'Failed to load organization members' : 'Failed to load members');
       setMembers([]);
       setPendingApprovals([]);
+      setPendingSentInvites([]);
     } finally {
       setIsLoading(false);
     }
@@ -189,7 +202,7 @@ export default function AdminSettingsPage() {
       return;
     }
 
-    const hasPendingItems = pendingApprovals.length > 0 || members.some((member) => member.is_pending_invite);
+    const hasPendingItems = pendingApprovals.length > 0 || pendingSentInvites.length > 0;
     if (!hasPendingItems) {
       return;
     }
@@ -199,7 +212,7 @@ export default function AdminSettingsPage() {
     }, 30000);
 
     return () => clearInterval(intervalId);
-  }, [activeTab, pendingApprovals, members, loadMembers]);
+  }, [activeTab, pendingApprovals, pendingSentInvites, loadMembers]);
 
   if (authLoading || orgLoading) {
     return <NiyoplanLoader />;
@@ -224,7 +237,6 @@ export default function AdminSettingsPage() {
     (u.full_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
     (u.email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
   );
-  const pendingSentInvites = members.filter((member) => member.is_pending_invite);
 
   const handleRoleUpdate = async (user, newRole) => {
     try {

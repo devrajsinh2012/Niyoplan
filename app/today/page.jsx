@@ -33,6 +33,7 @@ export default function TodayPage() {
   const [orgMembers, setOrgMembers] = useState([]);
   const [showProjectIssues, setShowProjectIssues] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const canAssign = ['admin', 'pm'].includes(activeOrganization?.role || profile?.role);
 
   // Fetch today items from backend
   const fetchTodayItems = useCallback(async () => {
@@ -84,19 +85,30 @@ export default function TodayPage() {
 
   // Fetch organization members for assignment
   const fetchOrgMembers = useCallback(async () => {
-    if (!activeOrganization?.id || !['admin', 'pm'].includes(profile?.role)) return;
+    if (!activeOrganization?.id || !canAssign) {
+      setOrgMembers([]);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('organization_members')
-        .select('user_id, profiles(full_name, avatar_url, role)')
+        .select('user_id, role, profiles(full_name, avatar_url)')
         .eq('organization_id', activeOrganization.id)
         .eq('status', 'active');
 
-      if (!error) setOrgMembers(data || []);
+      if (error) {
+        console.error('Error fetching organization members:', error);
+        setOrgMembers([]);
+        return;
+      }
+
+      setOrgMembers(data || []);
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching organization members:', err);
+      setOrgMembers([]);
     }
-  }, [activeOrganization?.id, profile?.role]);
+  }, [activeOrganization?.id, canAssign]);
 
   useEffect(() => {
     fetchTodayItems();
@@ -258,8 +270,6 @@ export default function TodayPage() {
   const pending = todayItems.filter(i => !i.is_done);
   const done = todayItems.filter(i => i.is_done);
 
-  const canAssign = ['admin', 'pm'].includes(profile?.role);
-
   return (
     <div className="max-w-2xl mx-auto py-8 px-4 animate-fade-in">
       {/* Header */}
@@ -351,7 +361,7 @@ export default function TodayPage() {
             </select>
 
             {/* Assign To (Admin/PM only) */}
-            {canAssign && orgMembers.length > 0 && (
+            {canAssign && (
               <div className="flex items-center gap-2 border border-[var(--border-subtle)] rounded-md px-3 py-1.5 bg-white">
                 <UserPlus size={14} className="text-blue-500" />
                 <select

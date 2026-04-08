@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Portal from '@/components/modals/Portal';
+import RichTextEditor from '@/components/ui/RichTextEditor';
 
 const DEFAULT_LISTS = [
   { name: 'Backlog', rank: 1000 },
@@ -19,7 +20,6 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [users, setUsers] = useState([]);
   const [sprints, setSprints] = useState([]);
-  const descriptionInputRef = useRef(null);
   const { profile } = useAuth();
 
   const [formData, setFormData] = useState({
@@ -71,67 +71,6 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const applyDescriptionFormat = (format) => {
-    const textarea = descriptionInputRef.current;
-    if (!textarea) return;
-
-    const value = formData.description || '';
-    const start = textarea.selectionStart ?? value.length;
-    const end = textarea.selectionEnd ?? value.length;
-    const selectedText = value.slice(start, end);
-
-    let insertion = '';
-    let selectionStart = start;
-    let selectionEnd = end;
-
-    if (format === 'bold') {
-      if (selectedText) {
-        insertion = `**${selectedText}**`;
-        selectionEnd = start + insertion.length;
-      } else {
-        insertion = '**bold text**';
-        selectionStart = start + 2;
-        selectionEnd = start + 11;
-      }
-    }
-
-    if (format === 'italic') {
-      if (selectedText) {
-        insertion = `*${selectedText}*`;
-        selectionEnd = start + insertion.length;
-      } else {
-        insertion = '*italic text*';
-        selectionStart = start + 1;
-        selectionEnd = start + 12;
-      }
-    }
-
-    if (format === 'bullet') {
-      if (selectedText) {
-        insertion = selectedText
-          .split('\n')
-          .map((line) => {
-            const trimmed = line.trim();
-            if (!trimmed) return '- ';
-            return trimmed.startsWith('- ') ? trimmed : `- ${trimmed}`;
-          })
-          .join('\n');
-        selectionEnd = start + insertion.length;
-      } else {
-        insertion = '- ';
-        selectionStart = start + 2;
-        selectionEnd = start + 2;
-      }
-    }
-
-    const nextDescription = `${value.slice(0, start)}${insertion}${value.slice(end)}`;
-    setFormData((prev) => ({ ...prev, description: nextDescription }));
-
-    requestAnimationFrame(() => {
-      textarea.focus();
-      textarea.setSelectionRange(selectionStart, selectionEnd);
-    });
-  };
 
   const getOrCreateLists = async () => {
     const { data: existingLists, error: listFetchError } = await supabase
@@ -265,37 +204,10 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
 
             <div>
               <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Description</label>
-              <div className="mb-2 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  className="rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-panel-hover)]"
-                  onClick={() => applyDescriptionFormat('bold')}
-                >
-                  Bold
-                </button>
-                <button
-                  type="button"
-                  className="rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-2.5 py-1 text-xs font-semibold italic text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-panel-hover)]"
-                  onClick={() => applyDescriptionFormat('italic')}
-                >
-                  Italic
-                </button>
-                <button
-                  type="button"
-                  className="rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-panel-hover)]"
-                  onClick={() => applyDescriptionFormat('bullet')}
-                >
-                  Bullet List
-                </button>
-                <span className="text-xs text-[var(--text-muted)]">Uses markdown: **bold**, *italic*, - list</span>
-              </div>
-              <textarea
-                ref={descriptionInputRef}
-                name="description"
-                className="min-h-[150px] resize-y w-full rounded-[3px] border-2 border-[var(--border-subtle)] bg-[var(--bg-input)] px-4 py-2.5 text-sm font-medium text-[var(--text-primary)] transition-all focus:border-[#0052CC] focus:bg-[var(--bg-surface)] focus:outline-none"
-                placeholder="Add details, acceptance criteria, context..."
+              <RichTextEditor
                 value={formData.description}
-                onChange={handleChange}
+                onChange={(html) => setFormData((prev) => ({ ...prev, description: html }))}
+                placeholder="Add details, acceptance criteria, context..."
               />
             </div>
 

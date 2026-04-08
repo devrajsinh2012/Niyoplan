@@ -19,6 +19,7 @@ import CardDescription from './detail/CardDescription';
 import CardActivity from './detail/CardActivity';
 import CardSidebar from './detail/CardSidebar';
 import Portal from '@/components/modals/Portal';
+import RichTextEditor from '@/components/ui/RichTextEditor';
 
 const toDateInput = (value) => {
   if (!value) return '';
@@ -507,10 +508,10 @@ export default function CardDetail({ card, onClose, onSave, onDelete, isSaving =
 
               <div>
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Description</label>
-                <textarea
-                  className="min-h-[120px] w-full rounded-[3px] border-2 border-[var(--border-subtle)] bg-[var(--bg-input)] px-4 py-2.5 text-sm font-medium text-[var(--text-primary)] transition-all focus:border-[#0052CC] focus:bg-[var(--bg-surface)] focus:outline-none"
+                <RichTextEditor
                   value={form.description}
-                  onChange={(event) => setForm((previous) => ({ ...previous, description: event.target.value }))}
+                  onChange={(html) => setForm((previous) => ({ ...previous, description: html }))}
+                  placeholder="Add a more detailed description..."
                 />
               </div>
 

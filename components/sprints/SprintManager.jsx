@@ -538,7 +538,7 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
                       {openMenuSprintId === sprint.id && (
                         <div className="absolute right-0 top-8 z-20 min-w-[180px] rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface)] py-1 shadow-lg">
                           <button className="w-full px-3 py-2 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-panel-hover)]" onClick={() => openEditSprint(sprint)}>Edit sprint</button>
-                          <button className="w-full px-3 py-2 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-panel-hover)]" onClick={() => { openInsightsForSprint(sprint.id); setOpenMenuSprintId(null); }}>Manage sprint</button>
+                          <button className="w-full px-3 py-2 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-panel-hover)]" onClick={() => { openInsightsForSprint(sprint.id); setOpenMenuSprintId(null); }}>Insights</button>
                           <button className="w-full px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50/10" onClick={() => deleteSprint(sprint)}>Delete sprint</button>
                         </div>
                       )}

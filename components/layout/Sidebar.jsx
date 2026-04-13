@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useParams, usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useOrganization } from '@/context/OrganizationContext';
 import {
@@ -10,7 +10,7 @@ import {
   LayoutDashboard, Layers, KanbanSquare,
   BarChart2, Tag, Keyboard,
   Settings, BookOpen, Target,
-  Zap, MessageSquare, Calendar, LogOut, Building2, Sun, Wrench
+  Zap, MessageSquare, Calendar, Building2, Sun, Wrench
 } from 'lucide-react';
 import UserAvatar from '@/components/ui/UserAvatar';
 
@@ -60,10 +60,9 @@ const SideNavItem = ({ href, icon: Icon, label, isActive, expanded }) => {
 };
 
 export default function Sidebar({ project, expanded, onExpandedChange }) {
-  const { profile, signOut } = useAuth();
+  const { profile } = useAuth();
   const { activeOrganization, loading: orgLoading } = useOrganization();
   const { projectId: paramsId } = useParams();
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const projectId = paramsId || project?.id;
@@ -73,11 +72,6 @@ export default function Sidebar({ project, expanded, onExpandedChange }) {
 
   const projectTabHref = (tab) => `/projects/${projectId}?tab=${tab}`;
   const onProjectPage = pathname === `/projects/${projectId}`;
-
-  const handleLogout = async () => {
-    await signOut();
-    router.replace('/login');
-  };
 
   return (
     <aside
@@ -126,27 +120,13 @@ export default function Sidebar({ project, expanded, onExpandedChange }) {
           <SideNavItem href={`/projects/${projectId}/settings`} icon={Settings} label="Project Settings" expanded={expanded} />
         )}
 
-        {/* User section */}
+        {/* User avatar */}
         <div className={`mt-2 flex items-center gap-3 rounded-lg p-2 ${expanded ? '' : 'justify-center'}`}>
           <UserAvatar
             user={profile}
             size={32}
             className="shrink-0 cursor-pointer"
           />
-          {expanded && (
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium text-[var(--text-heading)]">
-                {profile?.full_name || 'User'}
-              </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1 text-xs text-red-500 hover:underline"
-              >
-                <LogOut size={12} />
-                Log out
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </aside>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useOrganization } from '@/context/OrganizationContext';
 import { supabase } from '@/lib/supabase';
@@ -33,7 +33,11 @@ export default function TodayPage() {
   const [orgMembers, setOrgMembers] = useState([]);
   const [showProjectIssues, setShowProjectIssues] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const canAssign = ['admin', 'pm'].includes(activeOrganization?.role || profile?.role);
+  const hasShownAssignGuardToast = useRef(false);
+  const organizationRole = (activeOrganization?.role || '').toLowerCase();
+  const profileRole = (profile?.role || '').toLowerCase();
+  const canAssign = ['admin', 'pm'].includes(organizationRole) || ['admin', 'pm'].includes(profileRole);
+  const assignableMembers = orgMembers.filter(m => m.user_id !== profile?.id);
 
   // Fetch today items from backend
   const fetchTodayItems = useCallback(async () => {
@@ -116,6 +120,17 @@ export default function TodayPage() {
     fetchOrgMembers();
     if (profile?.id) setSelectedAssignee(profile.id);
   }, [fetchTodayItems, fetchProjectCards, fetchOrgMembers, profile?.id]);
+
+  const toggleAddForm = () => {
+    const nextOpen = !showAddForm;
+
+    if (nextOpen && !canAssign && !hasShownAssignGuardToast.current) {
+      toast('Only Admin/PM roles can assign tasks to others. You can still add tasks for yourself.');
+      hasShownAssignGuardToast.current = true;
+    }
+
+    setShowAddForm(nextOpen);
+  };
 
   const addItem = async () => {
     if (!newTitle.trim()) {
@@ -306,7 +321,7 @@ export default function TodayPage() {
       {/* Add item button */}
       <div className="mb-4 flex gap-2">
         <button
-          onClick={() => setShowAddForm(v => !v)}
+          onClick={toggleAddForm}
           className="flex items-center gap-2 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-panel-hover)]"
         >
           <Plus size={16} />
@@ -370,14 +385,20 @@ export default function TodayPage() {
                   className="bg-transparent text-sm text-[var(--text-primary)] focus:outline-none max-w-[150px]"
                 >
                   <option value={profile.id}>Assign to Me</option>
-                  {orgMembers
-                    .filter(m => m.user_id !== profile.id)
-                    .map(member => (
+                  {assignableMembers.map(member => (
                       <option key={member.user_id} value={member.user_id}>
                         Assign to {member.profiles?.full_name}
                       </option>
                     ))}
+                  {assignableMembers.length === 0 && (
+                    <option value="" disabled>No other active members available</option>
+                  )}
                 </select>
+                {assignableMembers.length === 0 && (
+                  <span className="text-[11px] text-[var(--text-muted)]">
+                    No active teammates available for assignment.
+                  </span>
+                )}
               </div>
             )}
           </div>

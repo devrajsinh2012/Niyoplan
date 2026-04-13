@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Loader2, TrendingUp, Activity } from 'lucide-react';
+import { Loader2, TrendingUp, Activity, X } from 'lucide-react';
 import { apiFetch } from '@/lib/apiClient';
+import Portal from '@/components/modals/Portal';
 
 function LineChart({ points = [], lines = [], width = 760, height = 240 }) {
   const padding = { top: 16, right: 16, bottom: 26, left: 36 };
@@ -124,83 +125,108 @@ export default function SprintInsightsModal({ projectId, sprintId, onClose }) {
   }, [trend]);
 
   return (
-    <div className="fixed inset-0 z-[2200] flex items-center justify-center bg-black/45 p-4" onClick={onClose}>
-      <div className="w-full max-w-5xl rounded-xl border border-slate-200 bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900">Sprint Insights</h3>
-            <p className="text-xs text-slate-500">{metrics?.sprint?.name || 'Current sprint'}</p>
+    <Portal>
+      <div className="fixed inset-0 z-[10000] bg-[#091E42]/60 backdrop-blur-[4px] flex justify-center items-center p-4" onClick={onClose}>
+        <div className="relative w-full max-w-6xl bg-[var(--bg-surface)] rounded-[12px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex flex-col max-h-[90vh] overflow-hidden transition-all ring-1 ring-black/5" onClick={(e) => e.stopPropagation()}>
+          <div className="flex-shrink-0 flex items-center justify-between border-b border-[var(--border-subtle)]/50 bg-[var(--bg-surface)] px-6 py-5">
+            <div>
+              <h3 className="text-xl font-bold text-[var(--text-heading)] tracking-tight">Sprint Insights</h3>
+              <p className="text-xs text-[var(--text-secondary)] mt-1">{metrics?.sprint?.name || 'Current sprint'}</p>
+            </div>
+            <button
+              type="button"
+              className="rounded-full p-2 text-[var(--text-muted)] hover:bg-[var(--bg-panel-hover)] hover:text-[#0052CC] transition-all"
+              onClick={onClose}
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
           </div>
-          <button className="rounded px-2 py-1 text-sm text-slate-600 hover:bg-slate-100" onClick={onClose}>Close</button>
-        </div>
 
-        <div className="max-h-[80vh] overflow-y-auto p-5">
-          {isLoading && (
-            <div className="flex items-center justify-center py-16 text-slate-600">
-              <Loader2 className="mr-2 animate-spin" size={18} /> Loading metrics...
-            </div>
-          )}
-
-          {!isLoading && error && (
-            <div className="rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
-          )}
-
-          {!isLoading && !error && summary && (
-            <div className="space-y-5">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Completion</div>
-                  <div className="mt-1 text-2xl font-bold text-slate-900">{summary.completionPercent}%</div>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Velocity</div>
-                  <div className="mt-1 text-2xl font-bold text-slate-900">{summary.velocityPoints}</div>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Remaining</div>
-                  <div className="mt-1 text-2xl font-bold text-slate-900">{summary.remainingPoints}</div>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Elapsed</div>
-                  <div className="mt-1 text-2xl font-bold text-slate-900">{summary.daysElapsed}/{summary.daysTotal}</div>
-                </div>
+          <div className="flex-1 overflow-y-auto px-8 py-6 space-y-5 custom-scrollbar min-h-0 text-left">
+            {isLoading && (
+              <div className="flex items-center justify-center py-16 text-[var(--text-secondary)]">
+                <Loader2 className="mr-2 animate-spin" size={18} /> Loading metrics...
               </div>
+            )}
 
-              <div className="rounded-lg border border-slate-200 p-4">
-                <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800">
-                  <Activity size={16} /> Burndown
-                </div>
-                <LineChart
-                  points={metrics.burndown || []}
-                  lines={[
-                    { key: 'idealRemaining', color: '#8FB8FF', dashed: true },
-                    { key: 'actualRemaining', color: '#0C66E4' },
-                  ]}
-                />
-              </div>
+            {!isLoading && error && (
+              <div className="rounded-[3px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
+            )}
 
-              <div className="rounded-lg border border-slate-200 p-4">
-                <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">
-                  <TrendingUp size={16} /> Velocity Trend
+            {!isLoading && !error && summary && (
+              <div className="space-y-5">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-panel)] p-3">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Completion</div>
+                    <div className="mt-1 text-2xl font-bold text-[var(--text-heading)]">{summary.completionPercent}%</div>
+                  </div>
+                  <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-panel)] p-3">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Velocity</div>
+                    <div className="mt-1 text-2xl font-bold text-[var(--text-heading)]">{summary.velocityPoints}</div>
+                  </div>
+                  <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-panel)] p-3">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Remaining</div>
+                    <div className="mt-1 text-2xl font-bold text-[var(--text-heading)]">{summary.remainingPoints}</div>
+                  </div>
+                  <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-panel)] p-3">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Elapsed</div>
+                    <div className="mt-1 text-2xl font-bold text-[var(--text-heading)]">{summary.daysElapsed}/{summary.daysTotal}</div>
+                  </div>
                 </div>
-                <div className="mb-3 text-xs text-slate-500">Average velocity: {avgVelocity}%</div>
-                <div className="space-y-2">
-                  {trend.map((item) => (
-                    <div key={item.sprintId} className="flex items-center gap-3">
-                      <div className="w-36 truncate text-sm text-slate-700" title={item.name}>{item.name}</div>
-                      <div className="relative h-3 flex-1 overflow-hidden rounded-full bg-slate-200">
-                        <div className="absolute left-0 top-0 h-3 rounded-full bg-[#0C66E4]" style={{ width: `${Math.min(item.velocityPercent, 100)}%` }} />
+
+                <div className="rounded-lg border border-[var(--border-subtle)] p-4">
+                  <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
+                    <Activity size={16} /> Burndown
+                  </div>
+                  <LineChart
+                    points={metrics.burndown || []}
+                    lines={[
+                      { key: 'idealRemaining', color: '#8FB8FF', dashed: true },
+                      { key: 'actualRemaining', color: '#0C66E4' },
+                    ]}
+                  />
+                </div>
+
+                <div className="rounded-lg border border-[var(--border-subtle)] p-4">
+                  <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
+                    <TrendingUp size={16} /> Velocity Trend
+                  </div>
+                  <div className="mb-3 text-xs text-[var(--text-secondary)]">Average velocity: {avgVelocity}%</div>
+                  <div className="space-y-2">
+                    {trend.map((item) => (
+                      <div key={item.sprintId} className="flex items-center gap-3">
+                        <div className="w-36 truncate text-sm text-[var(--text-primary)]" title={item.name}>{item.name}</div>
+                        <div className="relative h-3 flex-1 overflow-hidden rounded-full bg-[var(--bg-panel-hover)]">
+                          <div className="absolute left-0 top-0 h-3 rounded-full bg-[#0C66E4]" style={{ width: `${Math.min(item.velocityPercent, 100)}%` }} />
+                        </div>
+                        <div className="w-24 text-right text-xs font-semibold text-[var(--text-secondary)]">{item.completedPoints}/{item.plannedPoints}</div>
+                        <div className="w-12 text-right text-xs font-bold text-[var(--text-heading)]">{item.velocityPercent}%</div>
                       </div>
-                      <div className="w-24 text-right text-xs font-semibold text-slate-700">{item.completedPoints}/{item.plannedPoints}</div>
-                      <div className="w-12 text-right text-xs font-bold text-slate-900">{item.velocityPercent}%</div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+
+            {!isLoading && !error && !summary && (
+              <div className="rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-panel)] px-4 py-6 text-sm text-[var(--text-secondary)]">
+                No sprint insights available yet.
+              </div>
+            )}
+          </div>
+
+          <div className="flex-shrink-0 flex items-center justify-end gap-3 border-t border-[var(--border-subtle)]/50 bg-[var(--bg-surface)] px-6 py-5">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-[3px] px-5 py-2 text-sm font-bold text-[var(--text-secondary)] transition-all hover:bg-[var(--bg-panel-hover)] hover:text-[var(--text-primary)] active:scale-95"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </Portal>
   );
 }

@@ -5,7 +5,10 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useOrganization } from '@/context/OrganizationContext';
 import { apiFetch } from '@/lib/apiClient';
+import { supabase } from '@/lib/supabase';
 import NiyoplanLoader from '@/components/ui/NiyoplanLoader';
+import toast from 'react-hot-toast';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function OnboardingMiddleware({ children }) {
   const { user, loading: authLoading, initialLoading } = useAuth();
@@ -14,6 +17,13 @@ export default function OnboardingMiddleware({ children }) {
   const pathname = usePathname();
   const [checking, setChecking] = useState(true);
   const [hasOrganization, setHasOrganization] = useState(null);
+  const [requiresPasswordSetup, setRequiresPasswordSetup] = useState(false);
+  const [passwordSetupReason, setPasswordSetupReason] = useState(null);
+  const [setupPassword, setSetupPassword] = useState('');
+  const [confirmSetupPassword, setConfirmSetupPassword] = useState('');
+  const [isSettingPassword, setIsSettingPassword] = useState(false);
+  const [showSetupPassword, setShowSetupPassword] = useState(false);
+  const [showConfirmSetupPassword, setShowConfirmSetupPassword] = useState(false);
   const onboardingCacheRef = useRef({ userId: null, status: null });
 
   const publicPathPrefixes = [
@@ -38,6 +48,47 @@ export default function OnboardingMiddleware({ children }) {
   const isOnboardingPath = onboardingPaths.some((path) => pathname.startsWith(path));
   const isOnboardingLandingPath = pathname === '/onboarding' || pathname === '/onboarding/';
   const isAllowedPath = isPublicPath || isOnboardingPath;
+
+  const handleMandatoryPasswordSetup = async () => {
+    if (!setupPassword || !confirmSetupPassword) {
+      toast.error('Please enter password and confirm password');
+      return;
+    }
+
+    if (setupPassword !== confirmSetupPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
+    if (setupPassword.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+
+    setIsSettingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: setupPassword,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setRequiresPasswordSetup(false);
+      setPasswordSetupReason(null);
+      setSetupPassword('');
+      setConfirmSetupPassword('');
+      setShowSetupPassword(false);
+      setShowConfirmSetupPassword(false);
+      toast.success('Password set successfully');
+    } catch (passwordError) {
+      console.error('Failed to set mandatory password:', passwordError);
+      toast.error(passwordError?.message || 'Failed to set password');
+    } finally {
+      setIsSettingPassword(false);
+    }
+  };
 
   const checkOnboardingStatus = useCallback(async () => {
     if (isPublicPath && !user) {
@@ -104,6 +155,9 @@ export default function OnboardingMiddleware({ children }) {
       }
 
       const statusPayload = await statusResponse.json();
+
+      setRequiresPasswordSetup(Boolean(statusPayload?.requiresPasswordSetup));
+      setPasswordSetupReason(statusPayload?.passwordSetupReason || null);
 
       if (statusPayload?.hasActiveOrganization) {
         onboardingCacheRef.current = { userId, status: true };
@@ -224,7 +278,82 @@ export default function OnboardingMiddleware({ children }) {
 
   // Render children if user has completed onboarding, is on allowed path, or we have enough context to continue
   if (hasOrganization === true || isAllowedPath || (user && activeOrganization?.id)) {
-    return children;
+    return (
+      <>
+        {children}
+
+        {!!user && !isPublicPath && requiresPasswordSetup && (
+          <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/45 px-4">
+            <div className="w-full max-w-md rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl">
+              <h2 className="text-lg font-bold text-[var(--text-heading)]">Setup your password</h2>
+              <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                {passwordSetupReason === 'google'
+                  ? 'You signed in with Google. Create a password to secure your account and allow password login.'
+                  : 'Your account was created from an invitation. Create a password to finish account setup.'}
+              </p>
+
+              <div className="mt-5 space-y-4">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showSetupPassword ? 'text' : 'password'}
+                      value={setupPassword}
+                      onChange={(event) => setSetupPassword(event.target.value)}
+                      placeholder="Enter password"
+                      className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-app)] px-3 py-2.5 pr-10 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--accent-primary)]"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSetupPassword((value) => !value)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                      aria-label={showSetupPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showSetupPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                    Re-enter Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmSetupPassword ? 'text' : 'password'}
+                      value={confirmSetupPassword}
+                      onChange={(event) => setConfirmSetupPassword(event.target.value)}
+                      placeholder="Re-enter password"
+                      className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-app)] px-3 py-2.5 pr-10 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--accent-primary)]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmSetupPassword((value) => !value)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                      aria-label={showConfirmSetupPassword ? 'Hide confirm password' : 'Show confirm password'}
+                    >
+                      {showConfirmSetupPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleMandatoryPasswordSetup}
+                  disabled={isSettingPassword}
+                  className="w-full rounded-lg bg-[var(--accent-primary)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isSettingPassword ? 'Setting Password...' : 'Set Password'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
+    );
   }
 
   // Return null or loader while initial setup is happening

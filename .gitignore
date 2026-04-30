@@ -12,3 +12,5 @@ Jira vs. NiyoPlan*
 
 # clerk configuration (can include secrets)
 /.clerk/
+# Local working drafts not for repo
+New changes/

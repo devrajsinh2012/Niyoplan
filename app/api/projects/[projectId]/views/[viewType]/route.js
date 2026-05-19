@@ -32,14 +32,65 @@ export async function GET(request, { params }) {
       }
 
       case 'calendar': {
-        const { data: calendarData, error: err } = await supabaseAdmin
-          .from('cards')
-          .select('id, custom_id, title, start_date, due_date, status, priority')
-          .eq('project_id', projectId)
-          .or('start_date.not.is.null,due_date.not.is.null')
-          .order('due_date', { ascending: true });
-        data = calendarData;
-        fetchError = err;
+        const [
+          { data: cardData, error: cardError },
+          { data: reminderData, error: reminderError },
+          { data: deliverableData, error: deliverableError },
+          { data: interactionData, error: interactionError },
+        ] = await Promise.all([
+          supabaseAdmin
+            .from('cards')
+            .select('id, custom_id, title, start_date, due_date, status, priority')
+            .eq('project_id', projectId)
+            .or('start_date.not.is.null,due_date.not.is.null')
+            .order('due_date', { ascending: true }),
+          supabaseAdmin
+            .from('client_reminders')
+            .select('id, title, due_at, status, client:clients(id, name)')
+            .eq('project_id', projectId)
+            .eq('status', 'pending'),
+          supabaseAdmin
+            .from('client_deliverables')
+            .select('id, title, due_date, status, client:clients(id, name)')
+            .eq('project_id', projectId),
+          supabaseAdmin
+            .from('client_interactions')
+            .select('id, title, next_action_at, interaction_type, client:clients(id, name)')
+            .eq('project_id', projectId)
+            .not('next_action_at', 'is', null),
+        ]);
+
+        data = [
+          ...(cardData || []).map((item) => ({ ...item, calendar_type: 'card' })),
+          ...(reminderData || []).map((item) => ({
+            id: item.id,
+            title: item.title,
+            start_date: item.due_at,
+            due_date: item.due_at,
+            status: item.status,
+            calendar_type: 'client_reminder',
+            client: item.client,
+          })),
+          ...(deliverableData || []).map((item) => ({
+            id: item.id,
+            title: item.title,
+            start_date: item.due_date,
+            due_date: item.due_date,
+            status: item.status,
+            calendar_type: 'client_deliverable',
+            client: item.client,
+          })),
+          ...(interactionData || []).map((item) => ({
+            id: item.id,
+            title: item.title,
+            start_date: item.next_action_at,
+            due_date: item.next_action_at,
+            status: item.interaction_type,
+            calendar_type: 'client_interaction',
+            client: item.client,
+          })),
+        ];
+        fetchError = cardError || reminderError || deliverableError || interactionError;
         break;
       }
 

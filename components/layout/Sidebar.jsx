@@ -10,9 +10,10 @@ import {
   LayoutDashboard, Layers, KanbanSquare,
   BarChart2, Tag, Keyboard,
   Settings, BookOpen, Target,
-  Zap, MessageSquare, Calendar, Building2, Sun, Wrench
+  Zap, MessageSquare, Calendar, Building2, Sun, Wrench, BriefcaseBusiness
 } from 'lucide-react';
 import UserAvatar from '@/components/ui/UserAvatar';
+import { apiFetch } from '@/lib/apiClient';
 
 const NavSection = ({ title, children, expanded }) => {
   const [open, setOpen] = useState(true);
@@ -30,7 +31,7 @@ const NavSection = ({ title, children, expanded }) => {
   );
 };
 
-const SideNavItem = ({ href, icon: Icon, label, isActive, expanded }) => {
+const SideNavItem = ({ href, icon: Icon, label, isActive, expanded, badge }) => {
   const pathname = usePathname();
   const active = isActive ?? (pathname === href || (href !== '/' && pathname.startsWith(href)));
   const activeStyle = active
@@ -55,6 +56,11 @@ const SideNavItem = ({ href, icon: Icon, label, isActive, expanded }) => {
     >
       {Icon && <Icon size={18} className="shrink-0" />}
       {expanded && <span className="truncate text-sm font-medium">{label}</span>}
+      {expanded && badge > 0 && (
+        <span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+          {badge > 9 ? '9+' : badge}
+        </span>
+      )}
     </Link>
   );
 };
@@ -69,9 +75,32 @@ export default function Sidebar({ project, expanded, onExpandedChange }) {
   const activeTab = searchParams.get('tab') || 'list';
   const organization = activeOrganization;
   const userRole = activeOrganization?.role;
+  const [clientReminderCount, setClientReminderCount] = useState(0);
 
   const projectTabHref = (tab) => `/projects/${projectId}?tab=${tab}`;
   const onProjectPage = pathname === `/projects/${projectId}`;
+
+  React.useEffect(() => {
+    if (!activeOrganization?.id) {
+      setClientReminderCount(0);
+      return;
+    }
+
+    let cancelled = false;
+
+    apiFetch(`/api/client-reminders/due?organizationId=${activeOrganization.id}`)
+      .then((response) => response.ok ? response.json() : [])
+      .then((items) => {
+        if (!cancelled) setClientReminderCount(Array.isArray(items) ? items.length : 0);
+      })
+      .catch(() => {
+        if (!cancelled) setClientReminderCount(0);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeOrganization?.id]);
 
   return (
     <aside
@@ -88,6 +117,7 @@ export default function Sidebar({ project, expanded, onExpandedChange }) {
           <SideNavItem href="/today" icon={Sun} label="Today" expanded={expanded} />
           <SideNavItem href="/tools" icon={Wrench} label="Tools" expanded={expanded} />
           <SideNavItem href="/projects" icon={KanbanSquare} label="Projects" expanded={expanded} />
+          <SideNavItem href="/clients" icon={BriefcaseBusiness} label="Clients" expanded={expanded} badge={clientReminderCount} />
         </div>
       </nav>
 

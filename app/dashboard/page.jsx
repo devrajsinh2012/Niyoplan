@@ -11,6 +11,7 @@ import { DashboardPageSkeleton } from '@/components/ui/PageSkeleton';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useOrganization } from '@/context/OrganizationContext';
 import { useAuth } from '@/context/AuthContext';
+import { apiFetch } from '@/lib/apiClient';
 
 const EMPTY_TODAY_STATS = {
   total: 0,
@@ -56,6 +57,7 @@ export default function DashboardPage() {
   const [todayStats, setTodayStats] = useState(EMPTY_TODAY_STATS);
   const [activities, setActivities] = useState([]);
   const [recentIssues, setRecentIssues] = useState([]);
+  const [clientReminders, setClientReminders] = useState([]);
   const [activeSprint, setActiveSprint] = useState(null);
   const [activeSprintCount, setActiveSprintCount] = useState(0);
   const [activeSprints, setActiveSprints] = useState([]);
@@ -101,6 +103,7 @@ export default function DashboardPage() {
         setActiveSprints([]);
         setActivities([]);
         setRecentIssues([]);
+        setClientReminders([]);
         return;
       }
 
@@ -120,6 +123,17 @@ export default function DashboardPage() {
 
       setTodayStats(buildTodayStats(todayTaskData || []));
 
+      try {
+        const reminderResponse = await apiFetch(`/api/client-reminders/due?organizationId=${organizationId}`);
+        if (reminderResponse.ok) {
+          const reminderPayload = await reminderResponse.json();
+          setClientReminders(Array.isArray(reminderPayload) ? reminderPayload : []);
+        }
+      } catch (reminderError) {
+        console.error('Client reminder dashboard fetch error:', reminderError);
+        setClientReminders([]);
+      }
+
       const projectIds = (orgProjects || []).map((p) => p.id);
 
       if (projectIds.length === 0) {
@@ -129,6 +143,7 @@ export default function DashboardPage() {
         setActiveSprints([]);
         setActivities([]);
         setRecentIssues([]);
+        setClientReminders([]);
         return;
       }
 
@@ -292,6 +307,31 @@ export default function DashboardPage() {
   const handleViewHistory = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     toast('Showing latest team activity on this page.');
+  };
+
+  const completeClientReminder = async (reminderId) => {
+    try {
+      const response = await apiFetch(`/api/client-reminders/${reminderId}/complete`, { method: 'POST' });
+      if (!response.ok) throw new Error('Failed to complete reminder');
+      setClientReminders((items) => items.filter((item) => item.id !== reminderId));
+      toast.success('Client reminder completed');
+    } catch (error) {
+      toast.error(error.message || 'Failed to complete reminder');
+    }
+  };
+
+  const snoozeClientReminder = async (reminderId) => {
+    try {
+      const response = await apiFetch(`/api/client-reminders/${reminderId}/snooze`, {
+        method: 'POST',
+        body: JSON.stringify({ days: 1 }),
+      });
+      if (!response.ok) throw new Error('Failed to snooze reminder');
+      setClientReminders((items) => items.filter((item) => item.id !== reminderId));
+      toast.success('Client reminder snoozed');
+    } catch (error) {
+      toast.error(error.message || 'Failed to snooze reminder');
+    }
   };
 
   const topRiskSprint = activeSprints
@@ -579,6 +619,56 @@ export default function DashboardPage() {
 
         {/* ── RIGHT COLUMN ── */}
         <div className="flex flex-col gap-8">
+
+          <div className="overflow-hidden rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-sm">
+            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--bg-panel)] px-6 py-5">
+              <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)]">
+                Client Reminders
+              </h3>
+              <Link href="/clients" className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--accent-primary)] hover:underline">
+                Open Clients
+              </Link>
+            </div>
+            <div className="divide-y divide-[var(--border-subtle)]">
+              {clientReminders.length === 0 ? (
+                <div className="px-6 py-10 text-center text-sm text-[var(--text-muted)]">
+                  No client reminders due this week.
+                </div>
+              ) : (
+                clientReminders.slice(0, 6).map((reminder) => {
+                  const dueTime = reminder.due_at ? new Date(reminder.due_at) : null;
+                  const overdue = dueTime && dueTime.getTime() < Date.now();
+
+                  return (
+                    <div key={reminder.id} className="px-6 py-4">
+                      <button
+                        onClick={() => router.push(`/clients/${reminder.client?.id || reminder.client_id}?reminderId=${reminder.id}`)}
+                        className="block w-full text-left"
+                      >
+                        <div className="mb-1 flex items-start justify-between gap-3">
+                          <p className="text-sm font-bold text-[var(--text-heading)]">{reminder.title}</p>
+                          <span className={`shrink-0 rounded-[3px] border px-2 py-1 text-[10px] font-black uppercase tracking-wider ${overdue ? 'border-[#FF5630]/30 bg-[#FF5630]/10 text-[#BF2600]' : 'border-[#36B37E]/30 bg-[#36B37E]/10 text-[#006644]'}`}>
+                            {overdue ? 'Overdue' : 'Due'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-[var(--text-muted)]">
+                          {reminder.client?.name || 'Client'} {dueTime ? `| ${dueTime.toLocaleString()}` : ''}
+                        </p>
+                      </button>
+                      <div className="mt-3 flex gap-2">
+                        <button onClick={() => completeClientReminder(reminder.id)} className="rounded-[3px] border border-[#36B37E]/30 px-2.5 py-1.5 text-xs font-semibold text-[#006644] hover:bg-[#E3FCEF]">
+                          Complete
+                        </button>
+                        <button onClick={() => snoozeClientReminder(reminder.id)} className="rounded-[3px] border border-[var(--border-subtle)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-panel-hover)]">
+                          Snooze 1d
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
 
           {/* Recent Issues */}
           <div className="overflow-hidden rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-sm">

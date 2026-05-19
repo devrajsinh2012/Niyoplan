@@ -35,6 +35,7 @@ function NotificationBadge({ type }) {
     dependency_resolved: { label: 'Dependency Fixed', className: 'bg-green-100 text-green-700' },
     meeting_action_item: { label: 'Action Item', className: 'bg-pink-100 text-pink-700' },
     meeting_action_converted: { label: 'Converted', className: 'bg-pink-100 text-pink-700' },
+    client_reminder_due: { label: 'Client Reminder', className: 'bg-cyan-100 text-cyan-700' },
   };
 
   const badge = badges[type] || { label: (type || 'notification').replace(/_/g, ' '), className: 'bg-gray-100 text-gray-700' };
@@ -81,6 +82,7 @@ function NotificationMessage({ notification }) {
       dependency_resolved: `resolved a dependency`,
       meeting_action_item: `created an action item from meeting`,
       meeting_action_converted: `converted an action item into a card`,
+      client_reminder_due: `client reminder is due${metadata?.client_id ? '' : ''}`,
     };
 
     return fallbacks[type] || type.replace(/_/g, ' ');
@@ -258,6 +260,21 @@ export default function TopNav({ theme, onToggleTheme, currentProject }) {
       toast.error(error?.message || 'Failed to delete all notifications');
     } finally {
       setDeletingAllNotifications(false);
+    }
+  };
+
+  const openNotification = async (notification) => {
+    if (!notification?.is_read) {
+      await markAsRead(notification.id);
+    }
+
+    if (notification?.metadata?.client_id) {
+      const query = notification.metadata.reminder_id
+        ? `?reminderId=${encodeURIComponent(notification.metadata.reminder_id)}`
+        : '';
+      setNotificationsOpen(false);
+      router.push(`/clients/${notification.metadata.client_id}${query}`);
+      return;
     }
   };
 
@@ -519,7 +536,7 @@ export default function TopNav({ theme, onToggleTheme, currentProject }) {
                       <div
                         key={notification.id}
                         className={`group flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-[var(--bg-panel-hover)] ${!notification.is_read ? 'bg-[var(--accent-subtle)]' : ''}`}
-                        onClick={() => !notification.is_read && markAsRead(notification.id)}
+                        onClick={() => openNotification(notification)}
                       >
                         <div className="shrink-0">
                           <UserAvatar

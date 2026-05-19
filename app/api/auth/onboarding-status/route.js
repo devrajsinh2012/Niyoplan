@@ -46,7 +46,11 @@ export async function GET(request) {
     const isGoogleUser = provider === 'google' || providers.includes('google');
     const isInvitedUser = Boolean(invitedMembership);
     const hasPassword = authUser ? Boolean(authUser.encrypted_password) : true;
-    const requiresPasswordSetup = !hasPassword && (isGoogleUser || isInvitedUser);
+    const hasEmailIdentity = Array.isArray(authUser?.identities)
+      ? authUser.identities.some((identity) => identity?.provider === 'email')
+      : false;
+    const hasPasswordCredential = hasPassword || hasEmailIdentity;
+    const requiresPasswordSetup = !hasPasswordCredential && (isGoogleUser || isInvitedUser);
 
     return NextResponse.json({
       hasActiveOrganization: Boolean(activeMembership),

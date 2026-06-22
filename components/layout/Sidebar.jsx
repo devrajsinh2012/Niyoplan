@@ -12,7 +12,6 @@ import {
   Settings, BookOpen, Target,
   Zap, MessageSquare, Calendar, Building2, Sun, Wrench, BriefcaseBusiness
 } from 'lucide-react';
-import UserAvatar from '@/components/ui/UserAvatar';
 import { apiFetch } from '@/lib/apiClient';
 
 const NavSection = ({ title, children, expanded }) => {
@@ -115,9 +114,9 @@ export default function Sidebar({ project, expanded, onExpandedChange }) {
         <div className="space-y-1">
           <SideNavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" expanded={expanded} />
           <SideNavItem href="/today" icon={Sun} label="Today" expanded={expanded} />
-          <SideNavItem href="/tools" icon={Wrench} label="Tools" expanded={expanded} />
           <SideNavItem href="/projects" icon={KanbanSquare} label="Projects" expanded={expanded} />
           <SideNavItem href="/clients" icon={BriefcaseBusiness} label="Clients" expanded={expanded} badge={clientReminderCount} />
+          <SideNavItem href="/tools" icon={Wrench} label="Tools" expanded={expanded} />
         </div>
       </nav>
 
@@ -149,15 +148,6 @@ export default function Sidebar({ project, expanded, onExpandedChange }) {
         {projectId && (
           <SideNavItem href={`/projects/${projectId}/settings`} icon={Settings} label="Project Settings" expanded={expanded} />
         )}
-
-        {/* User avatar */}
-        <div className={`mt-2 flex items-center gap-3 rounded-lg p-2 ${expanded ? '' : 'justify-center'}`}>
-          <UserAvatar
-            user={profile}
-            size={32}
-            className="shrink-0 cursor-pointer"
-          />
-        </div>
       </div>
     </aside>
   );

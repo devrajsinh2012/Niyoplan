@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { toolsCatalog, toolsRoute } from '../tools.routes';
 
@@ -48,27 +48,50 @@ const TOOL_COMPONENTS = {
 };
 
 export default function ToolsDashboard() {
+  const [activeTab, setActiveTab] = useState(toolsCatalog[0]?.id || 'calculator');
+
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
-      <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 shadow-sm">
-        <div className="flex flex-col gap-2">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-muted)]">Workspace</p>
-          <h1 className="text-2xl font-semibold text-[var(--text-heading)]">{toolsRoute.label}</h1>
-          <p className="max-w-3xl text-sm leading-6 text-[var(--text-secondary)]">{toolsRoute.description}</p>
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+      <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-muted)]">Workspace</p>
+            <h1 className="text-2xl font-semibold text-[var(--text-heading)]">{toolsRoute.label}</h1>
+            <p className="max-w-xl text-sm leading-6 text-[var(--text-secondary)]">{toolsRoute.description}</p>
+          </div>
+          
+          <div className="flex-shrink-0">
+            <nav className="flex items-center gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-panel)] p-1 shadow-sm overflow-x-auto scrollbar-none max-w-full">
+              {toolsCatalog.map((tool) => {
+                const Icon = tool.icon;
+                const isActive = activeTab === tool.id;
+                return (
+                  <button
+                    key={tool.id}
+                    onClick={() => setActiveTab(tool.id)}
+                    className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-semibold uppercase tracking-wider transition-all duration-200 select-none whitespace-nowrap ${
+                      isActive
+                        ? 'bg-[var(--bg-surface)] text-[var(--accent-primary)] shadow-sm border border-[var(--border-subtle)]/50'
+                        : 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface)]/50 hover:text-[var(--text-primary)]'
+                    }`}
+                  >
+                    <Icon size={14} className={isActive ? 'text-[var(--accent-primary)]' : 'text-[var(--text-muted)]'} />
+                    {tool.label}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
         </div>
       </section>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+      <div className="space-y-4">
         {toolsCatalog.map((tool) => {
           const ToolComponent = TOOL_COMPONENTS[tool.id];
-          const Icon = tool.icon;
+          const isActive = activeTab === tool.id;
 
           return (
-            <div key={tool.id} className="min-w-0">
-              <div className="mb-2 flex items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                <Icon size={12} />
-                {tool.label}
-              </div>
+            <div key={tool.id} className={isActive ? 'block animate-fade-in' : 'hidden'}>
               <ToolComponent />
             </div>
           );

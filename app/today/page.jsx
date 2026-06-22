@@ -4,8 +4,22 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useOrganization } from '@/context/OrganizationContext';
 import { supabase } from '@/lib/supabase';
-import { Plus, CheckSquare, Square, Clock, Trash2, ChevronDown, ChevronRight, Sun, Zap, UserPlus } from 'lucide-react';
+import { Plus, CheckSquare, Square, Clock, Trash2, ChevronDown, ChevronRight, ChevronLeft, Sun, Zap, UserPlus, Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+const getLocalDateString = (d = new Date()) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const formatDisplayDate = (dateStr) => {
+  if (!dateStr) return '';
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+};
 
 function PriorityBadge({ priority }) {
   const map = {
@@ -34,6 +48,12 @@ export default function TodayPage() {
   const [showProjectIssues, setShowProjectIssues] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const hasShownAssignGuardToast = useRef(false);
+
+  const todayDateStr = getLocalDateString();
+  const [selectedDate, setSelectedDate] = useState(() => todayDateStr);
+  const [historyDays, setHistoryDays] = useState([]);
+  const [showHistoryPanel, setShowHistoryPanel] = useState(false);
+
   const organizationRole = (activeOrganization?.role || '').toLowerCase();
   const profileRole = (profile?.role || '').toLowerCase();
   const canAssign = ['admin', 'pm'].includes(organizationRole) || ['admin', 'pm'].includes(profileRole);
@@ -41,18 +61,20 @@ export default function TodayPage() {
 
   // Fetch today items from backend
   const fetchTodayItems = useCallback(async () => {
-    if (!profile?.id || !activeOrganization?.id) return;
-    if (todayItems.length === 0) {
-      setIsLoading(true);
-    }
+    if (!profile?.id || !activeOrganization?.id || !selectedDate) return;
+    setIsLoading(true);
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const [year, month, day] = selectedDate.split('-').map(Number);
+      const start = new Date(year, month - 1, day, 0, 0, 0, 0);
+      const end = new Date(year, month - 1, day, 23, 59, 59, 999);
+
       const { data, error } = await supabase
         .from('daily_tasks')
         .select('*')
         .eq('user_id', profile.id)
         .eq('organization_id', activeOrganization.id)
-        .or(`is_done.eq.false,done_at.eq.${today}`)
+        .gte('created_at', start.toISOString())
+        .lte('created_at', end.toISOString())
         .order('priority', { ascending: false });
 
       if (!error) setTodayItems(data || []);
@@ -62,7 +84,7 @@ export default function TodayPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [profile?.id, activeOrganization?.id, todayItems.length]);
+  }, [profile?.id, activeOrganization?.id, selectedDate]);
 
   // Fetch real cards assigned to user in THIS organization
   const fetchProjectCards = useCallback(async () => {
@@ -114,12 +136,45 @@ export default function TodayPage() {
     }
   }, [activeOrganization?.id, canAssign]);
 
+  const fetchHistorySummary = useCallback(async () => {
+    if (!profile?.id || !activeOrganization?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('daily_tasks')
+        .select('created_at, is_done')
+        .eq('user_id', profile.id)
+        .eq('organization_id', activeOrganization.id)
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        const summaryMap = {};
+        data.forEach(task => {
+          const localDateStr = getLocalDateString(new Date(task.created_at));
+          if (!summaryMap[localDateStr]) {
+            summaryMap[localDateStr] = { date: localDateStr, total: 0, completed: 0 };
+          }
+          summaryMap[localDateStr].total += 1;
+          if (task.is_done) {
+            summaryMap[localDateStr].completed += 1;
+          }
+        });
+        const summaryArray = Object.values(summaryMap).sort((a, b) => b.date.localeCompare(a.date));
+        setHistoryDays(summaryArray);
+      } else if (error) {
+        console.error('Error fetching history summary:', error);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }, [profile?.id, activeOrganization?.id]);
+
   useEffect(() => {
     fetchTodayItems();
     fetchProjectCards();
     fetchOrgMembers();
+    fetchHistorySummary();
     if (profile?.id) setSelectedAssignee(profile.id);
-  }, [fetchTodayItems, fetchProjectCards, fetchOrgMembers, profile?.id]);
+  }, [fetchTodayItems, fetchProjectCards, fetchOrgMembers, fetchHistorySummary, profile?.id]);
 
   const toggleAddForm = () => {
     const nextOpen = !showAddForm;
@@ -141,19 +196,27 @@ export default function TodayPage() {
 
     try {
       const isSelf = selectedAssignee === profile.id;
+      const insertPayload = {
+        user_id: selectedAssignee,
+        creator_id: profile.id,
+        organization_id: activeOrganization.id,
+        title: newTitle.trim(),
+        estimate_mins: Number(newEstimate) || 0,
+        priority: newPriority,
+        type: 'custom',
+        is_done: false,
+        checklist: [],
+      };
+
+      if (selectedDate !== todayDateStr) {
+        const [year, month, day] = selectedDate.split('-').map(Number);
+        const customCreatedAt = new Date(year, month - 1, day, 12, 0, 0, 0);
+        insertPayload.created_at = customCreatedAt.toISOString();
+      }
+
       const { data, error } = await supabase
         .from('daily_tasks')
-        .insert({
-          user_id: selectedAssignee,
-          creator_id: profile.id,
-          organization_id: activeOrganization.id,
-          title: newTitle.trim(),
-          estimate_mins: Number(newEstimate) || 0,
-          priority: newPriority,
-          type: 'custom',
-          is_done: false,
-          checklist: [],
-        })
+        .insert(insertPayload)
         .select()
         .single();
 
@@ -161,7 +224,7 @@ export default function TodayPage() {
 
       if (isSelf) {
         setTodayItems([data, ...todayItems]);
-        toast.success('Added to Today');
+        toast.success(selectedDate === todayDateStr ? 'Added to Today' : 'Added to selected day');
       } else {
         const member = orgMembers.find(m => m.user_id === selectedAssignee);
         toast.success(`Assigned to ${member?.profiles?.full_name || 'user'}`);
@@ -171,6 +234,7 @@ export default function TodayPage() {
       setNewEstimate('');
       setNewPriority('medium');
       setShowAddForm(false);
+      fetchHistorySummary();
     } catch (err) {
       console.error(err);
       toast.error('Failed to add task');
@@ -182,25 +246,34 @@ export default function TodayPage() {
     if (already) { toast('Already in Today'); return; }
 
     try {
+      const insertPayload = {
+        user_id: profile.id,
+        creator_id: profile.id,
+        organization_id: activeOrganization.id,
+        title: `${card.custom_id}: ${card.title}`,
+        priority: card.priority || 'medium',
+        type: 'card',
+        card_id: card.id,
+        is_done: false,
+        checklist: [],
+      };
+
+      if (selectedDate !== todayDateStr) {
+        const [year, month, day] = selectedDate.split('-').map(Number);
+        const customCreatedAt = new Date(year, month - 1, day, 12, 0, 0, 0);
+        insertPayload.created_at = customCreatedAt.toISOString();
+      }
+
       const { data, error } = await supabase
         .from('daily_tasks')
-        .insert({
-          user_id: profile.id,
-          creator_id: profile.id,
-          organization_id: activeOrganization.id,
-          title: `${card.custom_id}: ${card.title}`,
-          priority: card.priority || 'medium',
-          type: 'card',
-          card_id: card.id,
-          is_done: false,
-          checklist: [],
-        })
+        .insert(insertPayload)
         .select()
         .single();
 
       if (error) throw error;
       setTodayItems([data, ...todayItems]);
-      toast.success('Added from Issues');
+      toast.success(selectedDate === todayDateStr ? 'Added from Issues' : 'Imported to selected day');
+      fetchHistorySummary();
     } catch (err) {
       console.error(err);
       toast.error('Failed to import card');
@@ -209,21 +282,21 @@ export default function TodayPage() {
 
   const toggleDone = async (id, currentStatus) => {
     try {
-      const today = new Date().toISOString().split('T')[0];
       const newStatus = !currentStatus;
       
       const { error } = await supabase
         .from('daily_tasks')
         .update({ 
           is_done: newStatus, 
-          done_at: newStatus ? today : null 
+          done_at: newStatus ? selectedDate : null 
         })
         .eq('id', id);
 
       if (error) throw error;
       setTodayItems(todayItems.map(item =>
-        item.id === id ? { ...item, is_done: newStatus, done_at: newStatus ? today : null } : item
+        item.id === id ? { ...item, is_done: newStatus, done_at: newStatus ? selectedDate : null } : item
       ));
+      fetchHistorySummary();
     } catch (err) {
       console.error(err);
       toast.error('Update failed');
@@ -240,6 +313,7 @@ export default function TodayPage() {
       if (error) throw error;
       setTodayItems(todayItems.filter(i => i.id !== id));
       toast.success('Removed');
+      fetchHistorySummary();
     } catch (err) {
       console.error(err);
       toast.error('Remove failed');
@@ -285,28 +359,163 @@ export default function TodayPage() {
   const pending = todayItems.filter(i => !i.is_done);
   const done = todayItems.filter(i => i.is_done);
 
+  const handlePrevDay = () => {
+    const [year, month, day] = selectedDate.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    date.setDate(date.getDate() - 1);
+    setSelectedDate(getLocalDateString(date));
+  };
+
+  const handleNextDay = () => {
+    const [year, month, day] = selectedDate.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    date.setDate(date.getDate() + 1);
+    const nextDateStr = getLocalDateString(date);
+    if (nextDateStr <= todayDateStr) {
+      setSelectedDate(nextDateStr);
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto py-8 px-4 animate-fade-in">
       {/* Header */}
-      <div className="mb-8 flex items-start justify-between">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
             <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
               <Sun size={18} className="text-amber-500" />
             </div>
-            <h1 className="text-2xl font-bold text-[var(--text-heading)]">Today</h1>
+            <h1 className="text-2xl font-bold text-[var(--text-heading)]">
+              {selectedDate === todayDateStr ? 'Today' : 'Daily Tasks'}
+            </h1>
           </div>
-          <p className="text-sm text-[var(--text-secondary)]">
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <button
+              onClick={handlePrevDay}
+              className="p-1 rounded-md hover:bg-[var(--bg-panel-hover)] text-[var(--text-secondary)] transition-colors"
+              title="Previous Day"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span className="text-sm font-medium text-[var(--text-primary)]">
+              {formatDisplayDate(selectedDate)}
+            </span>
+            <button
+              onClick={handleNextDay}
+              disabled={selectedDate === todayDateStr}
+              className={`p-1 rounded-md hover:bg-[var(--bg-panel-hover)] text-[var(--text-secondary)] transition-colors ${selectedDate === todayDateStr ? 'opacity-30 cursor-not-allowed' : ''}`}
+              title="Next Day"
+            >
+              <ChevronRight size={16} />
+            </button>
+
+            {selectedDate !== todayDateStr && (
+              <button
+                onClick={() => setSelectedDate(todayDateStr)}
+                className="ml-2 text-xs font-bold text-blue-600 hover:underline"
+              >
+                Back to Today
+              </button>
+            )}
+          </div>
         </div>
-        <div className="text-right">
-          <div className="text-2xl font-bold text-[var(--text-heading)]">{doneCount}/{todayItems.length}</div>
-          <div className="text-xs text-[var(--text-muted)]">
-            {totalEstimate > 0 ? `~${Math.round(totalEstimate / 60 * 10) / 10}h estimated` : 'tasks done'}
+
+        <div className="flex items-center gap-4 self-start sm:self-auto">
+          {/* History Toggle Button */}
+          <button
+            onClick={() => setShowHistoryPanel(v => !v)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold border transition-all ${
+              showHistoryPanel
+                ? 'bg-blue-50 text-blue-600 border-blue-200 shadow-sm'
+                : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:bg-[var(--bg-panel-hover)]'
+            }`}
+          >
+            <Clock size={14} />
+            {showHistoryPanel ? 'Hide History' : 'View History'}
+          </button>
+
+          <div className="text-right">
+            <div className="text-2xl font-bold text-[var(--text-heading)]">{doneCount}/{todayItems.length}</div>
+            <div className="text-xs text-[var(--text-muted)]">
+              {totalEstimate > 0 ? `~${Math.round(totalEstimate / 60 * 10) / 10}h estimated` : 'tasks done'}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* History Panel */}
+      {showHistoryPanel && (
+        <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50/20 p-5 animate-slide-down">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-blue-700 flex items-center gap-1.5">
+              <Clock size={13} />
+              Task History (Select a date to view)
+            </h3>
+            <button
+              onClick={() => setShowHistoryPanel(false)}
+              className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+            >
+              Close
+            </button>
+          </div>
+          {historyDays.length === 0 ? (
+            <p className="text-xs text-[var(--text-muted)] italic text-center py-4 bg-white/50 rounded-lg">
+              No task history found yet. As you create tasks, they will be logged here.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+              {historyDays.map((day) => {
+                const isSelected = day.date === selectedDate;
+                const percent = day.total > 0 ? Math.round((day.completed / day.total) * 100) : 0;
+                
+                // Format date for the card
+                const [y, m, d] = day.date.split('-').map(Number);
+                const dayDate = new Date(y, m - 1, d);
+                const shortDate = dayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                const weekday = dayDate.toLocaleDateString('en-US', { weekday: 'short' });
+
+                return (
+                  <button
+                    key={day.date}
+                    onClick={() => setSelectedDate(day.date)}
+                    className={`flex flex-col text-left p-3 rounded-lg border transition-all ${
+                      isSelected
+                        ? 'border-blue-400 bg-blue-50/50 shadow-sm ring-1 ring-blue-400'
+                        : 'border-[var(--border-subtle)] bg-white hover:border-blue-200 hover:shadow-sm'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start w-full">
+                      <span className="text-xs font-bold text-[var(--text-heading)]">
+                        {day.date === todayDateStr ? 'Today' : shortDate}
+                      </span>
+                      <span className="text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-wider">
+                        {weekday}
+                      </span>
+                    </div>
+                    
+                    <div className="mt-2 flex items-center justify-between w-full">
+                      <span className="text-[10px] text-[var(--text-secondary)]">
+                        {day.completed}/{day.total} done
+                      </span>
+                      <span className={`text-[10px] font-bold ${percent === 100 ? 'text-green-600' : 'text-blue-600'}`}>
+                        {percent}%
+                      </span>
+                    </div>
+
+                    {/* Progress bar in history card */}
+                    <div className="mt-1.5 w-full h-1 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${percent === 100 ? 'bg-green-500' : 'bg-blue-500'}`}
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Progress bar */}
       {todayItems.length > 0 && (
@@ -347,7 +556,7 @@ export default function TodayPage() {
             onChange={e => setNewTitle(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && addItem()}
             className="w-full rounded-md border border-[var(--border-subtle)] bg-white px-3 py-2 text-sm text-[var(--text-primary)] focus:border-blue-500 focus:outline-none"
-            placeholder="What needs to be done today?"
+            placeholder={selectedDate === todayDateStr ? "What needs to be done today?" : `What needed to be done on ${formatDisplayDate(selectedDate)}?`}
           />
           
           <div className="flex flex-wrap gap-3 items-center">
@@ -408,7 +617,7 @@ export default function TodayPage() {
               onClick={addItem}
               className="flex-1 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors shadow-sm"
             >
-              Add to Today
+              {selectedDate === todayDateStr ? 'Add to Today' : 'Add to Day'}
             </button>
             <button
               onClick={() => {
@@ -463,8 +672,14 @@ export default function TodayPage() {
           <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-4 border border-amber-100">
             <Sun size={28} className="text-amber-400" />
           </div>
-          <p className="text-[var(--text-primary)] font-medium">Your day is set for success.</p>
-          <p className="text-[var(--text-muted)] text-sm">Add a task or import from current issues to get started.</p>
+          <p className="text-[var(--text-primary)] font-medium">
+            {selectedDate === todayDateStr ? 'Your day is set for success.' : 'No tasks recorded for this day.'}
+          </p>
+          <p className="text-[var(--text-muted)] text-sm">
+            {selectedDate === todayDateStr 
+              ? 'Add a task or import from current issues to get started.' 
+              : 'You can navigate to another day or add a task for this day.'}
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -484,7 +699,7 @@ export default function TodayPage() {
             <div className="mt-8">
               <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3 flex items-center gap-2">
                 <CheckSquare size={14} className="text-green-500" /> 
-                Finished for Today ({done.length})
+                {selectedDate === todayDateStr ? 'Finished for Today' : 'Finished on this Day'} ({done.length})
               </p>
               <div className="space-y-2 opacity-75">
                 {done.map(item => (

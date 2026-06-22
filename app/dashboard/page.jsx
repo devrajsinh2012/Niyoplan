@@ -107,7 +107,9 @@ export default function DashboardPage() {
         return;
       }
 
-      const todayKey = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
       const [{ data: orgProjects }, { data: todayTaskData }] = await Promise.all([
         supabase
@@ -118,7 +120,8 @@ export default function DashboardPage() {
           .from('daily_tasks')
           .select('id, user_id, estimate_mins, priority, is_done, type, done_at')
           .eq('organization_id', organizationId)
-          .or(`is_done.eq.false,done_at.eq.${todayKey}`),
+          .gte('created_at', startOfDay.toISOString())
+          .lte('created_at', endOfDay.toISOString()),
       ]);
 
       setTodayStats(buildTodayStats(todayTaskData || []));

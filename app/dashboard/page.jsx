@@ -460,8 +460,8 @@ export default function DashboardPage() {
             {/* Stats row */}
             <div className="mb-12 grid grid-cols-2 sm:grid-cols-4 gap-8">
               {[
-                { label: 'Resolved', value: stats.resolved, sub: 'Issues' },
-                { label: 'Open', value: stats.open, sub: 'Issues' },
+                { label: 'Resolved', value: stats.resolved, sub: 'Tasks' },
+                { label: 'Open', value: stats.open, sub: 'Tasks' },
                 { label: 'Story Points', value: stats.storyPoints, sub: 'Total' },
                 { label: 'Velocity', value: `${stats.velocity}%`, sub: 'Progress' },
               ].map(s => (
@@ -673,40 +673,40 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Recent Issues */}
+          {/* Recent Tasks */}
           <div className="overflow-hidden rounded-[4px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-sm">
             <div className="border-b border-[var(--border-subtle)] px-6 py-5 bg-[var(--bg-panel)]">
               <h3 className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-[0.15em]">
-                Recent Issues
+                Recent Tasks
               </h3>
             </div>
             <div className="divide-y divide-[var(--border-subtle)]">
               {recentIssues.length === 0 ? (
                 <div className="py-12 text-center text-sm text-[var(--text-muted)] opacity-60">
-                  No issues found
+                  No tasks found
                 </div>
               ) : (
-                recentIssues.map(issue => (
+                recentIssues.map(task => (
                   <div
-                    key={issue.id}
-                    onClick={() => router.push(`/projects/${issue.project_id}?tab=board&cardId=${issue.id}`)}
+                    key={task.id}
+                    onClick={() => router.push(`/projects/${task.project_id}?tab=board&cardId=${task.id}`)}
                     className="flex gap-6 px-6 py-5 transition-colors hover:bg-[var(--bg-panel-hover)] cursor-pointer group"
                   >
                     <div className="mt-1.5 flex flex-col items-center">
                       <div 
                         className="h-3 w-3 shrink-0 rounded-full shadow-sm ring-2 ring-white" 
-                        style={{ background: priorityColor(issue.priority) }} 
+                        style={{ background: priorityColor(task.priority) }} 
                       />
                       <div className="w-[1px] h-full bg-[var(--border-subtle)] mt-3 hidden group-last:hidden sm:block" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="truncate text-sm font-bold text-[var(--text-heading)] group-hover:text-[var(--accent-primary)] transition-colors leading-snug">
-                        {issue.title}
+                        {task.title}
                       </div>
                       <div className="mt-2 flex items-center gap-4 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">
-                        <span className="text-[var(--accent-primary)] font-mono bg-[var(--accent-subtle)] px-1.5 py-0.5 rounded">{issue.custom_id}</span>
+                        <span className="text-[var(--accent-primary)] font-mono bg-[var(--accent-subtle)] px-1.5 py-0.5 rounded">{task.custom_id}</span>
                         <span className="h-1 w-1 rounded-full bg-[var(--border-strong)]" />
-                        <span>{relativeTime(issue.created_at)}</span>
+                        <span>{relativeTime(task.created_at)}</span>
                       </div>
                     </div>
                     <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -787,7 +787,7 @@ export default function DashboardPage() {
 
                   <div className="mt-6 grid grid-cols-1 gap-2 text-sm text-[var(--text-secondary)]">
                     <p>{todayStats.pending} items are still in progress across the team.</p>
-                    <p>{todayStats.linkedIssues} items were pulled directly from project issues.</p>
+                    <p>{todayStats.linkedIssues} items were pulled directly from project tasks.</p>
                     <p>{todayStats.assignees} teammates currently have Today tasks assigned.</p>
                   </div>
                 </>

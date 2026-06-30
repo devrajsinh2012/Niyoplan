@@ -25,7 +25,7 @@ const issueTypeIcon = (type) => {
   return { color: 'var(--accent-primary)', bg: 'var(--accent-subtle)', icon: '✅' }; // task
 };
 
-const DraggableIssue = React.memo(function DraggableIssue({ issue }) {
+const DraggableTask = React.memo(function DraggableTask({ issue }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `card-${issue.id}`,
     data: { issueId: issue.id }
@@ -97,7 +97,7 @@ const DropZone = React.memo(function DropZone({ id, children }) {
   );
 });
 
-const DragIssueOverlay = React.memo(function DragIssueOverlay({ issue }) {
+const DragTaskOverlay = React.memo(function DragTaskOverlay({ issue }) {
   if (!issue) return null;
   const typeData = issueTypeIcon(issue.issue_type);
   return (
@@ -121,14 +121,14 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
   const [collapsed, setCollapsed] = useState({});
   const [showCreateSprintModal, setShowCreateSprintModal] = useState(false);
   const [searchText, setSearchText] = useState('');
-  const [onlyMyIssues, setOnlyMyIssues] = useState(false);
+  const [onlyMyTasks, setOnlyMyTasks] = useState(false);
   const [recentOnly, setRecentOnly] = useState(false);
   const [showInsights, setShowInsights] = useState(false);
   const [insightsSprintId, setInsightsSprintId] = useState(null);
   const [openMenuSprintId, setOpenMenuSprintId] = useState(null);
   const [editingSprint, setEditingSprint] = useState(null);
   const [editForm, setEditForm] = useState({ name: '', goal: '', start_date: '', end_date: '' });
-  const [activeIssue, setActiveIssue] = useState(null);
+  const [activeTask, setActiveTask] = useState(null);
   const [showCompleteSprintModal, setShowCompleteSprintModal] = useState(false);
   const [pendingCompleteSprint, setPendingCompleteSprint] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
@@ -195,13 +195,13 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
     }
   };
 
-  const updateSprintStatus = async (sprint, status, sprintIssues = [], skipConfirm = false) => {
+  const updateSprintStatus = async (sprint, status, sprintTasks = [], skipConfirm = false) => {
     if (!sprint?.id) return;
 
     if (status === 'completed' && !skipConfirm) {
-      const openIssues = sprintIssues.filter((issue) => issue.status !== 'done').length;
-      if (openIssues > 0) {
-        setPendingCompleteSprint({ sprint, issues: sprintIssues, openIssues });
+      const openTasks = sprintTasks.filter((task) => task.status !== 'done').length;
+      if (openTasks > 0) {
+        setPendingCompleteSprint({ sprint, tasks: sprintTasks, openTasks });
         setShowCompleteSprintModal(true);
         return;
       }
@@ -246,7 +246,7 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
       });
     }
 
-    if (onlyMyIssues && profile?.id) {
+    if (onlyMyTasks && profile?.id) {
       result = result.filter((card) => card.assignee_id === profile.id);
     }
 
@@ -255,7 +255,7 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
     }
 
     return result;
-  }, [cards, onlyMyIssues, profile?.id, recentOnly, searchText]);
+  }, [cards, onlyMyTasks, profile?.id, recentOnly, searchText]);
 
   const cardsBySprint = useMemo(() => {
     const map = new Map();
@@ -302,9 +302,9 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
     return { todo, inProgress, done };
   }, [cards]);
 
-  const dispatchCreateIssue = (sprintId = null) => {
+  const dispatchCreateTask = (sprintId = null) => {
     if (typeof window === 'undefined') return;
-    window.dispatchEvent(new CustomEvent('niyoplan:create-issue', { detail: { sprintId } }));
+    window.dispatchEvent(new CustomEvent('niyoplan:create-task', { detail: { sprintId } }));
   };
 
   const openInsightsForSprint = (sprintId) => {
@@ -354,9 +354,9 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
 
   const deleteSprint = async (sprint) => {
     setOpenMenuSprintId(null);
-    const sprintIssues = cardsBySprint.get(sprint.id) || [];
-    const warning = sprintIssues.length > 0
-      ? `This sprint has ${sprintIssues.length} issue(s). They will move to Unplanned.`
+    const sprintTasks = cardsBySprint.get(sprint.id) || [];
+    const warning = sprintTasks.length > 0
+      ? `This sprint has ${sprintTasks.length} task(s). They will move to Unplanned.`
       : 'Are you sure?';
     setShowDeleteConfirm({ sprint, message: warning });
   };
@@ -364,19 +364,19 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
   const confirmDeleteSprint = async () => {
     if (!showDeleteConfirm?.sprint) return;
     const sprint = showDeleteConfirm.sprint;
-    const sprintIssues = cardsBySprint.get(sprint.id) || [];
+    const sprintTasks = cardsBySprint.get(sprint.id) || [];
     
     setIsDeleting(true);
     try {
-      if (sprintIssues.length > 0) {
-        const ids = sprintIssues.map((issue) => issue.id);
+      if (sprintTasks.length > 0) {
+        const ids = sprintTasks.map((task) => task.id);
         const { error: moveError } = await supabase
           .from('cards')
           .update({ sprint_id: null })
           .in('id', ids);
 
         if (moveError) {
-          toast.error('Failed to move sprint issues');
+          toast.error('Failed to move sprint tasks');
           return;
         }
 
@@ -416,16 +416,16 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
       return;
     }
 
-    toast.success(sprintId ? 'Issue moved to sprint' : 'Issue moved to backlog');
+    toast.success(sprintId ? 'Task moved to sprint' : 'Task moved to backlog');
   };
 
   const handleDragCancel = () => {
-    setActiveIssue(null);
+    setActiveTask(null);
   };
 
   const handleDragEnd = async (event) => {
     const { active, over } = event;
-    setActiveIssue(null);
+    setActiveTask(null);
     if (!active?.id || !over?.id) return;
 
     const activeId = String(active.id);
@@ -453,8 +453,8 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
   const handleDragStart = (event) => {
     const activeId = String(event?.active?.id || '');
     if (!activeId.startsWith('card-')) return;
-    const issue = cards.find((card) => `card-${card.id}` === activeId) || null;
-    setActiveIssue(issue);
+    const task = cards.find((card) => `card-${card.id}` === activeId) || null;
+    setActiveTask(task);
   };
 
   if (isLoading) {
@@ -467,7 +467,7 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
 
   const sprintDragOverlay = (
     <DragOverlay adjustScale={false} dropAnimation={null}>
-      <DragIssueOverlay issue={activeIssue} />
+      <DragTaskOverlay issue={activeTask} />
     </DragOverlay>
   );
 
@@ -487,7 +487,7 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
           <Search size={14} className="search-icon" />
           <input
             type="text"
-            placeholder="Search sprint issues"
+            placeholder="Search sprint tasks"
             className="backlog-search"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
@@ -495,19 +495,19 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
         </div>
         
         <div className="avatar-filters">
-           <button type="button" className="avatar-filter-btn" onClick={() => setOnlyMyIssues(true)}>
+           <button type="button" className="avatar-filter-btn" onClick={() => setOnlyMyTasks(true)}>
              <UserAvatar user={profile} size={24} />
            </button>
            <div className="avatar-filter-others">+{teammateCount}</div>
         </div>
 
-        <button className="filter-text-btn" onClick={() => setOnlyMyIssues((prev) => !prev)}>{onlyMyIssues ? 'All issues' : 'Only my issues'}</button>
+        <button className="filter-text-btn" onClick={() => setOnlyMyTasks((prev) => !prev)}>{onlyMyTasks ? 'All tasks' : 'Only my tasks'}</button>
         <button className="filter-text-btn" onClick={() => setRecentOnly((prev) => !prev)}>{recentOnly ? 'Default order' : 'Recently updated'}</button>
 
         <div className="filter-spacer" />
         
         <div className="filter-stats">
-          <span className="stat-pill"><span className="dot todo" /> {statusCounts.todo} Issues</span>
+          <span className="stat-pill"><span className="dot todo" /> {statusCounts.todo} Tasks</span>
           <span className="stat-pill"><span className="dot inprogress" /> {statusCounts.inProgress} In Progress</span>
           <span className="stat-pill"><span className="dot done" /> {statusCounts.done} Done</span>
         </div>
@@ -516,7 +516,7 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
       <DndContext sensors={sensors} collisionDetection={collisionDetectionStrategy} onDragStart={handleDragStart} onDragCancel={handleDragCancel} onDragEnd={handleDragEnd}>
         <div className="sprint-list">
           {sprints.map(sprint => {
-            const sprintIssues = cardsBySprint.get(sprint.id) || [];
+            const sprintTasks = cardsBySprint.get(sprint.id) || [];
             const isColl = collapsed[sprint.id];
             const dates = sprint.start_date 
               ? `${new Date(sprint.start_date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})} - ${sprint.end_date ? new Date(sprint.end_date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) : 'TBD'}`
@@ -530,7 +530,7 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
                       {isColl ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
                     </button>
                     <h3 className="sprint-name">{sprint.name}</h3>
-                    <span className="sprint-meta">{sprintIssues.length} issues {dates && `· ${dates}`}</span>
+                    <span className="sprint-meta">{sprintTasks.length} tasks {dates && `· ${dates}`}</span>
                   </div>
                   <div className="sprint-block-right">
                     <div className="relative">
@@ -543,21 +543,21 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
                         </div>
                       )}
                     </div>
-                    {sprint.status === 'planning' && <button className="rounded-[3px] border border-[var(--border-subtle)] px-3 py-1 text-sm font-medium hover:bg-[var(--bg-panel-hover)] transition-colors" onClick={() => updateSprintStatus(sprint, 'active', sprintIssues)}>Start Sprint</button>}
-                    {sprint.status === 'active' && <button className="bg-[var(--accent-primary)] text-white px-3 py-1 rounded-[3px] text-sm font-semibold hover:opacity-90 transition-colors" onClick={() => updateSprintStatus(sprint, 'completed', sprintIssues)}>Complete Sprint</button>}
+                    {sprint.status === 'planning' && <button className="rounded-[3px] border border-[var(--border-subtle)] px-3 py-1 text-sm font-medium hover:bg-[var(--bg-panel-hover)] transition-colors" onClick={() => updateSprintStatus(sprint, 'active', sprintTasks)}>Start Sprint</button>}
+                    {sprint.status === 'active' && <button className="bg-[var(--accent-primary)] text-white px-3 py-1 rounded-[3px] text-sm font-semibold hover:opacity-90 transition-colors" onClick={() => updateSprintStatus(sprint, 'completed', sprintTasks)}>Complete Sprint</button>}
                   </div>
                 </div>
 
                 {!isColl && (
                   <DropZone id={`sprint-${sprint.id}`}>
-                    {sprintIssues.length ? (
+                    {sprintTasks.length ? (
                       <div className="backlog-items">
-                        {sprintIssues.map((item) => <DraggableIssue key={item.id} issue={item} />)}
+                        {sprintTasks.map((item) => <DraggableTask key={item.id} issue={item} />)}
                       </div>
                     ) : (
                       <div className="empty-sprint-text">Plan a sprint by dragging work items into it, or by dragging the sprint footer.</div>
                     )}
-                    <button className="create-issue-inline" onClick={() => dispatchCreateIssue(sprint.id)}>+ Create issue</button>
+                    <button className="create-issue-inline" onClick={() => dispatchCreateTask(sprint.id)}>+ Create task</button>
                   </DropZone>
                 )}
               </div>
@@ -573,7 +573,7 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
                 {collapsed['backlog'] ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
               </button>
               <h3 className="sprint-name">Unplanned</h3>
-              <span className="sprint-meta">({filteredBacklog.length} issues)</span>
+              <span className="sprint-meta">({filteredBacklog.length} tasks)</span>
             </div>
             <div className="sprint-block-right">
                <button className="rounded-[3px] border border-[var(--border-subtle)] px-3 py-1 text-sm font-medium hover:bg-[var(--bg-panel-hover)] transition-colors" onClick={() => setShowCreateSprintModal(true)}>Create Sprint</button>
@@ -584,12 +584,12 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
             <DropZone id="backlog">
               {filteredBacklog.length ? (
                 <div className="backlog-items">
-                  {filteredBacklog.map((item) => <DraggableIssue key={item.id} issue={item} />)}
+                  {filteredBacklog.map((item) => <DraggableTask key={item.id} issue={item} />)}
                 </div>
               ) : (
-                <div className="empty-sprint-text border-dashed">No unplanned issues.</div>
+                <div className="empty-sprint-text border-dashed">No unplanned tasks.</div>
               )}
-              <button className="create-issue-inline" onClick={() => dispatchCreateIssue(null)}>+ Create issue</button>
+              <button className="create-issue-inline" onClick={() => dispatchCreateTask(null)}>+ Create task</button>
             </DropZone>
           )}
         </div>
@@ -642,7 +642,7 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
 
               <div className="flex-1 overflow-y-auto px-8 py-6 min-h-0 text-left">
                 <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-                  <span className="font-bold text-[var(--text-primary)]">{pendingCompleteSprint.openIssues} issue(s)</span> are not done yet. Complete sprint anyway?
+                  <span className="font-bold text-[var(--text-primary)]">{pendingCompleteSprint.openTasks} task(s)</span> are not done yet. Complete sprint anyway?
                 </p>
               </div>
 
@@ -657,7 +657,7 @@ export default function SprintManager({ projectId, refreshNonce = 0 }) {
                   className="rounded-[3px] bg-[#0052CC] px-7 py-2 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#00388D] active:scale-95"
                   onClick={() => {
                     setShowCompleteSprintModal(false);
-                    updateSprintStatus(pendingCompleteSprint.sprint, 'completed', pendingCompleteSprint.issues, true);
+                    updateSprintStatus(pendingCompleteSprint.sprint, 'completed', pendingCompleteSprint.tasks, true);
                   }}
                 >
                   Complete Sprint

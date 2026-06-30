@@ -272,7 +272,7 @@ export default function TodayPage() {
 
       if (error) throw error;
       setTodayItems([data, ...todayItems]);
-      toast.success(selectedDate === todayDateStr ? 'Added from Issues' : 'Imported to selected day');
+      toast.success(selectedDate === todayDateStr ? 'Added from Tasks' : 'Imported to selected day');
       fetchHistorySummary();
     } catch (err) {
       console.error(err);
@@ -541,7 +541,7 @@ export default function TodayPage() {
           className="flex items-center gap-2 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-panel-hover)]"
         >
           <Zap size={16} />
-          Add from Issues
+          Add from Tasks
           {showProjectIssues ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </button>
       </div>
@@ -632,18 +632,18 @@ export default function TodayPage() {
         </div>
       )}
 
-      {/* Project issues picker */}
+      {/* Project tasks picker */}
       {showProjectIssues && (
         <div className="mb-4 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
           <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3 flex items-center gap-2">
             <Zap size={12} className="text-blue-500" />
-            Your assigned issues ({activeOrganization?.name})
+            Your assigned tasks ({activeOrganization?.name})
           </p>
           {isLoading ? (
-            <p className="text-sm text-[var(--text-muted)] p-2">Loading issues...</p>
+            <p className="text-sm text-[var(--text-muted)] p-2">Loading tasks...</p>
           ) : projectCards.length === 0 ? (
             <p className="text-sm text-[var(--text-muted)] p-2 bg-[var(--bg-panel-hover)] rounded italic">
-              No open issues assigned to you in this organization.
+              No open tasks assigned to you in this organization.
             </p>
           ) : (
             <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
@@ -677,7 +677,7 @@ export default function TodayPage() {
           </p>
           <p className="text-[var(--text-muted)] text-sm">
             {selectedDate === todayDateStr 
-              ? 'Add a task or import from current issues to get started.' 
+              ? 'Add a task or import from current tasks to get started.' 
               : 'You can navigate to another day or add a task for this day.'}
           </p>
         </div>

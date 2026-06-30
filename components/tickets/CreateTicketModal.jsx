@@ -176,7 +176,7 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
           <form id="create-ticket-form" onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0">
 
             <div className="flex-shrink-0 flex items-center justify-between border-b border-[var(--border-subtle)]/50 bg-[var(--bg-surface)] px-6 py-5">
-              <h2 className="text-xl font-bold text-[var(--text-heading)] tracking-tight">Create Issue</h2>
+              <h2 className="text-xl font-bold text-[var(--text-heading)] tracking-tight">Create Task</h2>
               <button
                 type="button"
                 onClick={onClose}
@@ -213,7 +213,7 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Issue Type</label>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Task Type</label>
                 <select
                   name="issue_type"
                   className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
@@ -352,7 +352,7 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
                 disabled={isSubmitting}
                 className="rounded-[3px] bg-[#0052CC] px-7 py-2 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#00388D] disabled:opacity-50 active:scale-95 flex items-center gap-2"
               >
-                {isSubmitting ? <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-white" /> : <><Save size={16} />Create Issue</>}
+                {isSubmitting ? <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-white" /> : <><Save size={16} />Create Task</>}
               </button>
             </div>
 

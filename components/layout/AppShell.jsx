@@ -99,10 +99,10 @@ export default function AppShell({ children }) {
       { keys: ['G', 'L'], description: 'Go to Backlog' },
       { keys: ['1-0'], description: 'Switch project tabs' },
     ]},
-    { category: 'Issues', items: [
-      { keys: ['C'], description: 'Create new issue' },
-      { keys: ['E'], description: 'Edit selected issue' },
-      { keys: ['Enter'], description: 'Open selected issue' },
+    { category: 'Tasks', items: [
+      { keys: ['C'], description: 'Create new task' },
+      { keys: ['E'], description: 'Edit selected task' },
+      { keys: ['Enter'], description: 'Open selected task' },
       { keys: ['Esc'], description: 'Close modal' },
     ]},
     { category: 'General', items: [

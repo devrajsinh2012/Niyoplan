@@ -802,3 +802,24 @@ Below is a summarized history of significant past changes, reconstructed from gi
 - `app/page.jsx` — Fixed `text-2xs` (non-existent in Tailwind v4) → `text-xs` with `color: var(--text-muted)`. Adjusted nav padding and main top-padding.
 - `PRODUCT.md` — Created (required by impeccable skill for design context).
 **Notes**: The root cause of the button invisibility bug was the shadcn Button component expecting shadcn-specific CSS vars (--primary, --ring, --input, --background) which were never defined in globals.css. The fix bypasses shadcn and uses the project's own established CSS token system.
+
+---
+
+### [2026-06-30] — Rename "Issue" to "Task" Everywhere
+**Agent/Author**: Antigravity (Claude Sonnet 3.5 / Gemini)
+**Summary**: Updated all user-facing references, UI labels, buttons, lists, warnings, statistics, and JS-level constants/variables from "Issue/Issues" to "Task/Tasks" to match the user request. Retained database column name `issue_type` and role permission keys to avoid database migration risks.
+**Files Changed**:
+- `lib/constants.js` — Defined `TASK_TYPE` (mapped task/bug/story/epic) and aliased `ISSUE_TYPE` for backward compatibility.
+- `lib/permissions.js` — Replaced human-readable labels and descriptions of permission keys (`create_issue`, etc.) to refer to "Tasks".
+- `components/layout/TopNav.jsx` — Updated search toast warning message.
+- `components/layout/AppShell.jsx` — Updated keyboard shortcut section name and item descriptions.
+- `components/ui/WelcomeModal.jsx` — Updated onboarding checklist text.
+- `components/tickets/CreateTicketModal.jsx` — Renamed visual labels, title, and buttons.
+- `components/kanban/CardDetail.jsx` — Updated dropdown selector labels.
+- `components/modals/CreateProjectModal.jsx` — Updated project key example label.
+- `app/projects/[projectId]/page.jsx` — Updated state, dispatcher event name, and creation headers.
+- `components/sprints/SprintManager.jsx` — Renamed components (`DraggableTask`, `DragTaskOverlay`), state variables (`onlyMyTasks`, `activeTask`), list metrics, delete warnings, and empty text warnings.
+- `app/today/page.jsx` — Updated task import button text, import checklist warnings, and dialog headers.
+- `app/dashboard/page.jsx` — Updated overview stats widgets, recent items list views, and focus load counts.
+- `app/projects/[projectId]/settings/page.jsx` — Updated task ID key prefix guidelines and deletion description warnings.
+**Notes**: Build and compilation passed successfully via `npm run build`.

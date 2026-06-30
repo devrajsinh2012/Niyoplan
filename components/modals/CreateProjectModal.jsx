@@ -172,7 +172,7 @@ export default function CreateProjectModal({
                   onChange={e => setPrefix(e.target.value.toUpperCase())}
                 />
                 <p className="mt-2 text-[11px] font-medium text-[var(--text-muted)]">
-                  Issues will look like <span className="font-bold text-[#0052CC]">{prefix || 'WEB'}-123</span>
+                  Tasks will look like <span className="font-bold text-[#0052CC]">{prefix || 'WEB'}-123</span>
                 </p>
               </div>
 

@@ -473,7 +473,7 @@ export default function ProjectSettingsPage() {
                     maxLength={10}
                   />
                   <p className="mt-1 text-xs text-[var(--text-muted)]">
-                    Used as prefix for issue IDs (e.g., {projectKey || 'KEY'}-123)
+                    Used as prefix for task IDs (e.g., {projectKey || 'KEY'}-123)
                   </p>
                 </div>
 
@@ -745,7 +745,7 @@ export default function ProjectSettingsPage() {
                   <div className="flex-1">
                     <h3 className="mb-2 text-lg font-semibold text-red-900">Delete Project</h3>
                     <p className="mb-4 text-sm text-red-700">
-                      Once you delete this project, there is no going back. This will permanently delete all issues, sprints, goals, and documents.
+                      Once you delete this project, there is no going back. This will permanently delete all tasks, sprints, goals, and documents.
                     </p>
                     <button
                       onClick={() => setShowDeleteModal(true)}

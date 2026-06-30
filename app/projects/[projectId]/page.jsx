@@ -44,7 +44,7 @@ export default function ProjectDetailPage() {
   const [cards, setCards] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [createIssueContext, setCreateIssueContext] = useState({ sprintId: null });
+  const [createTaskContext, setCreateTaskContext] = useState({ sprintId: null });
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [selectedCard, setSelectedCard] = useState(null);
   const [isSavingCard, setIsSavingCard] = useState(false);
@@ -161,11 +161,11 @@ export default function ProjectDetailPage() {
   useEffect(() => {
     const openModal = (event) => {
       const sprintId = event?.detail?.sprintId || null;
-      setCreateIssueContext({ sprintId });
+      setCreateTaskContext({ sprintId });
       setShowModal(true);
     };
-    window.addEventListener('niyoplan:create-issue', openModal);
-    return () => window.removeEventListener('niyoplan:create-issue', openModal);
+    window.addEventListener('niyoplan:create-task', openModal);
+    return () => window.removeEventListener('niyoplan:create-task', openModal);
   }, []);
 
   useEffect(() => {
@@ -184,7 +184,7 @@ export default function ProjectDetailPage() {
 
       if (event.key.toLowerCase() === 'c' && canWrite) {
         event.preventDefault();
-        setCreateIssueContext({ sprintId: null });
+        setCreateTaskContext({ sprintId: null });
         setShowModal(true);
         return;
       }
@@ -203,7 +203,7 @@ export default function ProjectDetailPage() {
   }, [tabs, canWrite, id, router]);
 
   const handleCreated = useCallback(() => {
-    setCreateIssueContext({ sprintId: null });
+    setCreateTaskContext({ sprintId: null });
     fetchProjectAndCards();
     setRefreshNonce((prev) => prev + 1);
   }, [fetchProjectAndCards]);
@@ -392,13 +392,13 @@ export default function ProjectDetailPage() {
           {canWrite && (
             <button
               onClick={() => {
-                setCreateIssueContext({ sprintId: null });
+                setCreateTaskContext({ sprintId: null });
                 setShowModal(true);
               }}
               className="flex items-center gap-2 rounded-[3px] bg-[var(--accent-primary)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:opacity-90 shrink-0 ml-4"
             >
               <Plus size={16} strokeWidth={2.5} />
-              Create Issue
+              Create Task
             </button>
           )}
         </div>
@@ -616,10 +616,10 @@ export default function ProjectDetailPage() {
       {showModal && (
         <CreateTicketModal
           projectId={id}
-          defaultSprintId={createIssueContext.sprintId}
+          defaultSprintId={createTaskContext.sprintId}
           onClose={() => {
             setShowModal(false);
-            setCreateIssueContext({ sprintId: null });
+            setCreateTaskContext({ sprintId: null });
           }}
           onCreated={handleCreated}
         />

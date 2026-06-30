@@ -130,8 +130,8 @@ export default function WelcomeModal() {
                 <span>Invite team members with the code above</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-slate-900 rounded-full" />
-                <span>Start tracking issues and managing sprints</span>
+                <div className="w-2.5 h-2.5 bg-slate-900 rounded-full animate-pulse" />
+                <span>Start tracking tasks and managing sprints</span>
               </div>
             </div>
           </div>

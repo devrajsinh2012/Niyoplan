@@ -469,7 +469,7 @@ export default function TopNav({ theme, onToggleTheme, currentProject }) {
             if (e.key !== 'Enter') return;
             const query = globalSearch.trim();
             if (!query) {
-              toast('Type a project name or issue key first.');
+              toast('Type a project name or task key first.');
               return;
             }
             router.push(`/projects?search=${encodeURIComponent(query)}`);

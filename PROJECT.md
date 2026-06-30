@@ -772,4 +772,33 @@ Below is a summarized history of significant past changes, reconstructed from gi
 
 ---
 
-*This document was last updated on 2026-06-22.*
+### [2026-06-23] — Homepage Redesign & Light Theme Integration
+**Agent/Author**: Antigravity (Gemini 3.5 Flash)
+**Summary**: Redesigned landing page into a premium, interactive product workspace. Integrated custom canvas math trail animation, added shadcn Button element, fixed layout variables, resolved cursor click/scroll locks and NaN bugs, and built full support for Light/Dark themes.
+**Files Changed**:
+- `components/ui/canvas.jsx` — Integrated pointer spring mathematical canvas rendering with custom opacity/blending overlays for light/dark themes
+- `components/ui/button.jsx` — Added standard button component mapped to JavaScript
+- `lib/utils.js` — Created cn helper class to support Class Variance Authority styles
+- `components/hero.jsx` — Implemented demo interface showcasing intro pill, corner grids, and hooks
+- `app/page.jsx` — Integrated landing elements with dynamic theme background toggling
+- `app/globals.css` — Appended text-glow utility styles
+**Notes**: All styling integrations are modularly bound to `app/page.jsx` and do not bleed into the rest of the Niyoplan product pages.
+
+---
+
+*This document was last updated on 2026-06-30.*
+
+---
+
+### [2026-06-30] — Landing Page UI Fixes (Both Light & Dark Theme)
+**Agent/Author**: Antigravity (Claude Sonnet 4.6 Thinking)
+**Summary**: Comprehensive UI audit and fix pass on all landing page components for both light and dark themes.
+**Files Changed**:
+- `components/hero.jsx` — Replaced broken shadcn `Button` component (uses undefined --primary/--ring CSS vars) with `.hero-btn-primary` and `.hero-btn-outline` classes. Fixed `dark:` Tailwind variants that don't work with the project's `data-theme` approach — switched all color tokens to use `var(--css-token)` pattern. Preserved canvas animation entirely.
+- `components/features-bento.jsx` — Removed banned uppercase tracked eyebrow pill badge. Replaced large rounded icon boxes with smaller compact icon+label combos. All colors use var() tokens for full theme compatibility.
+- `components/testimonials.jsx` — Removed banned uppercase "Trusted by..." kicker label. Simplified brand strip. All token-based coloring preserved for both themes.
+- `components/cta-final.jsx` — Removed banned gradient text (bg-clip-text + linear-gradient). Replaced with solid var(--text-heading). Replaced pill eyebrow with icon badge. Kept layout and ambient glows.
+- `app/globals.css` — Added `.hero-btn-primary` and `.hero-btn-outline` classes inside @layer components with full light/dark theme support via CSS custom properties. Fixed @layer structure.
+- `app/page.jsx` — Fixed `text-2xs` (non-existent in Tailwind v4) → `text-xs` with `color: var(--text-muted)`. Adjusted nav padding and main top-padding.
+- `PRODUCT.md` — Created (required by impeccable skill for design context).
+**Notes**: The root cause of the button invisibility bug was the shadcn Button component expecting shadcn-specific CSS vars (--primary, --ring, --input, --background) which were never defined in globals.css. The fix bypasses shadcn and uses the project's own established CSS token system.

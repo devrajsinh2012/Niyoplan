@@ -14,3 +14,10 @@ Jira vs. NiyoPlan*
 /.clerk/
 # Local working drafts not for repo
 New changes/
+
+# AI Agent/Tooling directories
+.agents/
+.claude/
+.gemini/
+.impeccable/
+.codex/

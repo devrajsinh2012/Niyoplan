@@ -2,39 +2,37 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import { ArrowRight, ShieldCheck, Rocket, Link2, Workflow, Server } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowRight, Sun, Moon } from 'lucide-react';
 import BrandMark from '@/components/ui/BrandMark';
 import { useAuth } from '@/context/AuthContext';
 import { useOrganization } from '@/context/OrganizationContext';
-
-const featureCards = [
-  {
-    title: 'Smart Delivery Dashboard',
-    description: 'Track priorities, blockers, sprint velocity, and team focus in one structured workspace.',
-    icon: Workflow,
-  },
-  {
-    title: 'Google Drive Attachments',
-    description: 'Attach Drive files directly to projects and cards without storing file contents in Niyoplan.',
-    icon: Link2,
-  },
-  {
-    title: 'Secure Team Collaboration',
-    description: 'Organization-based access control, role management, and clear project visibility.',
-    icon: ShieldCheck,
-  },
-  {
-    title: 'Built for API Workflows',
-    description: 'Use documented API routes to extend automation and integrate with your internal tools.',
-    icon: Server,
-  },
-];
+import Hero from '@/components/hero';
+import FeaturesBento from '@/components/features-bento';
+import Testimonials from '@/components/testimonials';
+import CtaFinal from '@/components/cta-final';
 
 export default function LandingPage() {
   const router = useRouter();
   const { user, loading, initialLoading } = useAuth();
   const { activeOrganization, loading: orgLoading } = useOrganization();
+  const [theme, setTheme] = useState('dark');
+
+  // Load saved theme on mount
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('niyoplan-theme') || 'dark';
+    setTheme(savedTheme);
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    document.documentElement.style.colorScheme = savedTheme;
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+    document.documentElement.style.colorScheme = newTheme;
+    localStorage.setItem('niyoplan-theme', newTheme);
+  };
 
   useEffect(() => {
     if (loading || initialLoading || (user && orgLoading)) return;
@@ -52,8 +50,8 @@ export default function LandingPage() {
 
   if (waitingForAuth) {
     return (
-      <div className="min-h-screen bg-[var(--bg-app)] flex items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--border-strong)] border-t-[var(--accent-primary)]" />
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/10 border-t-blue-500" />
       </div>
     );
   }
@@ -63,101 +61,86 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[var(--bg-app)] text-[var(--text-primary)] lg:flex lg:h-dvh lg:flex-col">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-24 -top-20 h-72 w-72 rounded-full bg-[var(--shell-ambient-1)] blur-3xl" />
-        <div className="absolute right-0 top-0 h-96 w-96 rounded-full bg-[var(--shell-ambient-2)] blur-3xl" />
-        <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-[var(--accent-glow)] blur-3xl" />
-      </div>
-
-      <header className="relative z-10 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/80 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4">
+    <div 
+      className={`min-h-screen relative overflow-hidden font-sans transition-colors duration-500 selection:bg-blue-500/30 selection:text-white ${
+        theme === 'dark' ? 'bg-[#050505] text-neutral-300' : 'bg-[#FAFBFD] text-[#17253D]'
+      }`}
+    >
+      {/* Floating Top Navigation Header */}
+      <header 
+        className={`fixed top-0 left-0 right-0 z-50 border-b transition-colors duration-500 backdrop-blur-md ${
+          theme === 'dark' ? 'border-white/5 bg-[#050505]/75' : 'border-neutral-200 bg-white/75'
+        }`}
+      >
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-3">
+          {/* Logo Brand */}
           <div className="flex items-center gap-3">
-            <BrandMark size={34} className="rounded-xl" />
-            <div>
-              <p className="text-base font-semibold text-[var(--text-heading)]">Niyoplan</p>
-              <p className="text-xs text-[var(--text-muted)]">Project Execution Platform</p>
-            </div>
+            <BrandMark size={34} className="rounded-xl shadow-lg shadow-blue-500/10" />
+            <p className={`text-base font-bold tracking-tight transition-colors ${
+              theme === 'dark' ? 'text-white' : 'text-neutral-900'
+            }`}>
+              Niyoplan
+            </p>
           </div>
-          <div className="flex items-center gap-3">
+          
+          {/* Actions */}
+          <div className="flex items-center gap-4">
+            {/* Theme Toggle Button */}
+            <button
+              onClick={toggleTheme}
+              className={`rounded-lg p-2.5 border transition-colors ${
+                theme === 'dark' 
+                  ? 'border-white/10 text-neutral-400 hover:bg-white/[0.03] hover:text-white' 
+                  : 'border-neutral-300 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900'
+              }`}
+              aria-label="Toggle Theme"
+            >
+              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
+
             <Link
               href="/login"
-              className="rounded-lg border border-[var(--border-subtle)] px-4 py-2 text-sm font-semibold text-[var(--text-primary)] transition hover:bg-[var(--bg-panel-hover)]"
+              className={`rounded-lg border px-4 py-2 text-xs font-semibold transition ${
+                theme === 'dark' 
+                  ? 'border-white/10 text-neutral-300 hover:bg-white/[0.03] hover:text-white' 
+                  : 'border-neutral-300 text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900'
+              }`}
             >
               Sign In
             </Link>
             <Link
               href="/register"
-              className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--accent-hover)]"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-blue-600/10 transition hover:bg-blue-500 hover:scale-[1.01]"
             >
               Get Started
-              <ArrowRight size={15} />
+              <ArrowRight size={13} />
             </Link>
           </div>
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto w-full max-w-7xl px-6 pb-16 pt-14 md:pt-20 lg:flex-1 lg:overflow-hidden lg:pb-8 lg:pt-8">
-        <section className="grid items-center gap-10 lg:h-full lg:grid-cols-2">
-          <div>
-            <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
-              <Rocket size={14} />
-              High-tech project control
-            </p>
-            <h1 className="max-w-2xl text-4xl font-extrabold tracking-tight text-[var(--text-heading)] md:text-6xl">
-              Build faster with one command center for planning, execution, and team clarity.
-            </h1>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--text-secondary)] md:text-lg">
-              Niyoplan combines project dashboards, sprint visibility, documentation workflows, and secure file attachments
-              so product teams can ship with confidence.
-            </p>
-
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link
-                href="/login"
-                className="rounded-lg border border-[var(--border-subtle)] px-5 py-3 text-sm font-semibold text-[var(--text-primary)] transition hover:bg-[var(--bg-panel-hover)]"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/register"
-                className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent-primary)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-hover)]"
-              >
-                Get Started
-                <ArrowRight size={16} />
-              </Link>
-            </div>
-          </div>
-
-          <div className="grid gap-4">
-            {featureCards.map((card) => {
-              const Icon = card.icon;
-              return (
-                <article
-                  key={card.title}
-                  className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 shadow-[var(--shadow-md)]"
-                >
-                  <div className="mb-3 inline-flex rounded-lg bg-[var(--accent-subtle)] p-2 text-[var(--accent-primary)]">
-                    <Icon size={18} />
-                  </div>
-                  <h2 className="text-lg font-bold text-[var(--text-heading)]">{card.title}</h2>
-                  <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{card.description}</p>
-                </article>
-              );
-            })}
-          </div>
-        </section>
+      {/* Landing Main sections */}
+      <main className="relative z-10 pt-14">
+        <Hero />
+        <FeaturesBento />
+        <Testimonials />
+        <CtaFinal />
       </main>
 
-      <footer className="relative z-10 border-t border-[var(--border-subtle)] bg-[var(--bg-surface)]/85">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-6 py-6 text-sm text-[var(--text-secondary)] md:flex-row md:items-center md:justify-between">
-          <p>Copyright {new Date().getFullYear()} Niyoplan. All rights reserved.</p>
+      {/* Footer */}
+      <footer 
+        className={`relative z-10 border-t transition-colors duration-500 ${
+          theme === 'dark' ? 'border-white/5 bg-[#050505]/95' : 'border-neutral-200 bg-white/95'
+        } py-8`}
+      >
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-6 text-xs md:flex-row md:items-center md:justify-between" style={{ color: 'var(--text-muted)' }}>
+          <p>Copyright © {new Date().getFullYear()} Niyoplan. All rights reserved.</p>
           <nav className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <Link href="/login" className="hover:text-[var(--accent-primary)]">Log In</Link>
-            <Link href="/register" className="hover:text-[var(--accent-primary)]">Sign Up</Link>
-            <Link href="/api-documentation" className="hover:text-[var(--accent-primary)]">API Documentation</Link>
-            <Link href="/privacy" className="hover:text-[var(--accent-primary)]">Privacy Policy</Link>
-            <Link href="/terms" className="hover:text-[var(--accent-primary)]">Terms of Service</Link>
+            <Link href="/login" className="hover:text-blue-500 transition">Log In</Link>
+            <Link href="/register" className="hover:text-blue-500 transition">Sign Up</Link>
+            <Link href="/api-documentation" className="hover:text-blue-500 transition">API Docs</Link>
+            <Link href="/privacy" className="hover:text-blue-500 transition">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-blue-500 transition">Terms of Service</Link>
           </nav>
         </div>
       </footer>

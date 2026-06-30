@@ -288,6 +288,45 @@
   .animate-progress {
     animation: progress 3s linear forwards;
   }
+
+  /* ---- Landing Page Hero Buttons ---- */
+  .hero-btn-primary {
+    @apply inline-flex items-center justify-center whitespace-nowrap font-semibold transition-all;
+    background: var(--accent-primary);
+    color: #ffffff;
+    border: 1px solid transparent;
+    padding: 12px 24px;
+    font-size: 14px;
+    border-radius: 12px;
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-primary) 35%, transparent);
+  }
+
+  .hero-btn-primary:hover {
+    background: var(--accent-hover);
+    transform: scale(1.02);
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--accent-primary) 45%, transparent);
+  }
+
+  .hero-btn-primary:active {
+    transform: scale(0.99);
+  }
+
+  .hero-btn-outline {
+    @apply inline-flex items-center justify-center whitespace-nowrap font-semibold transition-all;
+    color: var(--text-primary);
+    border: 1px solid var(--border-strong);
+    background: var(--bg-surface);
+    padding: 12px 24px;
+    font-size: 14px;
+    border-radius: 12px;
+  }
+
+  .hero-btn-outline:hover {
+    background: var(--bg-panel-hover);
+    border-color: var(--border-strong);
+    color: var(--text-heading);
+    transform: scale(1.01);
+  }
 }
 
 /* =============================================
@@ -323,3 +362,13 @@
   .focus\:border-blue-500:focus { border-color: var(--accent-primary) !important; }
   .focus\:ring-blue-500:focus { --tw-ring-color: color-mix(in srgb, var(--accent-primary) 55%, transparent) !important; }
 }
+
+/* =============================================
+   Redesign Custom Utilities (Landing Page)
+   ============================================== */
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 20px rgba(59, 130, 246, 0.35), 0 0 2px rgba(59, 130, 246, 0.5);
+  }
+}
+

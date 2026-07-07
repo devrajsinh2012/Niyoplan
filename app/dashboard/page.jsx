@@ -12,6 +12,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useOrganization } from '@/context/OrganizationContext';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch } from '@/lib/apiClient';
+import OrgCentralKanban from '@/components/dashboard/OrgCentralKanban';
 
 const EMPTY_TODAY_STATS = {
   total: 0,
@@ -356,16 +357,15 @@ export default function DashboardPage() {
 
       {/* Header */}
       <div className="mb-12">
-        <div className="flex items-center gap-4 mb-4">
-          <BrandMark size={40} />
-          <nav className="flex items-center gap-2 text-xs font-medium text-[var(--text-muted)]">
-            <span>Workspace</span>
-            <span>/</span>
-            <span className="text-[var(--text-secondary)]">Dashboard</span>
-          </nav>
-        </div>
+        
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
           <h1 className="text-3xl font-extrabold text-[var(--text-heading)] tracking-tight">Project Overview</h1>
+          <button
+            onClick={() => router.push('/dashboard/kanban')}
+            className="flex items-center gap-2 rounded-lg bg-[#0052CC] hover:bg-[#0747A6] px-4 py-2.5 text-sm font-semibold text-white transition-all shadow-sm active:scale-95 cursor-pointer focus:outline-none"
+          >
+            <span className="text-xs uppercase tracking-wider font-bold">Organization Kanban Board</span>
+          </button>
         </div>
       </div>
 
@@ -803,6 +803,8 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+
     </div>
   );
 }

@@ -315,65 +315,6 @@ export default function TopNav({ theme, onToggleTheme, currentProject }) {
 
       {/* Global Nav Links */}
       <nav className="flex items-center gap-1">
-        {/* Org Switcher */}
-        <div className="relative" ref={orgRef}>
-          <button
-            onClick={() => setOrgMenuOpen((prev) => !prev)}
-            className="inline-flex items-center gap-2 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--bg-panel-hover)]"
-            title="Organization menu"
-          >
-            <Building2 size={14} className="text-[var(--text-muted)]" />
-            <span className="max-w-[160px] truncate">
-              {orgLoading ? 'Loading org...' : (activeOrganization?.name || 'No company')}
-            </span>
-            <ChevronDown size={14} className="text-[var(--text-muted)]" />
-          </button>
-
-          {orgMenuOpen && (
-            <div className="absolute left-0 top-[calc(100%+8px)] z-[220] w-[320px] overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-xl">
-              <div className="border-b border-[var(--border-subtle)] px-4 py-3">
-                <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Organizations</div>
-              </div>
-
-              <div className="max-h-[280px] overflow-y-auto">
-                {userOrganizations && userOrganizations.length > 0 ? (
-                  userOrganizations.map((org) => (
-                    <button
-                      key={org.id}
-                      onClick={() => {
-                        switchOrganization(org.id);
-                        setOrgMenuOpen(false);
-                        router.push('/dashboard');
-                      }}
-                      className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-[var(--bg-panel-hover)] ${activeOrganization?.id === org.id ? 'bg-[var(--accent-subtle)]' : ''}`}
-                    >
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-[var(--text-primary)]">{org.name}</div>
-                        <div className="text-xs text-[var(--text-muted)] capitalize">{org.role}</div>
-                      </div>
-                      {activeOrganization?.id === org.id && <Check size={14} className="text-[var(--accent-primary)]" />}
-                    </button>
-                  ))
-                ) : (
-                  <div className="px-4 py-8 text-sm text-[var(--text-muted)] text-center">No organization selected</div>
-                )}
-              </div>
-
-              <div className="border-t border-[var(--border-subtle)] p-2 space-y-1">
-                <button
-                  onClick={() => {
-                    setOrgMenuOpen(false);
-                    router.push('/onboarding/create');
-                  }}
-                  className="w-full inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-panel-hover)]"
-                >
-                  <Plus size={14} /> New organization
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* Project Switcher — only shown when inside a project */}
         {projectId && (
           <>

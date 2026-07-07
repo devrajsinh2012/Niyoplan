@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import Image from 'next/image';
-import { avatarDataUrl, getAvatarColor, getInitials } from '@/lib/avatar';
+// import Image from 'next/image'; // Removed unused import
+import { getAvatarColor, getInitials } from '@/lib/avatar';
 
 /**
  * UserAvatar - Displays a user avatar with geometric pattern fallback
@@ -23,53 +23,24 @@ export default function UserAvatar({
   const seed = user?.id || user?.email || 'default';
 
   // Memoize the avatar URL to prevent regeneration on every render
-  const geometricAvatarUrl = useMemo(() => avatarDataUrl(seed), [seed]);
+
   const avatarColor = useMemo(() => getAvatarColor(seed), [seed]);
   const initials = useMemo(() => getInitials(user?.full_name || user?.name), [user?.full_name, user?.name]);
 
-  // If user has a custom avatar URL, use that
-  if (user?.avatar_url) {
-    return (
-      <Image
-        src={user.avatar_url}
-        alt={user?.full_name || user?.name || 'User'}
-        width={size}
-        height={size}
-        className={`rounded-full object-cover ${className}`}
-        style={{ width: size, height: size }}
-      />
-    );
-  }
-
-  // Show initials with colored background
-  if (showInitials) {
-    return (
-      <div
-        className={`flex items-center justify-center rounded-full text-white font-bold ${className}`}
-        style={{
-          width: size,
-          height: size,
-          backgroundColor: avatarColor,
-          fontSize: size * 0.4
-        }}
-        title={user?.full_name || user?.name || 'User'}
-      >
-        {initials}
-      </div>
-    );
-  }
-
-  // Use geometric avatar
+  // Always render initials with colored background as universal avatar
   return (
-    <Image
-      src={geometricAvatarUrl}
-      alt={user?.full_name || user?.name || 'User'}
-      width={size}
-      height={size}
-      unoptimized
-      className={`rounded-full ${className}`}
-      style={{ width: size, height: size }}
-    />
+    <div
+      className={`flex items-center justify-center rounded-full text-white font-bold ${className}`}
+      style={{
+        width: size,
+        height: size,
+        backgroundColor: avatarColor,
+        fontSize: size * 0.4,
+      }}
+      title={user?.full_name || user?.name || 'User'}
+    >
+      {initials}
+    </div>
   );
 }
 

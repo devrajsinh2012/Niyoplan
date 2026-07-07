@@ -10,14 +10,15 @@ import { AppShellSkeleton } from '@/components/ui/PageSkeleton';
 
 export default function AppShell({ children }) {
   const { loading, user } = useAuth();
-  const { projectId } = useParams();
   const pathname = usePathname();
+  const projectIdMatch = pathname?.match(/\/projects\/([^\/]+)/);
+  const projectId = projectIdMatch ? projectIdMatch[1] : null;
   const router = useRouter();
 
   const [theme, setTheme] = useState('light');
   const [themeLoaded, setThemeLoaded] = useState(false);
   const [currentProject, setCurrentProject] = useState(null);
-  const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
 
   // Initialize theme from localStorage
@@ -131,7 +132,7 @@ export default function AppShell({ children }) {
 
         {/* ─── Main Content Area ─── */}
         <main
-          className={`relative flex min-w-0 flex-1 flex-col overflow-hidden transition-[margin] duration-200 ${sidebarExpanded ? 'ml-60' : 'ml-16'}`}
+          className="relative flex min-w-0 flex-1 flex-col overflow-hidden"
         >
           <div className="relative z-10 flex-1 overflow-y-auto px-6 py-5">
             {children}

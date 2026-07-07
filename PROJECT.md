@@ -84,6 +84,7 @@ Niyoplan/
 │   │   └── [projectId]/          # Project workspace (tabbed: board, backlog, timeline, calendar, docs, goals, meetings, DSM, AI, activity)
 │   │       └── settings/         # Project-specific settings
 │   ├── today/                    # Personal "Today" task planning view
+│   ├── my-space/                 # Personal cross-org workspace (List/Board, Calendar, Dashboard)
 │   ├── tools/                    # Utility tools (calculator, notes, JSON formatter, AI writer)
 │   ├── clients/                  # Client management (CRM-lite)
 │   │   └── [clientId]/           # Client detail view
@@ -120,7 +121,9 @@ Niyoplan/
 │       │       └── planning/      # Unified planning data (Gantt/Calendar)
 │       ├── organizations/         # Organization CRUD, member management
 │       │   ├── [orgId]/           # Org-specific routes (members, roles, permissions)
+│       │   │   └── central-kanban/ # Org-wide status kanban (GET + PATCH)
 │       │   └── auto-join/         # Auto-join via invite code
+│       ├── my-work/               # Cross-org assigned cards API (GET + PATCH status)
 │       ├── clients/               # Client CRM endpoints
 │       │   ├── dashboard/         # Client dashboard stats
 │       │   └── [clientId]/        # Per-client CRUD
@@ -151,7 +154,7 @@ Niyoplan/
 │   │   ├── PageSkeleton.jsx       # Loading skeleton states
 │   │   ├── ProjectBadge.jsx       # Project identifier badge
 │   │   ├── RichTextEditor.jsx     # TipTap rich text editor wrapper
-│   │   ├── UserAvatar.jsx         # User avatar with initials fallback
+│   │   ├── UserAvatar.jsx         # Universal initials‑only avatar (no image fallback)
 │   │   ├── WelcomeModal.jsx       # First-time user welcome
 │   │   └── ErrorBoundary.jsx      # React error boundary
 │   ├── kanban/                    # Kanban board components
@@ -164,6 +167,13 @@ Niyoplan/
 │   │       ├── CardActivity.jsx   # Activity feed on card
 │   │       ├── CardDescription.jsx# Description editor
 │   │       └── CardSidebar.jsx    # Card metadata sidebar
+│   ├── myspace/                   # My Space feature components
+│   │   ├── MySpaceListBoard.jsx   # List/Board tab (due-date buckets + status kanban)
+│   │   ├── MySpaceCalendar.jsx    # Calendar tab (standalone month view by due_date)
+│   │   ├── MySpaceDashboard.jsx   # Dashboard tab (personal stats)
+│   │   └── StatusKanbanBoard.jsx  # Shared status-grouped kanban (used by My Space + Org Kanban)
+│   ├── dashboard/                 # Dashboard feature components
+│   │   └── OrgCentralKanban.jsx  # Org-wide status kanban (mounted in dashboard/page.jsx)
 │   ├── gantt/                     # Gantt/Timeline components
 │   │   ├── GanttChart.jsx         # Interactive Gantt chart
 │   │   ├── GanttChart.css         # Gantt-specific styles
@@ -545,6 +555,8 @@ Cards get auto-generated IDs like `NIYO-1`, `NIYO-2` based on the project's `pre
 | **Notifications** | ✅ Complete | In-app notifications, mark-read, bell badge |
 | **Settings** | ✅ Complete | Profile, company/org settings, role permissions |
 | **Admin** | ✅ Complete | Admin-only settings panel |
+| **My Space** | ✅ Complete | Personal cross-org kanban, list (due-date buckets), calendar, and stats dashboard for assigned cards |
+| **Organization Central Kanban** | ✅ Complete | Org-wide status-grouped kanban board with drag-and-drop, mounted in Dashboard |
 | **File Attachments** | ⏸️ Paused | Google Drive integration code exists but OAuth flow paused |
 | **Saved Views** | ✅ Complete | Save and restore board filter/sort configurations |
 
@@ -823,3 +835,47 @@ Below is a summarized history of significant past changes, reconstructed from gi
 - `app/dashboard/page.jsx` — Updated overview stats widgets, recent items list views, and focus load counts.
 - `app/projects/[projectId]/settings/page.jsx` — Updated task ID key prefix guidelines and deletion description warnings.
 **Notes**: Build and compilation passed successfully via `npm run build`.
+
+---
+
+### [2026-07-01] — My Space + Organization Central Kanban
+**Agent/Author**: Antigravity (Claude Sonnet 4.6 Thinking)
+**Summary**: Implemented two new features per IMPLEMENTATION.md spec:
+1. **My Space** (`/my-space`) — Personal cross-organization workspace showing all cards assigned to the current user across every org they belong to. Three tabs: List/Board (due-date bucketed list + status-grouped kanban), Calendar (standalone month-view plotted by due_date), Dashboard (personal stats: overdue, due today, open count, completion rate, priority breakdown, org breakdown). Tab state controlled via URL `?tab=` param. Single data fetch on mount, no refetch on tab switch.
+2. **Organization Central Kanban** — Mounted in `app/dashboard/page.jsx` below existing stats. Shows ALL cards (including unassigned) from ALL projects inside the currently active org. Status-grouped columns (5 columns: backlog, todo, in_progress, in_review, done). Drag-and-drop updates `status` directly via PATCH.
+3. **Sidebar** — Added one "My Space" nav item (LayoutGrid icon) positioned as the first item above Dashboard. Renders regardless of active organization.
+4. **Shared component** — `StatusKanbanBoard.jsx` extracts shared drag-and-drop board rendering used by both My Space board mode and OrgCentralKanban to avoid duplicating dnd-kit logic.
+
+**Schema verification (Step 0):** All assumed column names confirmed correct: `assignee_id` ✅, `due_date` ✅, `status` (card_status enum) ✅, `project_id` ✅, `projects.organization_id` ✅. No discrepancies.
+
+**Files Changed**:
+- `app/api/my-work/route.js` — [NEW] GET: cards assigned to current user across all orgs. PATCH: update card status.
+- `app/api/organizations/[orgId]/central-kanban/route.js` — [NEW] GET: all org cards. PATCH: update card status.
+- `app/my-space/page.jsx` — [NEW] My Space page with tab bar shell and data fetching.
+- `components/myspace/StatusKanbanBoard.jsx` — [NEW] Shared status-grouped kanban board with dnd-kit.
+- `components/myspace/MySpaceListBoard.jsx` — [NEW] List/Board tab with internal toggle.
+- `components/myspace/MySpaceCalendar.jsx` — [NEW] Standalone month-view calendar by due_date.
+- `components/myspace/MySpaceDashboard.jsx` — [NEW] Personal stats dashboard tab.
+- `components/dashboard/OrgCentralKanban.jsx` — [NEW] Org-wide status kanban for dashboard.
+- `app/dashboard/page.jsx` — Imported and mounted OrgCentralKanban at bottom of page.
+- `components/layout/Sidebar.jsx` — Added My Space nav item (LayoutGrid icon, first position above Dashboard).
+- `PROJECT.md` — Updated Module Feature Matrix, Project Structure tree, and appended this change log entry.
+**Notes**: CalendarGrid.jsx was NOT modified — it uses ScheduleStore internally and is tightly coupled to per-project data. MySpaceCalendar is a standalone lightweight month-view component to avoid any coupling. KanbanBoard.jsx was NOT modified — it groups by `lists` and that behavior is preserved as specified.
+
+---
+
+### [2026-07-07] — StatusKanbanBoard Drag-and-Drop Parity Fix
+**Agent/Author**: Antigravity (Claude Sonnet 4.6 Thinking)
+**Summary**: Fully rewrote `StatusKanbanBoard.jsx` to achieve identical drag-and-drop smoothness and correctness as the mature `KanbanBoard.jsx` used in project workspaces. Root causes identified and fixed:
+1. **No deduplication** — every `onDragOver` event triggered a React state update causing jitter. Fixed by adding `lastDragOverTargetRef` to skip events where the target hasn't changed.
+2. **No drag-start snapshot** — the original status was never captured, so `handleDragEnd` couldn't reliably detect cross-column moves. Fixed by adding `dragSourceRef`.
+3. **Empty columns were undetectable** — column `<div>` elements had no droppable registration, so dragging onto empty columns did nothing. Fixed by extracting a `DroppableColumn` component using `useDroppable()` with `data: { type: 'Column' }`.
+4. **Wrong collision detection** — used only `closestCorners`, which is less accurate than `pointerWithin` (primary) + `closestCorners` (fallback). Updated to match `KanbanBoard.jsx`.
+5. **Overlay bounce-back animation** — `DragOverlay` was missing `dropAnimation={null}`, causing a visual snap-back on drop. Fixed.
+6. **`handleDragEnd` re-queued the processor** — was calling `processQueuedDragOver()` at end, which re-ran stale logic. Now correctly cancels the animation frame and derives target status from `localCards`.
+7. **Column hover visual feedback** — columns now highlight (border + background) while a card is dragged over them.
+
+**Files Changed**:
+- `components/myspace/StatusKanbanBoard.jsx` — Complete rewrite with `DroppableColumn`, `lastDragOverTargetRef`, `dragSourceRef`, `pointerWithin` collision detection, `dropAnimation={null}`, and corrected `handleDragEnd` logic.
+
+**Notes**: `onStatusChange` is still only fired when the card's status actually changes from its drag-start value (sourced from `dragSourceRef`). Within-column reordering is handled entirely via optimistic `localCards` state — no API call needed for same-status moves. The `KanbanBoard.jsx` itself was not modified.

@@ -11,6 +11,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useOrganization } from '@/context/OrganizationContext';
 import { apiFetch } from '@/lib/apiClient';
 import StatusKanbanBoard from '@/components/myspace/StatusKanbanBoard';
+import CreateTicketModal from '@/components/tickets/CreateTicketModal';
 import { KanbanPanelSkeleton } from '@/components/ui/PageSkeleton';
 import toast from 'react-hot-toast';
 import { Kanban } from 'lucide-react';
@@ -18,13 +19,17 @@ import { Kanban } from 'lucide-react';
 export default function OrgCentralKanban({ isFullPage = false }) {
   const { activeOrganization, loading: orgLoading } = useOrganization();
   const [cards, setCards] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createCardContext, setCreateCardContext] = useState({ status: 'backlog' });
 
   const fetchCards = useCallback(async () => {
     const orgId = activeOrganization?.id;
     if (!orgId) {
       setCards([]);
+      setProjects([]);
       setLoading(false);
       return;
     }
@@ -32,13 +37,25 @@ export default function OrgCentralKanban({ isFullPage = false }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch(`/api/organizations/${orgId}/central-kanban`);
-      if (!res.ok) throw new Error('Failed to load kanban data');
-      const data = await res.json();
-      setCards(data.cards || []);
+      const [cardsRes, projectsRes] = await Promise.all([
+        apiFetch(`/api/organizations/${orgId}/central-kanban`),
+        apiFetch(`/api/projects?organizationId=${orgId}`)
+      ]);
+
+      if (!cardsRes.ok) throw new Error('Failed to load kanban data');
+      const cardsData = await cardsRes.json();
+      setCards(cardsData.cards || []);
+
+      if (projectsRes.ok) {
+        const projectsData = await projectsRes.json();
+        setProjects(Array.isArray(projectsData) ? projectsData : []);
+      } else {
+        setProjects([]);
+      }
     } catch (err) {
       setError(err.message || 'Failed to load cards');
       setCards([]);
+      setProjects([]);
     } finally {
       setLoading(false);
     }
@@ -69,6 +86,15 @@ export default function OrgCentralKanban({ isFullPage = false }) {
       toast.error(err.message || 'Failed to update card status');
     }
   }
+
+  const handleAddCardFromColumn = useCallback((status) => {
+    if (!projects.length) {
+      toast.error('No project available to create a card');
+      return;
+    }
+    setCreateCardContext({ status: status || 'backlog' });
+    setShowCreateModal(true);
+  }, [projects]);
 
   const containerClassName = isFullPage 
     ? "overflow-hidden flex flex-col h-full flex-1"
@@ -109,18 +135,33 @@ export default function OrgCentralKanban({ isFullPage = false }) {
         <div className="px-6 py-4 text-sm" style={{ color: 'var(--text-muted)' }}>
           {error}
         </div>
-      ) : cards.length === 0 ? (
-        <div className="py-16 text-center text-sm" style={{ color: 'var(--text-muted)', opacity: 0.7 }}>
-          No cards in this organization yet.
-        </div>
       ) : (
         <div className="p-4 flex-1 overflow-hidden flex flex-col">
           <StatusKanbanBoard
             cards={cards}
             onStatusChange={handleStatusChange}
             showProject={true}
+            onAddCard={handleAddCardFromColumn}
           />
+          {cards.length === 0 && (
+            <div className="pt-3 text-center text-sm" style={{ color: 'var(--text-muted)', opacity: 0.7 }}>
+              No cards in this organization yet.
+            </div>
+          )}
         </div>
+      )}
+
+      {showCreateModal && (
+        <CreateTicketModal
+          projectOptions={projects.map((project) => ({
+            id: project.id,
+            name: project.name,
+            prefix: project.prefix
+          }))}
+          defaultStatus={createCardContext.status}
+          onClose={() => setShowCreateModal(false)}
+          onCreated={fetchCards}
+        />
       )}
     </div>
   );

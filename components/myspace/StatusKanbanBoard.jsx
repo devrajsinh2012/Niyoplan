@@ -7,6 +7,7 @@
  * Props:
  *   cards       — array of card objects (must have `status` field)
  *   onStatusChange(cardId, newStatus) — called when a card is dropped into a new column
+ *   onAddCard(status) — optional callback for adding a card into a specific status column
  *   showProject — whether to show org/project badge on each card (true for My Space, false optional for Org Kanban)
  */
 
@@ -49,7 +50,7 @@ const PRIORITY_COLORS = {
 };
 
 /* ─── Droppable Column Container ─────────────────────────────────────── */
-function DroppableColumn({ col, children, colCards }) {
+function DroppableColumn({ col, children, colCards, onAddCard }) {
   const { setNodeRef, isOver } = useDroppable({
     id: col.id,
     data: { type: 'Column', columnId: col.id },
@@ -109,6 +110,14 @@ function DroppableColumn({ col, children, colCards }) {
           )}
         </div>
       </SortableContext>
+      <button
+        type="button"
+        onClick={() => onAddCard?.(col.id)}
+        className="mx-2 mb-2 mt-1 rounded-md border border-dashed px-3 py-1.5 text-left text-xs font-semibold transition-colors hover:bg-[var(--bg-panel-hover)]"
+        style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}
+      >
+        + Add a card
+      </button>
     </div>
   );
 }
@@ -216,7 +225,7 @@ function CardDisplay({ card, showProject }) {
 }
 
 /* ─── Main Board Component ────────────────────────────────────────────── */
-export default function StatusKanbanBoard({ cards, onStatusChange, showProject = true }) {
+export default function StatusKanbanBoard({ cards, onStatusChange, showProject = true, onAddCard = null }) {
   // Refs — identical pattern to KanbanBoard.jsx
   const dragOverAnimationFrameRef = useRef(null);
   const pendingDragOverRef = useRef(null);
@@ -452,7 +461,7 @@ export default function StatusKanbanBoard({ cards, onStatusChange, showProject =
         {STATUS_COLUMNS.map(col => {
           const colCards = cardsByStatus[col.id] || [];
           return (
-            <DroppableColumn key={col.id} col={col} colCards={colCards}>
+            <DroppableColumn key={col.id} col={col} colCards={colCards} onAddCard={onAddCard}>
               {colCards.map(card => (
                 <DraggableCard key={card.id} card={card} showProject={showProject} />
               ))}

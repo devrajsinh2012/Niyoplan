@@ -7,10 +7,11 @@
  * List mode groups cards by due date buckets.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/apiClient';
 import toast from 'react-hot-toast';
 import StatusKanbanBoard from './StatusKanbanBoard';
+import CreateTicketModal from '@/components/tickets/CreateTicketModal';
 import { List, LayoutGrid, AlertCircle, Clock, CalendarDays, Calendar, Inbox } from 'lucide-react';
 import {
   isToday,
@@ -186,9 +187,38 @@ function BucketSection({ bucket }) {
 
 export default function MySpaceListBoard({ cards, onCardsChange }) {
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'board'
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createCardContext, setCreateCardContext] = useState({ status: 'backlog' });
+  const [availableProjects, setAvailableProjects] = useState([]);
 
   const buckets = useMemo(() => bucketsFromCards(cards), [cards]);
   const hasCards = cards && cards.length > 0;
+  const projectOptions = useMemo(() => {
+    const unique = new Map();
+    (availableProjects || []).forEach((project) => {
+      if (!project?.id) return;
+      unique.set(project.id, {
+        id: project.id,
+        name: project.name,
+        prefix: project.prefix,
+      });
+    });
+    return Array.from(unique.values());
+  }, [availableProjects]);
+
+  useEffect(() => {
+    async function fetchProjects() {
+      try {
+        const res = await apiFetch('/api/projects');
+        if (!res.ok) return;
+        const data = await res.json();
+        setAvailableProjects(Array.isArray(data) ? data : []);
+      } catch {
+        setAvailableProjects([]);
+      }
+    }
+    fetchProjects();
+  }, []);
 
   async function handleStatusChange(cardId, newStatus) {
     // Optimistic update
@@ -207,6 +237,28 @@ export default function MySpaceListBoard({ cards, onCardsChange }) {
       toast.error(err.message || 'Failed to update card status');
     }
   }
+
+  const handleAddCardFromColumn = useCallback((status) => {
+    if (projectOptions.length === 0) {
+      toast.error('No project available to create a card');
+      return;
+    }
+    setCreateCardContext({ status: status || 'backlog' });
+    setShowCreateModal(true);
+  }, [projectOptions]);
+
+  const handleCreatedCard = useCallback(async () => {
+    setShowCreateModal(false);
+    try {
+      const res = await apiFetch('/api/my-work');
+      if (!res.ok) throw new Error('Failed to refresh cards');
+      const data = await res.json();
+      onCardsChange(data.cards || []);
+      toast.success('Card created');
+    } catch (err) {
+      toast.error(err?.message || 'Card created but refresh failed');
+    }
+  }, [onCardsChange]);
 
   return (
     <div>
@@ -243,7 +295,7 @@ export default function MySpaceListBoard({ cards, onCardsChange }) {
       </div>
 
       {/* Empty state */}
-      {!hasCards && (
+      {!hasCards && viewMode === 'list' && (
         <div
           className="flex flex-col items-center justify-center rounded-[8px] border border-dashed py-20 text-center"
           style={{ borderColor: 'var(--border-subtle)' }}
@@ -289,11 +341,21 @@ export default function MySpaceListBoard({ cards, onCardsChange }) {
       )}
 
       {/* Board mode */}
-      {hasCards && viewMode === 'board' && (
+      {viewMode === 'board' && (
         <StatusKanbanBoard
           cards={cards}
           onStatusChange={handleStatusChange}
           showProject={true}
+          onAddCard={handleAddCardFromColumn}
+        />
+      )}
+
+      {showCreateModal && (
+        <CreateTicketModal
+          projectOptions={projectOptions}
+          defaultStatus={createCardContext.status}
+          onClose={() => setShowCreateModal(false)}
+          onCreated={handleCreatedCard}
         />
       )}
     </div>

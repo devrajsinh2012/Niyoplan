@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { Save } from 'lucide-react';
@@ -16,17 +16,25 @@ const DEFAULT_LISTS = [
   { name: 'Done', rank: 5000 }
 ];
 
-export default function CreateTicketModal({ projectId, defaultSprintId = null, onClose, onCreated }) {
+export default function CreateTicketModal({
+  projectId = null,
+  projectOptions = [],
+  defaultSprintId = null,
+  defaultStatus = 'backlog',
+  onClose,
+  onCreated
+}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [users, setUsers] = useState([]);
   const [sprints, setSprints] = useState([]);
   const { profile } = useAuth();
+  const [selectedProjectId, setSelectedProjectId] = useState(projectId || projectOptions[0]?.id || '');
 
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     issue_type: 'task',
-    status: 'backlog',
+    status: defaultStatus || 'backlog',
     priority: 'medium',
     story_points: '',
     assignee_id: '',
@@ -36,28 +44,42 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
   });
 
   useEffect(() => {
-    setFormData((prev) => ({ ...prev, sprint_id: defaultSprintId || '' }));
-  }, [defaultSprintId]);
+    setSelectedProjectId(projectId || projectOptions[0]?.id || '');
+  }, [projectId, projectOptions]);
 
   useEffect(() => {
-    if (!projectId) return;
+    setFormData((prev) => ({ ...prev, status: defaultStatus || 'backlog' }));
+  }, [defaultStatus]);
+
+  useEffect(() => {
+    setFormData((prev) => ({ ...prev, sprint_id: defaultSprintId || '' }));
+  }, [defaultSprintId, selectedProjectId]);
+
+  useEffect(() => {
+    if (!selectedProjectId) {
+      setUsers([]);
+      return;
+    }
     const fetchUsers = async () => {
       const { data } = await supabase.from('project_members')
         .select('user_id, profile:profiles(id, full_name)')
-        .eq('project_id', projectId);
+        .eq('project_id', selectedProjectId);
       if (data) setUsers(data.map(d => d.profile).filter(Boolean));
     };
     fetchUsers();
-  }, [projectId]);
+  }, [selectedProjectId]);
 
   useEffect(() => {
-    if (!projectId) return;
+    if (!selectedProjectId) {
+      setSprints([]);
+      return;
+    }
 
     const fetchSprints = async () => {
       const { data } = await supabase
         .from('sprints')
         .select('id, name, status')
-        .eq('project_id', projectId)
+        .eq('project_id', selectedProjectId)
         .in('status', ['active', 'planning', 'upcoming']) // Only show active/upcoming sprints
         .order('created_at', { ascending: false });
 
@@ -65,7 +87,7 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
     };
 
     fetchSprints();
-  }, [projectId]);
+  }, [selectedProjectId]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -76,7 +98,7 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
     const { data: existingLists, error: listFetchError } = await supabase
       .from('lists')
       .select('id, name, rank')
-      .eq('project_id', projectId)
+      .eq('project_id', selectedProjectId)
       .order('rank', { ascending: true });
 
     if (listFetchError) throw listFetchError;
@@ -87,7 +109,7 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
       const { data: createdLists, error: createListsError } = await supabase
         .from('lists')
         .insert(DEFAULT_LISTS.map((list) => ({
-          project_id: projectId,
+          project_id: selectedProjectId,
           name: list.name,
           rank: list.rank
         })))
@@ -120,6 +142,9 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
     setIsSubmitting(true);
 
     try {
+      if (!selectedProjectId) {
+        throw new Error('Please select a project');
+      }
       const lists = await getOrCreateLists();
       const targetListId = resolveListIdForStatus(lists, formData.status);
       const now = new Date();
@@ -129,7 +154,7 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
       const { data, error } = await supabase
         .from('cards')
         .insert({
-          project_id: projectId,
+          project_id: selectedProjectId,
           title: formData.title,
           description: formData.description,
           issue_type: formData.issue_type,
@@ -157,7 +182,9 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
       });
 
       toast.success(`Created ${data.custom_id}`);
-      onCreated(data);
+      if (typeof onCreated === 'function') {
+        onCreated(data);
+      }
       onClose();
     } catch (err) {
       toast.error(err?.message || 'Failed to create ticket');
@@ -212,6 +239,25 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {projectOptions.length > 1 && (
+                <div className="sm:col-span-2">
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Project</label>
+                  <select
+                    name="project_id"
+                    className="w-full rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[#0052CC] focus:outline-none"
+                    value={selectedProjectId}
+                    onChange={(e) => setSelectedProjectId(e.target.value)}
+                    required
+                  >
+                    {projectOptions.map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.prefix ? `${project.prefix} — ${project.name}` : project.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="sm:col-span-2">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Task Type</label>
                 <select
@@ -362,3 +408,6 @@ export default function CreateTicketModal({ projectId, defaultSprintId = null, o
     </Portal>
   );
 }
+  useEffect(() => {
+    setFormData((prev) => ({ ...prev, sprint_id: defaultSprintId || '' }));
+  }, [defaultSprintId, selectedProjectId]);

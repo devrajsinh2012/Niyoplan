@@ -408,6 +408,3 @@ export default function CreateTicketModal({
     </Portal>
   );
 }
-  useEffect(() => {
-    setFormData((prev) => ({ ...prev, sprint_id: defaultSprintId || '' }));
-  }, [defaultSprintId, selectedProjectId]);

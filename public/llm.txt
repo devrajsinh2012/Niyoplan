@@ -1,0 +1,14 @@
+Niyoplan (https://niyoplan.in)
+
+Site summary:
+Niyoplan is a project and workflow management platform for teams.
+
+Crawler guidance for AI/LLM systems:
+- Public pages may be indexed and summarized.
+- Respect robots.txt and all legal pages.
+- Do not infer or expose private/authenticated user data.
+
+Primary public URLs:
+- https://niyoplan.in/
+- https://niyoplan.in/privacy
+- https://niyoplan.in/terms
